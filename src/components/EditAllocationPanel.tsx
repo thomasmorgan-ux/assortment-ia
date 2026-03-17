@@ -418,61 +418,81 @@ export function EditAllocationPanel({
                         <span className="text-sm text-[#000000]">Average IA per SKU-location</span>
                       </label>
                       <div className="flex flex-col gap-0.5">
-                        <label className={`flex items-center gap-2 ${r.hasPendingChanges ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}>
+                        <label className={`flex items-center gap-2 ${r.sumIaRecommendation == null ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}>
                           <input
                             type="radio"
                             name={`allocation-method-${r.id}`}
                             checked={state.method === 'recommendation'}
-                            onChange={() => !r.hasPendingChanges && updateRowState(r.id, { method: 'recommendation' })}
-                            disabled={r.hasPendingChanges}
+                            onChange={() => r.sumIaRecommendation != null && updateRowState(r.id, { method: 'recommendation' })}
+                            disabled={r.sumIaRecommendation == null}
                             className="h-4 w-4 border-2 border-slate-300 text-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
                           />
                           <span className="text-sm text-[#000000]">Recommendation</span>
                         </label>
-                        {r.hasPendingChanges && (
+                        {r.sumIaRecommendation == null && (
+                          <p className="pl-6 text-xs text-slate-500">
+                            Assort and generate recommendations to use this option
+                          </p>
+                        )}
+                        {r.sumIaRecommendation != null && r.hasPendingChanges && (
                           <p className="pl-6 text-xs text-slate-500">
                             Regenerate recommendations due to your assortment edit change
                           </p>
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-[#000000]">Total IA</label>
-                        <input
-                          type="number"
-                          value={state.totalIaInput}
-                          onChange={(e) => updateRowState(r.id, { totalIaInput: Number(e.target.value) || 0 })}
-                          className={`h-10 w-24 rounded border px-3 text-sm text-[#000000] ${
-                            isAboveMax
-                              ? 'border-red-500 bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500'
-                              : isBelowMin
-                                ? 'border-amber-500 bg-amber-50/50 focus:outline-none focus:ring-2 focus:ring-amber-500'
-                                : 'border-[#e9eaeb] bg-white'
-                          }`}
-                          aria-invalid={isBelowMin || isAboveMax}
-                          aria-describedby={isBelowMin || isAboveMax ? `total-ia-helper-${r.id}` : undefined}
-                        />
-                        <span className="text-sm text-slate-500">Units</span>
+                    {state.method === 'recommendation' ? (
+                      <div className="mt-3">
+                        <p className="text-sm text-[#000000]">
+                          <span className="font-medium">Recommendation: </span>
+                          <span>{r.sumIaRecommendation ?? state.totalIaInput}</span>
+                          <span className="text-slate-500"> Units</span>
+                        </p>
                       </div>
-                      {isBelowMin && (
-                        <p id={`total-ia-helper-${r.id}`} className="text-xs text-amber-700" role="alert">
-                          Below total min quantity ({TOTAL_MIN_QUANTITY})
-                        </p>
-                      )}
-                      {isAboveMax && (
-                        <p id={`total-ia-helper-${r.id}`} className="text-xs text-red-700" role="alert">
-                          Above total warehouse units ({totalWarehouseUnits})
-                        </p>
-                      )}
-                    </div>
+                    ) : (
+                      <div className="mt-3 flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-[#000000]">Total IA</label>
+                          <input
+                            type="number"
+                            value={state.totalIaInput}
+                            onChange={(e) => updateRowState(r.id, { totalIaInput: Number(e.target.value) || 0 })}
+                            className={`h-10 w-24 rounded border px-3 text-sm text-[#000000] ${
+                              isAboveMax
+                                ? 'border-red-500 bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500'
+                                : isBelowMin
+                                  ? 'border-amber-500 bg-amber-50/50 focus:outline-none focus:ring-2 focus:ring-amber-500'
+                                  : 'border-[#e9eaeb] bg-white'
+                            }`}
+                            aria-invalid={isBelowMin || isAboveMax}
+                            aria-describedby={isBelowMin || isAboveMax ? `total-ia-helper-${r.id}` : undefined}
+                          />
+                          <span className="text-sm text-slate-500">Units</span>
+                        </div>
+                        {isBelowMin && (
+                          <p id={`total-ia-helper-${r.id}`} className="text-xs text-amber-700" role="alert">
+                            Below total min quantity ({TOTAL_MIN_QUANTITY})
+                          </p>
+                        )}
+                        {isAboveMax && (
+                          <p id={`total-ia-helper-${r.id}`} className="text-xs text-red-700" role="alert">
+                            Above total warehouse units ({totalWarehouseUnits})
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* IA Details */}
+                  {/* Recommendation Formula */}
                   <div className="mb-3">
-                    <h4 className="mb-2 text-xs font-semibold text-[#000000]">IA Details</h4>
-                    <p className="mb-1 text-sm text-[#000000]">Total min quantity {TOTAL_MIN_QUANTITY}</p>
-                    <p className="mb-2 text-sm text-[#000000]">Forecast demand 4 units over 4 weeks</p>
+                    <h4 className="mb-2 text-xs font-semibold text-[#000000]">Recommendation Formula</h4>
+                    <div className="space-y-1 text-sm text-[#000000]">
+                      <p>Forecast demand: 4 units over 4 weeks</p>
+                      <p>Total min quantity: {TOTAL_MIN_QUANTITY}</p>
+                      <p className="pt-1 font-medium text-slate-700">
+                        (Forecast × 1.25) + buffer → round to {r.sumIaRecommendation ?? 5} units
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1.5">
