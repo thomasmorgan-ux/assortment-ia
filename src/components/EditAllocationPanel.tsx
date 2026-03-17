@@ -32,10 +32,14 @@ interface EditAllocationPanelProps {
   onScheduledAssortmentDateChange?: (rowId: string, date: string) => void;
 }
 
-type RowEditState = { method: AllocationMethod; totalIaInput: number };
+type RowEditState = { method: AllocationMethod; totalIaInput: string };
 
 function getDefaultRowState(row: AssortmentRow): RowEditState {
-  return { method: 'total-ia', totalIaInput: row.sumIa };
+  return { method: 'total-ia', totalIaInput: String(row.sumIa) };
+}
+
+function totalIaNum(state: RowEditState): number {
+  return Number(state.totalIaInput) || 0;
 }
 
 const topLocationsMock: { metric: string; committed: number | string; current: string }[] = [
@@ -129,7 +133,7 @@ export function EditAllocationPanel({
   const handleSaveDraft = () => {
     rows.forEach((row) => {
       const state = rowState[row.id] ?? getDefaultRowState(row);
-      const newSum = state.method === 'recommendation' ? (row.sumIaRecommendation ?? state.totalIaInput) : state.totalIaInput;
+      const newSum = state.method === 'recommendation' ? (row.sumIaRecommendation ?? totalIaNum(state)) : totalIaNum(state);
       const newAvg = row.locationCluster.locationCount > 0 ? newSum / row.locationCluster.locationCount : row.avgIa;
       onSumIaChange(row.id, newSum);
       onAvgIaChange(row.id, newAvg);
@@ -370,11 +374,11 @@ export function EditAllocationPanel({
             rows.map((r) => {
               const state = rowState[r.id] ?? getDefaultRowState(r);
               const committedIa = r.lastCommittedSnapshot?.sumIa ?? r.sumIa;
-              const currentEditValue = state.method === 'recommendation' ? (r.sumIaRecommendation ?? state.totalIaInput) : state.totalIaInput;
+              const currentEditValue = state.method === 'recommendation' ? (r.sumIaRecommendation ?? totalIaNum(state)) : totalIaNum(state);
               const totalLocation = r.productGroup.productCount * r.locationCluster.locationCount;
               const totalWarehouseUnits = r.whUnits.value;
-              const isBelowMin = state.totalIaInput < TOTAL_MIN_QUANTITY;
-              const isAboveMax = state.totalIaInput > totalWarehouseUnits;
+              const isBelowMin = totalIaNum(state) < TOTAL_MIN_QUANTITY;
+              const isAboveMax = totalIaNum(state) > totalWarehouseUnits;
               const impactRows = [
                 { metric: 'Total Allocation', committed: committedIa, current: String(currentEditValue) },
                 { metric: 'Warehouse metrics', committed: totalWarehouseUnits, current: String(totalWarehouseUnits - currentEditValue) },
@@ -445,7 +449,7 @@ export function EditAllocationPanel({
                       <div className="mt-3">
                         <p className="text-sm text-[#000000]">
                           <span className="font-medium">Recommendation: </span>
-                          <span>{r.sumIaRecommendation ?? state.totalIaInput}</span>
+                          <span>{r.sumIaRecommendation ?? totalIaNum(state)}</span>
                           <span className="text-slate-500"> Units</span>
                         </p>
                       </div>
@@ -456,7 +460,7 @@ export function EditAllocationPanel({
                           <input
                             type="number"
                             value={state.totalIaInput}
-                            onChange={(e) => updateRowState(r.id, { totalIaInput: Number(e.target.value) || 0 })}
+                            onChange={(e) => updateRowState(r.id, { totalIaInput: e.target.value.replace(/[^0-9]/g, '') })}
                             className={`h-10 w-24 rounded border px-3 text-sm text-[#000000] ${
                               isAboveMax
                                 ? 'border-red-500 bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500'
