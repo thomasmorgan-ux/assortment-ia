@@ -372,12 +372,12 @@ export function EditAllocationPanel({
               const committedIa = r.lastCommittedSnapshot?.sumIa ?? r.sumIa;
               const currentEditValue = state.method === 'recommendation' ? (r.sumIaRecommendation ?? state.totalIaInput) : state.totalIaInput;
               const totalLocation = r.productGroup.productCount * r.locationCluster.locationCount;
-              const totalWarehouseUnits = totalLocation;
+              const totalWarehouseUnits = r.whUnits.value;
               const isBelowMin = state.totalIaInput < TOTAL_MIN_QUANTITY;
               const isAboveMax = state.totalIaInput > totalWarehouseUnits;
               const impactRows = [
                 { metric: 'Total Allocation', committed: committedIa, current: String(currentEditValue) },
-                { metric: 'Warehouse metrics', committed: committedIa, current: String(currentEditValue) },
+                { metric: 'Warehouse metrics', committed: totalWarehouseUnits, current: String(totalWarehouseUnits - currentEditValue) },
                 {
                   metric: 'Products affected',
                   committed: committedIa > 0 ? r.productGroup.productCount : 0,
@@ -483,17 +483,18 @@ export function EditAllocationPanel({
                     )}
                   </div>
 
-                  {/* Recommendation Formula */}
-                  <div className="mb-3">
-                    <h4 className="mb-2 text-xs font-semibold text-[#000000]">Recommendation Formula</h4>
-                    <div className="space-y-1 text-sm text-[#000000]">
-                      <p>Forecast demand: 4 units over 4 weeks</p>
-                      <p>Total min quantity: {TOTAL_MIN_QUANTITY}</p>
-                      <p className="pt-1 font-medium text-slate-700">
-                        (Forecast × 1.25) + buffer → round to {r.sumIaRecommendation ?? 5} units
-                      </p>
+                  {state.method === 'recommendation' && (
+                    <div className="mb-3">
+                      <h4 className="mb-2 text-xs font-semibold text-[#000000]">Recommendation Formula</h4>
+                      <div className="space-y-1 text-sm text-[#000000]">
+                        <p>Forecast demand: 4 units over 4 weeks</p>
+                        <p>Total min quantity: {TOTAL_MIN_QUANTITY}</p>
+                        <p className="pt-1 font-medium text-slate-700">
+                          (Forecast × 1.25) + buffer → round to {r.sumIaRecommendation ?? 5} units
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex items-center gap-1.5">
                     <h4 className="text-xs font-semibold text-[#000000]">Impact Summary</h4>

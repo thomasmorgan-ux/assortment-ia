@@ -4,7 +4,6 @@ import { AssortmentTable } from './AssortmentTable';
 import { CommitSuccessBanner } from './CommitSuccessBanner';
 import { ConfirmCommitRevertModal, type ConfirmCommitRevertState } from './ConfirmCommitRevertModal';
 import { EditAllocationPanel } from './EditAllocationPanel';
-import { GenerateRecommendationsPanel } from './GenerateRecommendationsPanel';
 import { OptimisingIABanner } from './OptimisingIABanner';
 import { SelectionActionBar } from './SelectionActionBar';
 import { mockRows } from '../data/mockAssortment';
@@ -97,7 +96,6 @@ export function MainContent() {
   const [confirmCommitRevert, setConfirmCommitRevert] = useState<ConfirmCommitRevertState | null>(null);
   const [focusView, setFocusView] = useState<FocusView>('all');
   const [isolateRowId, setIsolateRowId] = useState<string | null>(null);
-  const [generateRecsOpen, setGenerateRecsOpen] = useState(false);
   const [optimisingBannerVisible, setOptimisingBannerVisible] = useState(false);
   const [optimisingBannerDismissed, setOptimisingBannerDismissed] = useState(false);
   const [, setHasGeneratedRecommendations] = useState(false);
@@ -112,6 +110,43 @@ export function MainContent() {
       if (optimisingToSuccessTimeoutRef.current) clearTimeout(optimisingToSuccessTimeoutRef.current);
     };
   }, []);
+
+  const handleGenerateRecommendations = () => {
+    setOptimisingBannerVisible(true);
+    setOptimisingBannerDismissed(false);
+    const selected = rows.filter((r) => r.selected);
+    const groupsCount = selected.length;
+    setHasGeneratedRecommendations(true);
+    setRows((prev) =>
+      prev.map((r) => {
+        if (!r.selected) return r;
+        const sumRec = 44;
+        const avgRec =
+          r.locationCluster.locationCount > 0
+            ? sumRec / r.locationCluster.locationCount
+            : r.avgIa;
+        return {
+          ...r,
+          sumIaRecommendation: sumRec,
+          avgIaRecommendation: avgRec,
+          hasPendingChanges: true,
+          lastCommittedSnapshot: r.lastCommittedSnapshot ?? {
+            assortment: { assortedCount: r.assortment.assortedCount, totalCount: r.assortment.totalCount },
+            sumIa: r.sumIa,
+            avgIa: r.avgIa,
+          },
+        };
+      })
+    );
+    pendingSuccessGroupsCountRef.current = groupsCount;
+    if (optimisingToSuccessTimeoutRef.current) clearTimeout(optimisingToSuccessTimeoutRef.current);
+    optimisingToSuccessTimeoutRef.current = setTimeout(() => {
+      optimisingToSuccessTimeoutRef.current = null;
+      setOptimisingBannerVisible(false);
+      setRecSuccessBanner({ groupsCount });
+      setShowRecommendationsInTable(true);
+    }, 3000);
+  };
 
   useEffect(() => {
     if (!recSuccessBanner) return;
@@ -418,7 +453,6 @@ export function MainContent() {
           </button>
         </div>
 
-
         {isolateRowId && (
           <div className="flex items-center gap-2 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
             <span>Showing 1 row</span>
@@ -517,46 +551,10 @@ export function MainContent() {
         onClose={() => setConfirmCommitRevert(null)}
       />
 
-      <GenerateRecommendationsPanel
-        open={generateRecsOpen}
-        onClose={() => setGenerateRecsOpen(false)}
-        selectedRows={rows.filter((r) => r.selected)}
-        onGenerate={() => {
-          setOptimisingBannerVisible(true);
-          setOptimisingBannerDismissed(false);
-          const selected = rows.filter((r) => r.selected);
-          const groupsCount = selected.length;
-          setHasGeneratedRecommendations(true);
-          setRows((prev) =>
-            prev.map((r) => {
-              if (!r.selected) return r;
-              const sumRec = 44;
-              const avgRec =
-                r.locationCluster.locationCount > 0
-                  ? sumRec / r.locationCluster.locationCount
-                  : r.avgIa;
-              return {
-                ...r,
-                sumIaRecommendation: sumRec,
-                avgIaRecommendation: avgRec,
-              };
-            })
-          );
-          pendingSuccessGroupsCountRef.current = groupsCount;
-          if (optimisingToSuccessTimeoutRef.current) clearTimeout(optimisingToSuccessTimeoutRef.current);
-          optimisingToSuccessTimeoutRef.current = setTimeout(() => {
-            optimisingToSuccessTimeoutRef.current = null;
-            setOptimisingBannerVisible(false);
-            setRecSuccessBanner({ groupsCount });
-            setShowRecommendationsInTable(true);
-          }, 3000);
-        }}
-      />
-
       <SelectionActionBar
         selectedRows={rows.filter((r) => r.selected) ?? []}
         onClearSelection={() => setRows((prev) => prev.map((r) => ({ ...r, selected: false })))}
-        onGenerateRecommendations={() => setGenerateRecsOpen(true)}
+        onGenerateRecommendations={handleGenerateRecommendations}
         onOpenInitialAllocation={(rowsToEdit) => setEditAllocation({ rows: rowsToEdit, openFrom: 'initial-allocation' })}
         onAssortSelection={onAssortSelection}
         onUnassortSelection={onUnassortSelection}
