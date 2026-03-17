@@ -1,30 +1,85 @@
-import { Filter, MapPin, Info, CircleCheck } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { MapPin, CircleCheck, Pencil, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Sparkles } from 'lucide-react';
+import { DrillDownLocationModal } from './DrillDownLocationModal';
+import { DrillDownProductModal } from './DrillDownProductModal';
 import type { AssortmentRow, ModalKind } from '../types';
 
 interface AssortmentTableProps {
   rows: AssortmentRow[];
+  designOnly?: boolean;
   onSelectRow: (id: string, checked: boolean) => void;
   onSelectAll: (checked: boolean) => void;
   onAssort: (row: AssortmentRow) => void;
   onUnassort: (row: AssortmentRow) => void;
   onSumIaChange: (id: string, value: number) => void;
   onAvgIaChange: (id: string, value: number) => void;
-  onOpenModal: (kind: ModalKind, row?: AssortmentRow) => void;
-  onCommit: (id: string) => void;
+  onOpenModal?: (kind: ModalKind, row?: AssortmentRow) => void;
+  onCommit?: (id: string) => void;
+  onRevert?: (id: string) => void;
+  onEditRow?: (row: AssortmentRow, openFrom: 'assortment' | 'initial-allocation') => void;
+  /** When set, Commit/Revert in Status column open this modal instead of committing/reverting immediately */
+  onRequestCommit?: (row: AssortmentRow) => void;
+  onRequestRevert?: (row: AssortmentRow) => void;
+  /** When set, table shows only this row. Toggle by clicking the row's filter icon. */
+  isolateRowId?: string | null;
+  onIsolateRow?: (rowId: string | null) => void;
+  /** When true, show the recommendation badge (purple pill) in the Initial Allocation column. Set after success banner is shown. */
+  showRecommendationBadge?: boolean;
 }
 
 export function AssortmentTable({
   rows,
+  designOnly = false,
   onSelectRow,
   onSelectAll,
-  onAssort,
-  onUnassort,
-  onSumIaChange,
-  onAvgIaChange,
-  onOpenModal,
+  onAssort: _onAssort,
+  onUnassort: _onUnassort,
+  onSumIaChange: _onSumIaChange,
+  onAvgIaChange: _onAvgIaChange,
+  onOpenModal: _onOpenModal,
   onCommit,
+  onRevert,
+  onEditRow,
+  onRequestCommit,
+  onRequestRevert,
+  isolateRowId,
+  onIsolateRow,
+  showRecommendationBadge = false,
 }: AssortmentTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => r.selected);
+  const [drillDownAnchor, setDrillDownAnchor] = useState<DOMRect | null>(null);
+  const [locationDrillDownAnchor, setLocationDrillDownAnchor] = useState<DOMRect | null>(null);
+  const [productGroupDropdownOpen, setProductGroupDropdownOpen] = useState(false);
+  const [productGrouping, setProductGrouping] = useState('Product Group');
+  const productGroupDropdownRef = useRef<HTMLDivElement>(null);
+  const [locationGroupDropdownOpen, setLocationGroupDropdownOpen] = useState(false);
+  const [locationGrouping, setLocationGrouping] = useState('Location Group');
+  const locationGroupDropdownRef = useRef<HTMLDivElement>(null);
+
+  const PRODUCT_GROUPING_OPTIONS = ['SKU', 'Product', 'Department', 'Sub Department', 'Style', 'Season', 'Gender', 'Product Group'];
+  const LOCATION_GROUPING_OPTIONS = ['Region', 'Country', 'Location', 'Location Type', 'Location Group'];
+
+  useEffect(() => {
+    if (!productGroupDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (productGroupDropdownRef.current && !productGroupDropdownRef.current.contains(e.target as Node)) {
+        setProductGroupDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [productGroupDropdownOpen]);
+
+  useEffect(() => {
+    if (!locationGroupDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (locationGroupDropdownRef.current && !locationGroupDropdownRef.current.contains(e.target as Node)) {
+        setLocationGroupDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [locationGroupDropdownOpen]);
 
   return (
     <div
@@ -46,36 +101,106 @@ export function AssortmentTable({
                   />
                 </label>
               </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Product Group
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left">
+                <div className="relative inline-block" ref={productGroupDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setProductGroupDropdownOpen((o) => !o)}
+                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-3 text-sm font-medium leading-normal text-[#00050a] whitespace-nowrap hover:border-[#d1d5db] transition-colors"
+                  >
+                    <span className="shrink-0">{productGrouping}</span>
+                    <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" />
+                  </button>
+                  {productGroupDropdownOpen && (
+                    <div className="absolute left-0 top-full z-[70] mt-1 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
+                      {PRODUCT_GROUPING_OPTIONS.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => {
+                            setProductGrouping(opt);
+                            setProductGroupDropdownOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-[#00050a] hover:bg-slate-100 ${
+                            productGrouping === opt ? 'bg-slate-100' : ''
+                          }`}
+                        >
+                          {opt}
+                          {productGrouping === opt && <Check size={14} className="shrink-0 text-[#00050a]" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </th>
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left">
+                <div className="relative inline-block" ref={locationGroupDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setLocationGroupDropdownOpen((o) => !o)}
+                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-3 text-sm font-medium leading-normal text-[#00050a] whitespace-nowrap hover:border-[#d1d5db] transition-colors"
+                  >
+                    <span className="shrink-0">{locationGrouping}</span>
+                    <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" />
+                  </button>
+                  {locationGroupDropdownOpen && (
+                    <div className="absolute left-0 top-full z-[70] mt-1 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
+                      {LOCATION_GROUPING_OPTIONS.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => {
+                            setLocationGrouping(opt);
+                            setLocationGroupDropdownOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-[#00050a] hover:bg-slate-100 ${
+                            locationGrouping === opt ? 'bg-slate-100' : ''
+                          }`}
+                        >
+                          {opt}
+                          {locationGrouping === opt && <Check size={14} className="shrink-0 text-[#00050a]" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </th>
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Location Cluster
+                <span className="inline-flex items-center gap-1">WH units</span>
               </th>
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                WH Units
+                <span className="inline-flex items-center gap-1">WH IA%</span>
               </th>
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Store OH
+                <span className="inline-flex items-center gap-1">Store OH</span>
+              </th>
+              {!designOnly && (
+                <>
+                  <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+                    <span className="inline-flex items-center gap-1">Sales</span>
+                  </th>
+                  <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+                    <span className="inline-flex items-center gap-1">Sell Thru</span>
+                  </th>
+                </>
+              )}
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+                <span className="inline-flex items-center gap-1">Forecast</span>
               </th>
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Sales
+                <span className="inline-flex items-center gap-1">Assortment <Pencil size={14} className="shrink-0 text-slate-400" /></span>
               </th>
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Sell Thru
+                <span className="inline-flex items-center gap-1">Initial Allocation <Pencil size={14} className="shrink-0 text-slate-400" /></span>
               </th>
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Forecast
+                Status
               </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Assortment
-              </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Initial Allocation
-              </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-center text-sm font-medium text-[#00050a]">
-                Commit
-              </th>
+              {!designOnly && (
+                <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+                  Group Action
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -86,41 +211,56 @@ export function AssortmentTable({
                 data-name="table-cell"
               >
                 <td className="min-h-[72px] py-3 px-4 align-middle">
-                  <input
-                    type="checkbox"
-                    checked={!!row.selected}
-                    onChange={(e) => onSelectRow(row.id, e.target.checked)}
-                    className="w-4 h-4 rounded border-2 border-[#e9eaeb] bg-white text-sky-600 focus:ring-sky-500"
-                  />
-                </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle">
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!row.selected}
+                      onChange={(e) => onSelectRow(row.id, e.target.checked)}
+                      className="w-4 h-4 rounded border-2 border-[#e9eaeb] bg-white text-sky-600 focus:ring-sky-500"
+                    />
                     <button
                       type="button"
-                      className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-sky-600 transition-colors shrink-0"
-                      onClick={() => onOpenModal('product-group', row)}
-                      aria-label="Filter product group"
+                      onClick={() => onIsolateRow?.(isolateRowId === row.id ? null : row.id)}
+                      className="flex items-center justify-center rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-sky-600"
+                      aria-label={isolateRowId === row.id ? 'Show all rows' : 'Show only this row'}
+                      title={isolateRowId === row.id ? 'Show all rows' : 'Show only this row'}
                     >
-                      <Filter size={14} />
+                      <Filter size={16} className={isolateRowId === row.id ? 'text-sky-600' : ''} />
                     </button>
-                    <div>
-                      <div className="font-medium text-slate-900">
-                        {row.productGroup.name}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                        {row.productGroup.productCount} Products
-                        <button
-                          type="button"
-                          className="p-0.5 rounded text-slate-400 hover:text-slate-600"
-                          aria-label="Info"
-                        >
-                          <Info size={10} />
-                        </button>
-                      </div>
+                  </div>
+                </td>
+                <td className="min-h-[72px] py-3 px-4 align-middle group relative">
+                  <button
+                    type="button"
+                    onClick={(e) => setDrillDownAnchor(e.currentTarget.getBoundingClientRect())}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-slate-500 hover:bg-slate-100 hover:opacity-80 transition-all"
+                    aria-label="Drill down product dimension"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
+                      <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="#A6AAAF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <div>
+                    <div className="font-medium text-slate-900">
+                      {row.productGroup.name}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                      {row.productGroup.productCount} Products
+                      <ChevronDown size={12} className="text-slate-400 shrink-0" />
                     </div>
                   </div>
                 </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle">
+                <td className="min-h-[72px] py-3 px-4 align-middle group relative">
+                  <button
+                    type="button"
+                    onClick={(e) => setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect())}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-slate-500 hover:bg-slate-100 hover:opacity-80 transition-all"
+                    aria-label="Drill down location dimension"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
+                      <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="#A6AAAF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                   <div className="flex items-start gap-2">
                     <MapPin size={12} className="text-slate-400 mt-1 shrink-0" />
                     <div>
@@ -128,14 +268,8 @@ export function AssortmentTable({
                         {row.locationCluster.name}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-slate-500">
-                        {row.locationCluster.locationCount} Locations
-                        <button
-                          type="button"
-                          className="p-0.5 rounded text-slate-400 hover:text-slate-600"
-                          aria-label="Info"
-                        >
-                          <Info size={10} />
-                        </button>
+                        {row.locationCluster.locationCount} locations
+                        <ChevronDown size={12} className="text-slate-400 shrink-0" />
                       </div>
                     </div>
                   </div>
@@ -149,29 +283,38 @@ export function AssortmentTable({
                   </div>
                 </td>
                 <td className="min-h-[72px] py-3 px-4 align-middle text-slate-900 font-medium">
+                  {row.whUnits.value > 0
+                    ? `${Math.round((row.sumIa / row.whUnits.value) * 100)}%`
+                    : '0%'}
+                </td>
+                <td className="min-h-[72px] py-3 px-4 align-middle text-slate-900 font-medium">
                   {row.storeOh}
                 </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle">
-                  <div>
-                    <div className="font-medium text-slate-900">
-                      {row.sales.value}
-                    </div>
-                    <div className="text-xs text-slate-500">{row.sales.sub}</div>
-                  </div>
-                </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle">
-                  <div>
-                    <div className="font-medium text-slate-900">
-                      {row.sellThru.percent}%
-                    </div>
-                    <div className="mt-1 w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-sky-500 rounded-full"
-                        style={{ width: `${Math.min(row.sellThru.percent, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </td>
+                {!designOnly && (
+                  <>
+                    <td className="min-h-[72px] py-3 px-4 align-middle">
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {row.sales.value}
+                        </div>
+                        <div className="text-xs text-slate-500">{row.sales.sub}</div>
+                      </div>
+                    </td>
+                    <td className="min-h-[72px] py-3 px-4 align-middle">
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {row.sellThru.percent}%
+                        </div>
+                        <div className="mt-1 w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-sky-500 rounded-full"
+                            style={{ width: `${Math.min(row.sellThru.percent, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                  </>
+                )}
                 <td className="min-h-[72px] py-3 px-4 align-middle">
                   <div>
                     <div className="font-medium text-slate-900">
@@ -182,89 +325,177 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle">
-                  <div>
-                    <div className="text-sm text-slate-900 mb-2">
-                      {row.assortment.assorted}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onAssort(row)}
-                        className="px-2 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
-                      >
-                        Assort
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onUnassort(row)}
-                        className="px-2 py-1 text-xs font-medium rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-                      >
-                        Unassort
-                      </button>
-                    </div>
-                  </div>
-                </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle">
-                  <div
-                    className="space-y-2 cursor-pointer"
-                    onClick={() => onOpenModal('edit-allocation', row)}
-                    onKeyDown={(e) =>
-                      e.key === 'Enter' && onOpenModal('edit-allocation', row)
-                    }
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-slate-500 w-10 shrink-0">
-                        Sum IA
-                      </span>
-                      <input
-                        type="number"
-                        value={row.sumIa || ''}
-                        onChange={(e) =>
-                          onSumIaChange(row.id, Number(e.target.value) || 0)
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-14 h-5 text-sm border border-slate-200 rounded px-1.5"
-                      />
-                      <span className="text-xs text-slate-500">MQ: {row.mq}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 w-10 shrink-0">
-                        Avg IA
-                      </span>
-                      <input
-                        type="number"
-                        value={row.avgIa || ''}
-                        onChange={(e) =>
-                          onAvgIaChange(row.id, Number(e.target.value) || 0)
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-14 h-5 text-sm border border-slate-200 rounded px-1.5"
-                      />
-                    </div>
-                  </div>
-                </td>
-                <td className="min-h-[72px] py-3 px-4 text-center align-middle">
+                <td className="min-h-[72px] py-3 px-4 align-middle group relative">
                   <button
                     type="button"
-                    onClick={() => onCommit(row.id)}
-                    className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors ${
-                      row.committed
-                        ? 'text-emerald-600 bg-emerald-50'
-                        : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
-                    }`}
-                    aria-label={row.committed ? 'Committed' : 'Commit'}
+                    onClick={() => onEditRow?.(row, 'assortment')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
+                    aria-label="Edit assortment"
                   >
-                    <CircleCheck size={20} />
+                    <Pencil size={14} />
                   </button>
+                  {row.hasPendingChanges && row.lastCommittedSnapshot && (
+                      <span
+                        className="absolute left-3 top-1/2 z-10 h-3 w-3 -translate-y-1/2 shrink-0 rounded-full border-2 border-[#f29a35] bg-[#f29a35]"
+                        style={{ minWidth: 12, minHeight: 12 }}
+                        title="Assortment edited"
+                        aria-hidden
+                      />
+                    )}
+                  <div
+                    className={
+                      row.hasPendingChanges && row.lastCommittedSnapshot ? 'pl-6' : ''
+                    }
+                  >
+                    <div>
+                      {row.hasPendingChanges && row.lastCommittedSnapshot && (
+                        <div className="mb-1 text-xs font-medium text-[#4B535C]">
+                          {row.lastCommittedSnapshot.assortment.assortedCount} → {row.assortment.assortedCount}/{row.assortment.totalCount} Assorted
+                        </div>
+                      )}
+                      <div className="text-sm text-slate-900">
+                        <span className={row.hasPendingChanges ? 'font-medium text-[#4B535C]' : ''}>
+                          {row.assortment.assortedCount}
+                        </span>
+                        <span className="text-slate-900">
+                          /{row.assortment.totalCount} Assorted
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </td>
+                <td className="min-h-[72px] py-3 px-4 align-middle group relative">
+                  {row.assortment.assortedCount === row.assortment.totalCount && (
+                    <button
+                      type="button"
+                      onClick={() => onEditRow?.(row, 'initial-allocation')}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
+                      aria-label="Edit allocation"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  )}
+                  <div className="flex items-start gap-1.5">
+                    {row.hasPendingChanges &&
+                      row.lastCommittedSnapshot &&
+                      row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
+                        <span
+                          className="mt-1.5 h-2 w-2 shrink-0 rounded-full border border-[#f29a35] bg-[#fff6e5]"
+                          style={{ borderWidth: '1px' }}
+                          title="Initial allocation edited"
+                          aria-hidden
+                        />
+                      )}
+                    <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-900">Item IA</span>
+                      <span className="font-medium text-slate-900">{row.sumIa}</span>
+                    </div>
+                    {showRecommendationBadge && row.sumIaRecommendation != null && (
+                      <div className="group/reason relative inline-flex w-fit">
+                        <div className="inline-flex w-fit items-center gap-[2px] rounded-[5px] bg-[#dbc7f4] p-1">
+                          <Sparkles size={10} className="shrink-0 text-[#a234da]" />
+                          <span className="text-[10px] font-normal leading-normal text-[#a234da]">
+                            {row.sumIaRecommendation}
+                          </span>
+                        </div>
+                        <div
+                          className="pointer-events-none absolute right-full top-1/2 z-10 mr-2 hidden min-w-[200px] -translate-y-1/2 rounded-[4px] bg-[#212121] px-4 py-3 text-white shadow-lg group-hover/reason:block"
+                          role="tooltip"
+                        >
+                          <p className="mb-2 text-xs font-medium leading-normal">
+                            Recommendation Reasons
+                          </p>
+                          <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
+                            <div className="flex items-center justify-between gap-2">
+                              <span>High past sales for similar products</span>
+                              <span>X35</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span>Low past sales for similar products</span>
+                              <span>X18</span>
+                            </div>
+                          </div>
+                          <span
+                            className="absolute -right-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-l-[#212121]"
+                            aria-hidden
+                          />
+                        </div>
+                      </div>
+                    )}
+                    </div>
+                  </div>
+                </td>
+                <td className="min-h-[72px] py-3 px-4 align-middle">
+                  <div className="flex flex-col items-center gap-1">
+                    {row.hasPendingChanges ? (
+                      <div className="flex flex-nowrap items-center gap-1">
+                        <span
+                          className="inline-flex shrink-0 items-center justify-end rounded-[4px] border border-[#f29a35] bg-[#fff6e5] px-1 py-1 text-[10px] font-normal leading-normal text-[#00050a]"
+                          style={{ borderWidth: '0.5px' }}
+                          data-node-id="761:65167"
+                        >
+                          Draft
+                        </span>
+                        <div className="flex items-center gap-1" data-node-id="761:65174">
+                          <button
+                            type="button"
+                            onClick={() => (onRequestCommit ? onRequestCommit(row) : onCommit?.(row.id))}
+                            className="inline-flex h-5 min-w-0 items-center justify-center gap-1 rounded-[4px] bg-[#0267ff] px-1 py-1 text-[10px] font-normal leading-normal text-white transition-colors hover:opacity-90"
+                            aria-label="Commit changes"
+                          >
+                            Commit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => (onRequestRevert ? onRequestRevert(row) : onRevert?.(row.id))}
+                            className="inline-flex h-5 min-w-0 items-center justify-center rounded-[4px] border border-[#e9eaeb] bg-[#f8f8f8] px-1 py-1 text-[10px] font-normal leading-normal text-[#00050a] transition-colors hover:bg-[#e9eaeb]"
+                            aria-label="Revert changes"
+                          >
+                            Revert
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                        <CircleCheck size={14} className="text-emerald-500" />
+                        Committed
+                      </span>
+                    )}
+                  </div>
+                </td>
+                {!designOnly && (
+                  <td className="min-h-[72px] py-3 px-4 align-middle">
+                    <button
+                      type="button"
+                      onClick={() => onEditRow?.(row, 'initial-allocation')}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#0267ff] px-3 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                      aria-label="Edit row"
+                    >
+                      <Pencil size={14} className="shrink-0" />
+                      Edit Row
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <div className="flex items-center justify-between gap-4 border-t border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-sm text-[#00050a]">
+        <span>{rows.length} rows</span>
+        <div className="flex items-center gap-1">
+          <button type="button" className="flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-40" aria-label="Previous page" disabled>
+            <ChevronLeft size={18} />
+          </button>
+          <span className="min-w-[4rem] text-center">1 of 1</span>
+          <button type="button" className="flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-40" aria-label="Next page" disabled>
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+      <DrillDownProductModal anchorRect={drillDownAnchor} onClose={() => setDrillDownAnchor(null)} />
+      <DrillDownLocationModal anchorRect={locationDrillDownAnchor} onClose={() => setLocationDrillDownAnchor(null)} />
     </div>
   );
 }

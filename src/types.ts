@@ -13,6 +13,18 @@ export interface AssortmentRow {
   mq: number;
   committed: boolean;
   selected?: boolean;
+  /** True when row has uncommitted Assort/Unassort or IA edits */
+  hasPendingChanges?: boolean;
+  /** Snapshot at last commit; used to revert */
+  lastCommittedSnapshot?: {
+    assortment: { assortedCount: number; totalCount: number };
+    sumIa: number;
+    avgIa: number;
+  };
+  /** Recommendation value shown below Sum IA after generating recommendations */
+  sumIaRecommendation?: number;
+  /** Recommendation value shown below Avg IA after generating recommendations */
+  avgIaRecommendation?: number;
 }
 
 export type ModalKind = 'edit-allocation' | 'product-group' | 'location-cluster' | 'assort' | null;
