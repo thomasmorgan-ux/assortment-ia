@@ -436,7 +436,6 @@ export function MainContent() {
           <div className="min-w-0 flex-1">
             <AssortmentTable
               rows={tableRows}
-              designOnly
               onSelectRow={onSelectRow}
               onSelectAll={onSelectAll}
               onAssort={onAssort}
@@ -469,6 +468,8 @@ export function MainContent() {
               isolateRowId={isolateRowId}
               onIsolateRow={setIsolateRowId}
               showRecommendationBadge={showRecommendationsInTable}
+              showDraftsOnly={focusView === 'drafts'}
+              onDraftToggle={(on) => setFocusView(on ? 'drafts' : 'all')}
             />
           </div>
         </div>
@@ -485,12 +486,23 @@ export function MainContent() {
           onUnassort={onUnassort}
           onAssortToMax={(row) => onAssortSelection([row])}
           onUnassortToZero={(row) => onUnassortSelection([row])}
+          scheduledAssortmentDate={
+            editAllocation.openFrom === 'assortment' && editAllocation.rows[0]
+              ? (rows.find((r) => r.id === editAllocation.rows[0].id)?.scheduledAssortmentDate ?? '')
+              : undefined
+          }
+          onScheduledAssortmentDateChange={(rowId, date) =>
+            setRows((prev) =>
+              prev.map((r) => (r.id === rowId ? { ...r, scheduledAssortmentDate: date || undefined } : r))
+            )
+          }
         />
       )}
 
       <ConfirmCommitRevertModal
         open={confirmCommitRevert != null}
         state={confirmCommitRevert}
+        variant="slideout"
         onConfirm={(commitRowIds) => {
           if (confirmCommitRevert) {
             if (confirmCommitRevert.action === 'commit') {

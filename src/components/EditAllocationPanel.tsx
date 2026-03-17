@@ -27,6 +27,9 @@ interface EditAllocationPanelProps {
   onAssortToMax?: (row: AssortmentRow) => void;
   /** When set, Assortment section Unassort button sets row to 0 assorted. */
   onUnassortToZero?: (row: AssortmentRow) => void;
+  /** When set (assortment view), schedule date input is controlled and this is called on change. */
+  scheduledAssortmentDate?: string;
+  onScheduledAssortmentDateChange?: (rowId: string, date: string) => void;
 }
 
 type RowEditState = { method: AllocationMethod; totalIaInput: number };
@@ -40,6 +43,8 @@ const topLocationsMock: { metric: string; committed: number | string; current: s
   { metric: 'Store 2', committed: 0, current: 'Marseille Store 2' },
   { metric: 'Store 3', committed: 0, current: 'Marseille Store 2' },
 ];
+
+const TOTAL_MIN_QUANTITY = 3;
 
 const topProductsMock: { metric: string; committed: number | string; current: string }[] = [
   { metric: 'Top Product 1', committed: 0, current: '5 Navy Jumper in Paris' },
@@ -86,11 +91,15 @@ export function EditAllocationPanel({
   onUnassort,
   onAssortToMax,
   onUnassortToZero,
+  scheduledAssortmentDate,
+  onScheduledAssortmentDateChange,
 }: EditAllocationPanelProps) {
   const isInitialAllocation = openFrom === 'initial-allocation';
   const [view, setView] = useState<PanelView>('allocation');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(() => rows[0]?.id ?? null);
   const [headerAccordionExpanded, setHeaderAccordionExpanded] = useState(false);
+  /** When true, schedule date input is enabled (user has clicked Assort in this session). */
+  const [scheduleDateUnlocked, setScheduleDateUnlocked] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [rowState, setRowState] = useState<Record<string, RowEditState>>(() =>
     Object.fromEntries(rows.map((r) => [r.id, getDefaultRowState(r)]))
@@ -107,6 +116,11 @@ export function EditAllocationPanel({
     });
     setExpandedRowId((prev) => (rows.some((r) => r.id === prev) ? prev : rows[0]?.id ?? null));
   }, [rowIdList]);
+
+  const assortmentRowId = openFrom === 'assortment' ? rows[0]?.id : null;
+  useEffect(() => {
+    if (assortmentRowId != null) setScheduleDateUnlocked(false);
+  }, [assortmentRowId]);
 
   const updateRowState = (id: string, patch: Partial<RowEditState>) => {
     setRowState((prev) => ({ ...prev, [id]: { ...(prev[id] ?? getDefaultRowState(rows.find((r) => r.id === id)!)), ...patch } }));
@@ -311,7 +325,11 @@ export function EditAllocationPanel({
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => (onAssortToMax ? onAssortToMax(singleRow) : onAssort?.(singleRow))}
+                    onClick={() => {
+                      if (onAssortToMax) onAssortToMax(singleRow);
+                      else onAssort?.(singleRow);
+                      setScheduleDateUnlocked(true);
+                    }}
                     disabled={singleRow.assortment.assortedCount >= singleRow.assortment.totalCount}
                     className="px-2 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -327,6 +345,24 @@ export function EditAllocationPanel({
                   </button>
                 </div>
               </div>
+              {/* Schedule date for assortment to take effect */}
+              <div className="mt-3 flex flex-col gap-1">
+                <label htmlFor="assortment-effective-date" className="text-xs font-medium text-slate-600">
+                  Schedule assortment for
+                </label>
+                <input
+                  id="assortment-effective-date"
+                  type="date"
+                  value={scheduledAssortmentDate ?? ''}
+                  onChange={(e) => onScheduledAssortmentDateChange?.(singleRow.id, e.target.value)}
+                  disabled={!scheduleDateUnlocked}
+                  className="h-9 w-full max-w-[200px] rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-slate-50"
+                  aria-describedby="assortment-effective-date-hint"
+                />
+                <p id="assortment-effective-date-hint" className="text-xs text-slate-500">
+                  When this assortment change should take effect (optional)
+                </p>
+              </div>
             </section>
           )}
 
@@ -336,8 +372,12 @@ export function EditAllocationPanel({
               const committedIa = r.lastCommittedSnapshot?.sumIa ?? r.sumIa;
               const currentEditValue = state.method === 'recommendation' ? (r.sumIaRecommendation ?? state.totalIaInput) : state.totalIaInput;
               const totalLocation = r.productGroup.productCount * r.locationCluster.locationCount;
+              const totalWarehouseUnits = totalLocation;
+              const isBelowMin = state.totalIaInput < TOTAL_MIN_QUANTITY;
+              const isAboveMax = state.totalIaInput > totalWarehouseUnits;
               const impactRows = [
                 { metric: 'Total Allocation', committed: committedIa, current: String(currentEditValue) },
+                { metric: 'Warehouse metrics', committed: committedIa, current: String(currentEditValue) },
                 {
                   metric: 'Products affected',
                   committed: committedIa > 0 ? r.productGroup.productCount : 0,
@@ -396,28 +436,43 @@ export function EditAllocationPanel({
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <label className="text-sm text-[#000000]">Total IA</label>
-                      <input
-                        type="number"
-                        value={state.totalIaInput}
-                        onChange={(e) => updateRowState(r.id, { totalIaInput: Number(e.target.value) || 0 })}
-                        className="h-10 w-24 rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
-                      />
-                      <span className="text-sm text-slate-500">Units</span>
+                    <div className="mt-3 flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-[#000000]">Total IA</label>
+                        <input
+                          type="number"
+                          value={state.totalIaInput}
+                          onChange={(e) => updateRowState(r.id, { totalIaInput: Number(e.target.value) || 0 })}
+                          className={`h-10 w-24 rounded border px-3 text-sm text-[#000000] ${
+                            isAboveMax
+                              ? 'border-red-500 bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500'
+                              : isBelowMin
+                                ? 'border-amber-500 bg-amber-50/50 focus:outline-none focus:ring-2 focus:ring-amber-500'
+                                : 'border-[#e9eaeb] bg-white'
+                          }`}
+                          aria-invalid={isBelowMin || isAboveMax}
+                          aria-describedby={isBelowMin || isAboveMax ? `total-ia-helper-${r.id}` : undefined}
+                        />
+                        <span className="text-sm text-slate-500">Units</span>
+                      </div>
+                      {isBelowMin && (
+                        <p id={`total-ia-helper-${r.id}`} className="text-xs text-amber-700" role="alert">
+                          Below total min quantity ({TOTAL_MIN_QUANTITY})
+                        </p>
+                      )}
+                      {isAboveMax && (
+                        <p id={`total-ia-helper-${r.id}`} className="text-xs text-red-700" role="alert">
+                          Above total warehouse units ({totalWarehouseUnits})
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* IA Details */}
                   <div className="mb-3">
                     <h4 className="mb-2 text-xs font-semibold text-[#000000]">IA Details</h4>
-                    <p className="mb-1 text-sm text-[#000000]">Total min quantity 3</p>
+                    <p className="mb-1 text-sm text-[#000000]">Total min quantity {TOTAL_MIN_QUANTITY}</p>
                     <p className="mb-2 text-sm text-[#000000]">Forecast demand 4 units over 4 weeks</p>
-                    <SummaryTable
-                      rows={[
-                        { metric: 'Warehouse metrics', committed: committedIa, current: String(currentEditValue) },
-                      ]}
-                    />
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -452,9 +507,19 @@ export function EditAllocationPanel({
                     className="flex flex-col gap-6"
                   >
                     <section className="rounded-lg border border-[#e9eaeb] p-4">
-                      <h3 className="mb-3 text-sm font-semibold text-[#000000]">
-                        {r.productGroup.name} – {r.locationCluster.name}
-                      </h3>
+                      <div className="mb-3 flex items-center gap-2">
+                        {r.hasPendingChanges && (
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full border border-[#f29a35]"
+                            style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
+                            title="Initial allocation edited"
+                            aria-hidden
+                          />
+                        )}
+                        <h3 className="text-sm font-semibold text-[#000000]">
+                          {r.productGroup.name} – {r.locationCluster.name}
+                        </h3>
+                      </div>
                       {content}
                     </section>
                   </div>
@@ -472,9 +537,19 @@ export function EditAllocationPanel({
                       onClick={() => setExpandedRowId((prev) => (prev === r.id ? null : r.id))}
                       className="flex w-full items-center justify-between gap-2 bg-white px-4 py-3 text-left transition-colors hover:bg-slate-50"
                     >
-                      <h3 className="text-sm font-semibold text-[#000000]">
-                        {r.productGroup.name} – {r.locationCluster.name}
-                      </h3>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {r.hasPendingChanges && (
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full border border-[#f29a35]"
+                            style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
+                            title="Initial allocation edited"
+                            aria-hidden
+                          />
+                        )}
+                        <h3 className="text-sm font-semibold text-[#000000]">
+                          {r.productGroup.name} – {r.locationCluster.name}
+                        </h3>
+                      </div>
                       {isExpanded ? (
                         <ChevronDown size={18} className="shrink-0 text-slate-500" />
                       ) : (

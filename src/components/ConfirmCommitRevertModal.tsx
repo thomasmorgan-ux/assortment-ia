@@ -6,9 +6,13 @@ export type ConfirmCommitRevertState =
   | { action: 'commit'; rows: AssortmentRow[] }
   | { action: 'revert'; rows: AssortmentRow[] };
 
+type ConfirmVariant = 'modal' | 'slideout';
+
 interface ConfirmCommitRevertModalProps {
   open: boolean;
   state: ConfirmCommitRevertState | null;
+  /** 'slideout' = right-side panel (e.g. for commit); 'modal' = centered dialog (e.g. for revert). */
+  variant?: ConfirmVariant;
   /** For commit: called with the list of row ids to commit (only checked rows). For revert: called with no args. */
   onConfirm: (commitRowIds?: string[]) => void;
   onClose: () => void;
@@ -23,6 +27,7 @@ function formatAssortmentLabel(assortedCount: number, totalCount: number): strin
 export function ConfirmCommitRevertModal({
   open,
   state,
+  variant = 'modal',
   onConfirm,
   onClose,
 }: ConfirmCommitRevertModalProps) {
@@ -131,16 +136,33 @@ export function ConfirmCommitRevertModal({
     : [];
   const hasRevertRecommendationChange = revertRecommendationRows.length > 0;
 
+  const isSlideout = variant === 'slideout';
+
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
+      className={
+        isSlideout
+          ? 'fixed inset-0 z-[60]'
+          : 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50'
+      }
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-commit-revert-title"
     >
+      {isSlideout && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 transition-opacity"
+          onClick={onClose}
+          aria-hidden
+        />
+      )}
       <div
-        className="w-full max-w-lg rounded-lg bg-white shadow-lg border border-[#e9eaeb]"
+        className={
+          isSlideout
+            ? 'fixed inset-y-0 right-0 z-[60] flex w-full max-w-lg flex-col rounded-l-xl bg-white shadow-2xl transition-transform duration-200 ease-out'
+            : 'w-full max-w-lg rounded-lg bg-white shadow-lg border border-[#e9eaeb]'
+        }
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[#e9eaeb] px-5 py-4">
@@ -160,7 +182,7 @@ export function ConfirmCommitRevertModal({
           </button>
         </div>
 
-        <div className="px-5 pt-3 pb-4">
+        <div className={isSlideout ? 'flex min-h-0 flex-1 flex-col overflow-auto px-5 pt-3 pb-4' : 'px-5 pt-3 pb-4'}>
           <p className="mb-4 text-sm text-[#00050a]">{bodyCopy}</p>
           <div className="overflow-hidden rounded-[2px] border border-[#e9eaeb]">
             <table className="w-full border-collapse text-sm">
@@ -415,11 +437,7 @@ export function ConfirmCommitRevertModal({
           <button
             type="button"
             onClick={handleCommit}
-            className={
-              isCommit
-                ? 'inline-flex h-10 items-center gap-2 rounded-[4px] bg-[#0267ff] px-4 py-0 text-sm font-medium text-white transition-colors hover:opacity-90'
-                : 'inline-flex h-10 items-center justify-center gap-2 rounded-[4px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-0 text-sm font-medium text-[#00050a] transition-colors hover:bg-[#e9eaeb]'
-            }
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[4px] bg-[#0267ff] px-4 py-0 text-sm font-medium text-white transition-colors hover:opacity-90"
           >
             {isCommit && <Check size={16} className="shrink-0" />}
             {isCommit ? 'Commit' : 'Confirm revert'}

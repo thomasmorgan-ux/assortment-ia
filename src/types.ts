@@ -25,6 +25,8 @@ export interface AssortmentRow {
   sumIaRecommendation?: number;
   /** Recommendation value shown below Avg IA after generating recommendations */
   avgIaRecommendation?: number;
+  /** Optional ISO date (YYYY-MM-DD) when assortment change is scheduled to take effect. Set from EditAllocationPanel. */
+  scheduledAssortmentDate?: string;
 }
 
 export type ModalKind = 'edit-allocation' | 'product-group' | 'location-cluster' | 'assort' | null;

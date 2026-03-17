@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, CircleCheck, Pencil, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Sparkles } from 'lucide-react';
+import { MapPin, CircleCheck, Pencil, Check, ChevronDown, ChevronLeft, ChevronRight, Filter, Sparkles, Calendar } from 'lucide-react';
 import { DrillDownLocationModal } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
 import type { AssortmentRow, ModalKind } from '../types';
@@ -25,6 +25,10 @@ interface AssortmentTableProps {
   onIsolateRow?: (rowId: string | null) => void;
   /** When true, show the recommendation badge (purple pill) in the Initial Allocation column. Set after success banner is shown. */
   showRecommendationBadge?: boolean;
+  /** When true, table is filtered to draft rows only. */
+  showDraftsOnly?: boolean;
+  /** Called when the Draft toggle in the Status header is toggled. */
+  onDraftToggle?: (on: boolean) => void;
 }
 
 export function AssortmentTable({
@@ -45,6 +49,8 @@ export function AssortmentTable({
   isolateRowId,
   onIsolateRow,
   showRecommendationBadge = false,
+  showDraftsOnly = false,
+  onDraftToggle,
 }: AssortmentTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => r.selected);
   const [drillDownAnchor, setDrillDownAnchor] = useState<DOMRect | null>(null);
@@ -193,15 +199,38 @@ export function AssortmentTable({
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">Initial Allocation <Pencil size={14} className="shrink-0 text-slate-400" /></span>
               </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                Status
+              <th className="h-12 min-h-[48px] min-w-[200px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+                <div className="flex items-center justify-between gap-2 w-full">
+                  <span className="shrink-0">Status</span>
+                  <button
+                    type="button"
+                    onClick={() => onDraftToggle?.(!showDraftsOnly)}
+                    className="flex items-center gap-[8px] shrink-0 p-0 cursor-pointer border-0 bg-transparent"
+                    aria-pressed={showDraftsOnly}
+                    aria-label={showDraftsOnly ? 'Show all rows' : 'Show drafts only'}
+                    data-name="Toggle"
+                  >
+                    {/* Figma 13425:44030 – Switch 36×20px, 8px gap, label 16px */}
+                    <span
+                      role="switch"
+                      className={`relative inline-block shrink-0 rounded-full transition-colors ${
+                        showDraftsOnly ? 'bg-[#0267ff]' : 'bg-[#e9eaeb]'
+                      }`}
+                      style={{ width: 36, height: 20 }}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-[left] duration-150 ${
+                          showDraftsOnly ? 'left-[18px]' : 'left-0.5'
+                        }`}
+                      />
+                    </span>
+                    <span className="text-xs font-medium leading-normal text-[#00050a] whitespace-nowrap">
+                      Draft
+                    </span>
+                  </button>
+                </div>
               </th>
-              {!designOnly && (
-                <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
-                  Group Action
-                </th>
-              )}
-            </tr>
+              </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
@@ -334,17 +363,23 @@ export function AssortmentTable({
                   >
                     <Pencil size={14} />
                   </button>
-                  {row.hasPendingChanges && row.lastCommittedSnapshot && (
+                  {row.hasPendingChanges &&
+                    row.lastCommittedSnapshot &&
+                    row.lastCommittedSnapshot.assortment.assortedCount !== row.assortment.assortedCount && (
                       <span
-                        className="absolute left-3 top-1/2 z-10 h-3 w-3 -translate-y-1/2 shrink-0 rounded-full border-2 border-[#f29a35] bg-[#f29a35]"
-                        style={{ minWidth: 12, minHeight: 12 }}
+                        className="absolute left-3 top-1/2 z-10 h-2.5 w-2.5 shrink-0 rounded-full border border-[#f29a35]"
+                        style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
                         title="Assortment edited"
                         aria-hidden
                       />
                     )}
                   <div
                     className={
-                      row.hasPendingChanges && row.lastCommittedSnapshot ? 'pl-6' : ''
+                      row.hasPendingChanges &&
+                      row.lastCommittedSnapshot &&
+                      row.lastCommittedSnapshot.assortment.assortedCount !== row.assortment.assortedCount
+                        ? 'pl-[18px]'
+                        : ''
                     }
                   >
                     <div>
@@ -361,6 +396,19 @@ export function AssortmentTable({
                           /{row.assortment.totalCount} Assorted
                         </span>
                       </div>
+                      {row.scheduledAssortmentDate && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-600">
+                          <Calendar size={12} className="shrink-0 text-slate-500" aria-hidden />
+                          <span>
+                            {(() => {
+                              const d = new Date(row.scheduledAssortmentDate + 'T00:00:00');
+                              return Number.isNaN(d.getTime())
+                                ? row.scheduledAssortmentDate
+                                : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                            })()}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </td>
@@ -375,17 +423,25 @@ export function AssortmentTable({
                       <Pencil size={14} />
                     </button>
                   )}
-                  <div className="flex items-start gap-1.5">
-                    {row.hasPendingChanges &&
+                  {row.hasPendingChanges &&
+                    row.lastCommittedSnapshot &&
+                    row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
+                      <span
+                        className="absolute left-3 top-1/2 z-10 h-2.5 w-2.5 -translate-y-1/2 shrink-0 rounded-full border border-[#f29a35]"
+                        style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
+                        title="Initial allocation edited"
+                        aria-hidden
+                      />
+                    )}
+                  <div
+                    className={
+                      row.hasPendingChanges &&
                       row.lastCommittedSnapshot &&
-                      row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
-                        <span
-                          className="mt-1.5 h-2 w-2 shrink-0 rounded-full border border-[#f29a35] bg-[#fff6e5]"
-                          style={{ borderWidth: '1px' }}
-                          title="Initial allocation edited"
-                          aria-hidden
-                        />
-                      )}
+                      row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa)
+                        ? 'pl-[18px]'
+                        : ''
+                    }
+                  >
                     <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-slate-900">Item IA</span>
@@ -464,19 +520,6 @@ export function AssortmentTable({
                     )}
                   </div>
                 </td>
-                {!designOnly && (
-                  <td className="min-h-[72px] py-3 px-4 align-middle">
-                    <button
-                      type="button"
-                      onClick={() => onEditRow?.(row, 'initial-allocation')}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#0267ff] px-3 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
-                      aria-label="Edit row"
-                    >
-                      <Pencil size={14} className="shrink-0" />
-                      Edit Row
-                    </button>
-                  </td>
-                )}
               </tr>
             ))}
           </tbody>

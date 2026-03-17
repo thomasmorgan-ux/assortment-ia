@@ -225,42 +225,46 @@ export function SelectionActionBar({
               document.body
             )}
         </span>
-        <div className="mx-3 h-10 w-px shrink-0 bg-white/20" aria-hidden />
-        <button
-          type="button"
-          onClick={() =>
-            onRequestCommit ? onRequestCommit(selectedRows) : selectedRows.forEach((r) => onCommit?.(r.id))
-          }
-          className="inline-flex h-10 items-center gap-2 px-4 py-0 text-sm font-medium text-white transition-colors hover:opacity-90"
-          style={{
-            borderRadius: 'var(--Tokens-Border-s, 4px)',
-            border: '1px solid var(--Tokens-Foreground, #FFF)',
-            background: 'var(--Tokens-Background, #12171E)',
-          }}
-        >
-          <Check size={16} className="shrink-0" />
-          Commit
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const toRevert = selectedRows.filter((r) => r.hasPendingChanges);
-            if (onRequestRevert && toRevert.length > 0) {
-              onRequestRevert(toRevert);
-            } else {
-              selectedRows.forEach((r) => onRevert?.(r.id));
-            }
-          }}
-          className="inline-flex h-10 items-center gap-2 px-4 py-0 text-sm font-medium text-white transition-colors hover:opacity-90"
-          style={{
-            borderRadius: 'var(--Tokens-Border-s, 4px)',
-            border: '1px solid var(--Tokens-Foreground, #FFF)',
-            background: 'var(--Tokens-Background, #12171E)',
-          }}
-        >
-          <X size={16} className="shrink-0" />
-          Revert
-        </button>
+        {selectedRows.some((r) => r.hasPendingChanges) && (
+          <>
+            <div className="mx-3 h-10 w-px shrink-0 bg-white/20" aria-hidden />
+            <button
+              type="button"
+              onClick={() =>
+                onRequestCommit ? onRequestCommit(selectedRows) : selectedRows.forEach((r) => onCommit?.(r.id))
+              }
+              className="inline-flex h-10 items-center gap-2 px-4 py-0 text-sm font-medium text-white transition-colors hover:opacity-90"
+              style={{
+                borderRadius: 'var(--Tokens-Border-s, 4px)',
+                border: '1px solid var(--Tokens-Foreground, #FFF)',
+                background: 'var(--Tokens-Background, #12171E)',
+              }}
+            >
+              <Check size={16} className="shrink-0" />
+              Commit
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const toRevert = selectedRows.filter((r) => r.hasPendingChanges);
+                if (onRequestRevert && toRevert.length > 0) {
+                  onRequestRevert(toRevert);
+                } else {
+                  selectedRows.forEach((r) => onRevert?.(r.id));
+                }
+              }}
+              className="inline-flex h-10 items-center gap-2 px-4 py-0 text-sm font-medium text-white transition-colors hover:opacity-90"
+              style={{
+                borderRadius: 'var(--Tokens-Border-s, 4px)',
+                border: '1px solid var(--Tokens-Foreground, #FFF)',
+                background: 'var(--Tokens-Background, #12171E)',
+              }}
+            >
+              <X size={16} className="shrink-0" />
+              Revert
+            </button>
+          </>
+        )}
       </div>
       </div>
 
