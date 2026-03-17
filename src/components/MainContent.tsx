@@ -4,6 +4,7 @@ import { AssortmentTable } from './AssortmentTable';
 import { CommitSuccessBanner } from './CommitSuccessBanner';
 import { ConfirmCommitRevertModal, type ConfirmCommitRevertState } from './ConfirmCommitRevertModal';
 import { EditAllocationPanel } from './EditAllocationPanel';
+import { EditLogDrawer } from './EditLogDrawer';
 import { OptimisingIABanner } from './OptimisingIABanner';
 import { SelectionActionBar } from './SelectionActionBar';
 import { mockRows } from '../data/mockAssortment';
@@ -102,6 +103,7 @@ export function MainContent() {
   const [recSuccessBanner, setRecSuccessBanner] = useState<{ groupsCount: number } | null>(null);
   const [showRecommendationsInTable, setShowRecommendationsInTable] = useState(false);
   const [commitSuccessBannerVisible, setCommitSuccessBannerVisible] = useState(false);
+  const [editLogOpen, setEditLogOpen] = useState(false);
   const optimisingToSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSuccessGroupsCountRef = useRef<number>(0);
 
@@ -445,7 +447,8 @@ export function MainContent() {
           </div>
           <button
             type="button"
-            className="ml-2 flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap"
+            onClick={() => setEditLogOpen(true)}
+            className="ml-2 flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-[#f0f0f0] transition-colors"
             aria-label="Edit Log"
           >
             <History size={16} className="shrink-0" />
@@ -508,6 +511,8 @@ export function MainContent() {
           </div>
         </div>
       </div>
+
+      <EditLogDrawer open={editLogOpen} onClose={() => setEditLogOpen(false)} />
 
       {editAllocation && (
         <EditAllocationPanel
