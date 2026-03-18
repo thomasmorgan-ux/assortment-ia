@@ -161,60 +161,46 @@ export function MainContent() {
   const [editLogOpen, setEditLogOpen] = useState(false);
   const [advancedFiltersAnchor, setAdvancedFiltersAnchor] =
     useState<AdvancedFiltersAnchorState | null>(null);
-  /** Advanced filter selections keyed by breadcrumb scope (chip only for current level). */
-  const [advancedFiltersByScope, setAdvancedFiltersByScope] = useState<
-    Record<string, AdvancedFilterId[]>
-  >({});
+  /** Advanced filters only on "product group | location group" gray breadcrumb step. */
+  const [pgLgAdvancedFilterIds, setPgLgAdvancedFilterIds] = useState<
+    AdvancedFilterId[]
+  >([]);
   const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
   const advancedFilterTagRef = useRef<HTMLDivElement>(null);
 
-  const advancedFilterScopeKey = useMemo(() => {
-    if (locationTypeSubDrillBreadcrumb) return 'scope:loc-sub';
-    if (regionsDrillBreadcrumb) return 'scope:regions';
-    if (productDrillPath.length > 0) {
-      return `scope:drill:${productDrillPath.map((c) => c.id).join('/')}`;
-    }
-    return 'scope:home';
+  const isPgLgBreadcrumbLevel = useMemo(() => {
+    if (regionsDrillBreadcrumb != null) return false;
+    if (locationTypeSubDrillBreadcrumb != null) return false;
+    if (productDrillPath.length === 0) return false;
+    const last = productDrillPath[productDrillPath.length - 1];
+    return last.label.toLowerCase().includes('product group:');
   }, [
-    locationTypeSubDrillBreadcrumb,
     regionsDrillBreadcrumb,
+    locationTypeSubDrillBreadcrumb,
     productDrillPath,
   ]);
 
-  const advancedFilterScopeKeyRef = useRef(advancedFilterScopeKey);
-  advancedFilterScopeKeyRef.current = advancedFilterScopeKey;
-
-  const advancedFilterIds =
-    advancedFiltersByScope[advancedFilterScopeKey] ?? [];
-
   const toggleAdvancedFilter = useCallback((id: AdvancedFilterId) => {
-    const key = advancedFilterScopeKeyRef.current;
-    setAdvancedFiltersByScope((prev) => {
-      const cur = prev[key] ?? [];
-      const next = cur.includes(id)
-        ? cur.filter((x) => x !== id)
-        : [...cur, id];
-      return { ...prev, [key]: next };
-    });
+    setPgLgAdvancedFilterIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   }, []);
 
-  const clearAdvancedFiltersForCurrentScope = useCallback(() => {
-    const key = advancedFilterScopeKeyRef.current;
-    setAdvancedFiltersByScope((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
+  const clearPgLgAdvancedFilters = useCallback(() => {
+    setPgLgAdvancedFilterIds([]);
     setAdvancedFiltersAnchor(null);
   }, []);
 
   useEffect(() => {
-    if (advancedFilterIds.length === 0) setAdvancedFiltersAnchor(null);
-  }, [advancedFilterIds.length]);
+    if (pgLgAdvancedFilterIds.length === 0) setAdvancedFiltersAnchor(null);
+  }, [pgLgAdvancedFilterIds.length]);
 
   useEffect(() => {
-    setAdvancedFiltersAnchor(null);
-  }, [advancedFilterScopeKey]);
+    if (!isPgLgBreadcrumbLevel) {
+      setPgLgAdvancedFilterIds([]);
+      setAdvancedFiltersAnchor(null);
+    }
+  }, [isPgLgBreadcrumbLevel]);
   const optimisingToSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSuccessGroupsCountRef = useRef<number>(0);
 
@@ -585,7 +571,7 @@ export function MainContent() {
             </button>
             </div>
             <div className="ml-2 flex max-w-[min(100%,42rem)] flex-wrap items-center justify-end gap-2">
-              {advancedFilterIds.length > 0 && (
+              {isPgLgBreadcrumbLevel && pgLgAdvancedFilterIds.length > 0 && (
                 <div
                   ref={advancedFilterTagRef}
                   className="flex shrink-0 items-center rounded-md bg-[#e9eaeb] py-1.5 pl-3 pr-1"
@@ -609,17 +595,17 @@ export function MainContent() {
                     aria-label="Open advanced filters"
                   >
                     <span className="truncate">
-                      Filters: {getAdvancedFilterLabel(advancedFilterIds[0])}
+                      Filters: {getAdvancedFilterLabel(pgLgAdvancedFilterIds[0])}
                     </span>
-                    {advancedFilterIds.length > 1 && (
-                      <span className="shrink-0 font-semibold text-[#12171E]">{` +${advancedFilterIds.length - 1}`}</span>
+                    {pgLgAdvancedFilterIds.length > 1 && (
+                      <span className="shrink-0 font-semibold text-[#12171E]">{` +${pgLgAdvancedFilterIds.length - 1}`}</span>
                     )}
                   </button>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      clearAdvancedFiltersForCurrentScope();
+                      clearPgLgAdvancedFilters();
                     }}
                     className="ml-1 flex size-7 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-black/5"
                     aria-label="Clear all filters"
@@ -628,6 +614,7 @@ export function MainContent() {
                   </button>
                 </div>
               )}
+              {isPgLgBreadcrumbLevel && (
               <button
                 ref={advancedFiltersBtnRef}
                 type="button"
@@ -649,6 +636,7 @@ export function MainContent() {
                 <Filter size={16} className="shrink-0" strokeWidth={2} aria-hidden />
                 Advanced filters
               </button>
+              )}
               <button
                 type="button"
                 onClick={() => setEditLogOpen(true)}
@@ -676,7 +664,7 @@ export function MainContent() {
                   setRegionsBreadcrumbHeaders(null);
                   setProductColumnGrouping('Product Group');
                   setLocationColumnGrouping('Location Group');
-                  setAdvancedFiltersByScope({});
+                  setPgLgAdvancedFilterIds([]);
                   setAdvancedFiltersAnchor(null);
                 }}
                 className="inline-flex h-[26px] shrink-0 items-center justify-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
@@ -979,13 +967,13 @@ export function MainContent() {
         onRevert={onRevert}
       />
 
-      {advancedFiltersAnchor && (
+      {advancedFiltersAnchor && isPgLgBreadcrumbLevel && (
         <AdvancedFiltersPopover
           anchorRect={advancedFiltersAnchor.rect}
           triggerRefs={[advancedFiltersBtnRef, advancedFilterTagRef]}
-          selectedIds={advancedFilterIds}
+          selectedIds={pgLgAdvancedFilterIds}
           onToggle={toggleAdvancedFilter}
-          onClearAll={clearAdvancedFiltersForCurrentScope}
+          onClearAll={clearPgLgAdvancedFilters}
           onClose={() => setAdvancedFiltersAnchor(null)}
         />
       )}
