@@ -161,81 +161,61 @@ export function MainContent() {
   const [editLogOpen, setEditLogOpen] = useState(false);
   const [advancedFiltersAnchor, setAdvancedFiltersAnchor] =
     useState<AdvancedFiltersAnchorState | null>(null);
-  /** Advanced filters on root Home row and on pg|lg gray crumb (separate scopes). */
-  const [homeAdvancedFilterIds, setHomeAdvancedFilterIds] = useState<
-    AdvancedFilterId[]
-  >([]);
-  const [pgLgAdvancedFilterIds, setPgLgAdvancedFilterIds] = useState<
-    AdvancedFilterId[]
-  >([]);
+  /** Advanced filter selections per breadcrumb level (button always visible). */
+  const [advancedFiltersByScope, setAdvancedFiltersByScope] = useState<
+    Record<string, AdvancedFilterId[]>
+  >({});
   const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
   const advancedFilterTagRef = useRef<HTMLDivElement>(null);
 
-  const isHomeBreadcrumbLevel = useMemo(() => {
-    return (
-      productDrillPath.length === 0 &&
-      regionsDrillBreadcrumb == null &&
-      locationTypeSubDrillBreadcrumb == null
-    );
-  }, [productDrillPath.length, regionsDrillBreadcrumb, locationTypeSubDrillBreadcrumb]);
+  const advancedFilterScopeKey = useMemo(() => {
+    const pathIds = productDrillPath.map((c) => c.id).join('/');
+    if (productDrillPath.length > 0 && locationTypeSubDrillBreadcrumb) {
+      return `scope:loc-sub:${pathIds}`;
+    }
+    if (productDrillPath.length > 0 && regionsDrillBreadcrumb) {
+      return `scope:regions:${pathIds}`;
+    }
+    if (productDrillPath.length > 0) {
+      return `scope:drill:${pathIds}`;
+    }
+    return 'scope:home';
+  }, [productDrillPath, locationTypeSubDrillBreadcrumb, regionsDrillBreadcrumb]);
 
-  const isPgLgBreadcrumbLevel = useMemo(() => {
-    if (regionsDrillBreadcrumb != null) return false;
-    if (locationTypeSubDrillBreadcrumb != null) return false;
-    if (productDrillPath.length === 0) return false;
-    const last = productDrillPath[productDrillPath.length - 1];
-    return last.label.toLowerCase().includes('product group:');
-  }, [
-    regionsDrillBreadcrumb,
-    locationTypeSubDrillBreadcrumb,
-    productDrillPath,
-  ]);
-
-  const advancedFiltersActiveScope =
-    isHomeBreadcrumbLevel ? 'home' : isPgLgBreadcrumbLevel ? 'pg-lg' : null;
+  const advancedFilterScopeKeyRef = useRef(advancedFilterScopeKey);
+  advancedFilterScopeKeyRef.current = advancedFilterScopeKey;
 
   const activeAdvancedFilterIds =
-    advancedFiltersActiveScope === 'home'
-      ? homeAdvancedFilterIds
-      : advancedFiltersActiveScope === 'pg-lg'
-        ? pgLgAdvancedFilterIds
-        : [];
+    advancedFiltersByScope[advancedFilterScopeKey] ?? [];
 
   const toggleAdvancedFilter = useCallback((id: AdvancedFilterId) => {
-    if (advancedFiltersActiveScope === 'home') {
-      setHomeAdvancedFilterIds((prev) =>
-        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-      );
-    } else if (advancedFiltersActiveScope === 'pg-lg') {
-      setPgLgAdvancedFilterIds((prev) =>
-        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-      );
-    }
-  }, [advancedFiltersActiveScope]);
+    const key = advancedFilterScopeKeyRef.current;
+    setAdvancedFiltersByScope((prev) => {
+      const cur = prev[key] ?? [];
+      const next = cur.includes(id)
+        ? cur.filter((x) => x !== id)
+        : [...cur, id];
+      return { ...prev, [key]: next };
+    });
+  }, []);
 
   const clearActiveAdvancedFilters = useCallback(() => {
-    if (advancedFiltersActiveScope === 'home') setHomeAdvancedFilterIds([]);
-    else if (advancedFiltersActiveScope === 'pg-lg') setPgLgAdvancedFilterIds([]);
+    const key = advancedFilterScopeKeyRef.current;
+    setAdvancedFiltersByScope((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
     setAdvancedFiltersAnchor(null);
-  }, [advancedFiltersActiveScope]);
+  }, []);
 
   useEffect(() => {
     if (activeAdvancedFilterIds.length === 0) setAdvancedFiltersAnchor(null);
   }, [activeAdvancedFilterIds.length]);
 
   useEffect(() => {
-    if (!isHomeBreadcrumbLevel) {
-      setHomeAdvancedFilterIds([]);
-      setAdvancedFiltersAnchor(null);
-    }
-  }, [isHomeBreadcrumbLevel]);
-
-  useEffect(() => {
-    if (!isPgLgBreadcrumbLevel) {
-      setPgLgAdvancedFilterIds([]);
-      setAdvancedFiltersAnchor(null);
-    }
-  }, [isPgLgBreadcrumbLevel]);
+    setAdvancedFiltersAnchor(null);
+  }, [advancedFilterScopeKey]);
   const optimisingToSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSuccessGroupsCountRef = useRef<number>(0);
 
@@ -606,8 +586,6 @@ export function MainContent() {
             </button>
             </div>
             <div className="ml-2 flex max-w-[min(100%,42rem)] flex-wrap items-center justify-end gap-2">
-              {advancedFiltersActiveScope != null && (
-                <>
                   {activeAdvancedFilterIds.length > 0 && (
                     <div
                       ref={advancedFilterTagRef}
@@ -680,8 +658,6 @@ export function MainContent() {
                     />
                     Advanced filters
                   </button>
-                </>
-              )}
               <button
                 type="button"
                 onClick={() => setEditLogOpen(true)}
@@ -709,7 +685,7 @@ export function MainContent() {
                   setRegionsBreadcrumbHeaders(null);
                   setProductColumnGrouping('Product Group');
                   setLocationColumnGrouping('Location Group');
-                  setPgLgAdvancedFilterIds([]);
+                  setAdvancedFiltersByScope({});
                   setAdvancedFiltersAnchor(null);
                 }}
                 className="inline-flex h-[26px] shrink-0 items-center justify-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
@@ -1012,7 +988,7 @@ export function MainContent() {
         onRevert={onRevert}
       />
 
-      {advancedFiltersAnchor && advancedFiltersActiveScope != null && (
+      {advancedFiltersAnchor && (
         <AdvancedFiltersPopover
           anchorRect={advancedFiltersAnchor.rect}
           triggerRefs={[advancedFiltersBtnRef, advancedFilterTagRef]}
