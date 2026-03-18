@@ -161,12 +161,23 @@ export function MainContent() {
   const [editLogOpen, setEditLogOpen] = useState(false);
   const [advancedFiltersAnchor, setAdvancedFiltersAnchor] =
     useState<AdvancedFiltersAnchorState | null>(null);
-  /** Advanced filters only on "product group | location group" gray breadcrumb step. */
+  /** Advanced filters on root Home row and on pg|lg gray crumb (separate scopes). */
+  const [homeAdvancedFilterIds, setHomeAdvancedFilterIds] = useState<
+    AdvancedFilterId[]
+  >([]);
   const [pgLgAdvancedFilterIds, setPgLgAdvancedFilterIds] = useState<
     AdvancedFilterId[]
   >([]);
   const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
   const advancedFilterTagRef = useRef<HTMLDivElement>(null);
+
+  const isHomeBreadcrumbLevel = useMemo(() => {
+    return (
+      productDrillPath.length === 0 &&
+      regionsDrillBreadcrumb == null &&
+      locationTypeSubDrillBreadcrumb == null
+    );
+  }, [productDrillPath.length, regionsDrillBreadcrumb, locationTypeSubDrillBreadcrumb]);
 
   const isPgLgBreadcrumbLevel = useMemo(() => {
     if (regionsDrillBreadcrumb != null) return false;
@@ -180,20 +191,44 @@ export function MainContent() {
     productDrillPath,
   ]);
 
-  const toggleAdvancedFilter = useCallback((id: AdvancedFilterId) => {
-    setPgLgAdvancedFilterIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  }, []);
+  const advancedFiltersActiveScope =
+    isHomeBreadcrumbLevel ? 'home' : isPgLgBreadcrumbLevel ? 'pg-lg' : null;
 
-  const clearPgLgAdvancedFilters = useCallback(() => {
-    setPgLgAdvancedFilterIds([]);
+  const activeAdvancedFilterIds =
+    advancedFiltersActiveScope === 'home'
+      ? homeAdvancedFilterIds
+      : advancedFiltersActiveScope === 'pg-lg'
+        ? pgLgAdvancedFilterIds
+        : [];
+
+  const toggleAdvancedFilter = useCallback((id: AdvancedFilterId) => {
+    if (advancedFiltersActiveScope === 'home') {
+      setHomeAdvancedFilterIds((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      );
+    } else if (advancedFiltersActiveScope === 'pg-lg') {
+      setPgLgAdvancedFilterIds((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      );
+    }
+  }, [advancedFiltersActiveScope]);
+
+  const clearActiveAdvancedFilters = useCallback(() => {
+    if (advancedFiltersActiveScope === 'home') setHomeAdvancedFilterIds([]);
+    else if (advancedFiltersActiveScope === 'pg-lg') setPgLgAdvancedFilterIds([]);
     setAdvancedFiltersAnchor(null);
-  }, []);
+  }, [advancedFiltersActiveScope]);
 
   useEffect(() => {
-    if (pgLgAdvancedFilterIds.length === 0) setAdvancedFiltersAnchor(null);
-  }, [pgLgAdvancedFilterIds.length]);
+    if (activeAdvancedFilterIds.length === 0) setAdvancedFiltersAnchor(null);
+  }, [activeAdvancedFilterIds.length]);
+
+  useEffect(() => {
+    if (!isHomeBreadcrumbLevel) {
+      setHomeAdvancedFilterIds([]);
+      setAdvancedFiltersAnchor(null);
+    }
+  }, [isHomeBreadcrumbLevel]);
 
   useEffect(() => {
     if (!isPgLgBreadcrumbLevel) {
@@ -571,71 +606,81 @@ export function MainContent() {
             </button>
             </div>
             <div className="ml-2 flex max-w-[min(100%,42rem)] flex-wrap items-center justify-end gap-2">
-              {isPgLgBreadcrumbLevel && pgLgAdvancedFilterIds.length > 0 && (
-                <div
-                  ref={advancedFilterTagRef}
-                  className="flex shrink-0 items-center rounded-md bg-[#e9eaeb] py-1.5 pl-3 pr-1"
-                  data-name="tokens"
-                >
+              {advancedFiltersActiveScope != null && (
+                <>
+                  {activeAdvancedFilterIds.length > 0 && (
+                    <div
+                      ref={advancedFilterTagRef}
+                      className="flex shrink-0 items-center rounded-md bg-[#e9eaeb] py-1.5 pl-3 pr-1"
+                      data-name="tokens"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdvancedFiltersAnchor((prev) => {
+                            const r =
+                              advancedFilterTagRef.current?.getBoundingClientRect();
+                            if (!r) return null;
+                            if (prev?.source === 'tag') return null;
+                            return { rect: r, source: 'tag' as const };
+                          });
+                        }}
+                        aria-expanded={Boolean(
+                          advancedFiltersAnchor?.source === 'tag'
+                        )}
+                        aria-haspopup="menu"
+                        className="flex min-w-0 max-w-[220px] items-center gap-1.5 border-0 bg-transparent py-0 pr-1 text-left text-xs font-semibold text-[#12171E] transition-opacity hover:opacity-80"
+                        aria-label="Open advanced filters"
+                      >
+                        <span className="truncate">
+                          Filters:{' '}
+                          {getAdvancedFilterLabel(activeAdvancedFilterIds[0])}
+                        </span>
+                        {activeAdvancedFilterIds.length > 1 && (
+                          <span className="shrink-0 font-semibold text-[#12171E]">{` +${activeAdvancedFilterIds.length - 1}`}</span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearActiveAdvancedFilters();
+                        }}
+                        className="ml-1 flex size-7 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-black/5"
+                        aria-label="Clear all filters"
+                      >
+                        <X size={16} strokeWidth={2} aria-hidden />
+                      </button>
+                    </div>
+                  )}
                   <button
+                    ref={advancedFiltersBtnRef}
                     type="button"
                     onClick={() => {
                       setAdvancedFiltersAnchor((prev) => {
-                        const r = advancedFilterTagRef.current?.getBoundingClientRect();
+                        const r =
+                          advancedFiltersBtnRef.current?.getBoundingClientRect();
                         if (!r) return null;
-                        if (prev?.source === 'tag') return null;
-                        return { rect: r, source: 'tag' as const };
+                        if (prev?.source === 'button') return null;
+                        return { rect: r, source: 'button' as const };
                       });
                     }}
                     aria-expanded={Boolean(
-                      advancedFiltersAnchor?.source === 'tag'
+                      advancedFiltersAnchor?.source === 'button'
                     )}
                     aria-haspopup="menu"
-                    className="flex min-w-0 max-w-[220px] items-center gap-1.5 border-0 bg-transparent py-0 pr-1 text-left text-xs font-semibold text-[#12171E] transition-opacity hover:opacity-80"
-                    aria-label="Open advanced filters"
+                    className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 text-base font-medium text-[#00050a] whitespace-nowrap transition-colors hover:bg-slate-50"
+                    aria-label="Advanced filters"
                   >
-                    <span className="truncate">
-                      Filters: {getAdvancedFilterLabel(pgLgAdvancedFilterIds[0])}
-                    </span>
-                    {pgLgAdvancedFilterIds.length > 1 && (
-                      <span className="shrink-0 font-semibold text-[#12171E]">{` +${pgLgAdvancedFilterIds.length - 1}`}</span>
-                    )}
+                    <Filter
+                      size={16}
+                      className="shrink-0"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    Advanced filters
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearPgLgAdvancedFilters();
-                    }}
-                    className="ml-1 flex size-7 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-black/5"
-                    aria-label="Clear all filters"
-                  >
-                    <X size={16} strokeWidth={2} aria-hidden />
-                  </button>
-                </div>
-              )}
-              {isPgLgBreadcrumbLevel && (
-              <button
-                ref={advancedFiltersBtnRef}
-                type="button"
-                onClick={() => {
-                  setAdvancedFiltersAnchor((prev) => {
-                    const r = advancedFiltersBtnRef.current?.getBoundingClientRect();
-                    if (!r) return null;
-                    if (prev?.source === 'button') return null;
-                    return { rect: r, source: 'button' as const };
-                  });
-                }}
-                aria-expanded={Boolean(
-                  advancedFiltersAnchor?.source === 'button'
-                )}
-                aria-haspopup="menu"
-                className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-slate-50 transition-colors"
-                aria-label="Advanced filters"
-              >
-                <Filter size={16} className="shrink-0" strokeWidth={2} aria-hidden />
-                Advanced filters
-              </button>
+                </>
               )}
               <button
                 type="button"
@@ -649,10 +694,10 @@ export function MainContent() {
             </div>
           </div>
           {productDrillPath.length > 0 && (
-            <nav
-              className="flex flex-wrap items-center gap-2 border-t border-[#e9eaeb] pt-2 text-xs font-normal leading-normal text-[#00050a]"
-              aria-label="Product drill-down"
-            >
+          <nav
+            className="flex flex-wrap items-center gap-2 border-t border-[#e9eaeb] pt-2 text-xs font-normal leading-normal text-[#00050a]"
+            aria-label="Product drill-down"
+          >
               <button
                 type="button"
                 onClick={() => {
@@ -789,7 +834,7 @@ export function MainContent() {
                   </button>
                 </span>
               )}
-            </nav>
+          </nav>
           )}
         </div>
 
@@ -967,13 +1012,13 @@ export function MainContent() {
         onRevert={onRevert}
       />
 
-      {advancedFiltersAnchor && isPgLgBreadcrumbLevel && (
+      {advancedFiltersAnchor && advancedFiltersActiveScope != null && (
         <AdvancedFiltersPopover
           anchorRect={advancedFiltersAnchor.rect}
           triggerRefs={[advancedFiltersBtnRef, advancedFilterTagRef]}
-          selectedIds={pgLgAdvancedFilterIds}
+          selectedIds={activeAdvancedFilterIds}
           onToggle={toggleAdvancedFilter}
-          onClearAll={clearPgLgAdvancedFilters}
+          onClearAll={clearActiveAdvancedFilters}
           onClose={() => setAdvancedFiltersAnchor(null)}
         />
       )}
