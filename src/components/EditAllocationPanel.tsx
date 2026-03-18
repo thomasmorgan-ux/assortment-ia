@@ -684,7 +684,11 @@ export function EditAllocationPanel({
                     ) : (
                       <div className="mt-3 flex flex-col gap-1">
                         <div className="flex items-center gap-2">
-                          <label className="text-sm text-[#000000]">Total IA</label>
+                          <label className="text-sm text-[#000000]">
+                            {state.method === 'avg-ia'
+                              ? 'Average IA per SKU-location'
+                              : 'Total IA'}
+                          </label>
                           <input
                             type="number"
                             value={state.totalIaInput}
