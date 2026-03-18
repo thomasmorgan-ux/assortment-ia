@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Layers, History, Sparkles, X, Home, ChevronRight, Filter } from 'lucide-react';
 import { AssortmentTable } from './AssortmentTable';
 import { getProductDimensionLabel } from './DrillDownProductModal';
@@ -161,19 +161,60 @@ export function MainContent() {
   const [editLogOpen, setEditLogOpen] = useState(false);
   const [advancedFiltersAnchor, setAdvancedFiltersAnchor] =
     useState<AdvancedFiltersAnchorState | null>(null);
-  const [advancedFilterIds, setAdvancedFilterIds] = useState<AdvancedFilterId[]>([]);
+  /** Advanced filter selections keyed by breadcrumb scope (chip only for current level). */
+  const [advancedFiltersByScope, setAdvancedFiltersByScope] = useState<
+    Record<string, AdvancedFilterId[]>
+  >({});
   const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
   const advancedFilterTagRef = useRef<HTMLDivElement>(null);
 
-  const toggleAdvancedFilter = (id: AdvancedFilterId) => {
-    setAdvancedFilterIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
+  const advancedFilterScopeKey = useMemo(() => {
+    if (locationTypeSubDrillBreadcrumb) return 'scope:loc-sub';
+    if (regionsDrillBreadcrumb) return 'scope:regions';
+    if (productDrillPath.length > 0) {
+      return `scope:drill:${productDrillPath.map((c) => c.id).join('/')}`;
+    }
+    return 'scope:home';
+  }, [
+    locationTypeSubDrillBreadcrumb,
+    regionsDrillBreadcrumb,
+    productDrillPath,
+  ]);
+
+  const advancedFilterScopeKeyRef = useRef(advancedFilterScopeKey);
+  advancedFilterScopeKeyRef.current = advancedFilterScopeKey;
+
+  const advancedFilterIds =
+    advancedFiltersByScope[advancedFilterScopeKey] ?? [];
+
+  const toggleAdvancedFilter = useCallback((id: AdvancedFilterId) => {
+    const key = advancedFilterScopeKeyRef.current;
+    setAdvancedFiltersByScope((prev) => {
+      const cur = prev[key] ?? [];
+      const next = cur.includes(id)
+        ? cur.filter((x) => x !== id)
+        : [...cur, id];
+      return { ...prev, [key]: next };
+    });
+  }, []);
+
+  const clearAdvancedFiltersForCurrentScope = useCallback(() => {
+    const key = advancedFilterScopeKeyRef.current;
+    setAdvancedFiltersByScope((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setAdvancedFiltersAnchor(null);
+  }, []);
 
   useEffect(() => {
     if (advancedFilterIds.length === 0) setAdvancedFiltersAnchor(null);
   }, [advancedFilterIds.length]);
+
+  useEffect(() => {
+    setAdvancedFiltersAnchor(null);
+  }, [advancedFilterScopeKey]);
   const optimisingToSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSuccessGroupsCountRef = useRef<number>(0);
 
@@ -578,8 +619,7 @@ export function MainContent() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setAdvancedFilterIds([]);
-                      setAdvancedFiltersAnchor(null);
+                      clearAdvancedFiltersForCurrentScope();
                     }}
                     className="ml-1 flex size-7 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-black/5"
                     aria-label="Clear all filters"
@@ -636,103 +676,112 @@ export function MainContent() {
                   setRegionsBreadcrumbHeaders(null);
                   setProductColumnGrouping('Product Group');
                   setLocationColumnGrouping('Location Group');
+                  setAdvancedFiltersByScope({});
+                  setAdvancedFiltersAnchor(null);
                 }}
                 className="inline-flex h-[26px] shrink-0 items-center justify-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
               >
                 <Home size={14} className="shrink-0" aria-hidden />
                 Home
               </button>
-              {productDrillPath.map((crumb, i) => {
-                const isLastCrumb = i === productDrillPath.length - 1;
+              {(() => {
                 const hasRegionsTail = Boolean(regionsDrillBreadcrumb);
-                const lastCrumbAsWhite = isLastCrumb && hasRegionsTail;
-                return (
-                  <span
-                    key={`${crumb.id}-${i}`}
-                    className={`flex items-center gap-2 ${lastCrumbAsWhite && regionsDrillBreadcrumb ? 'min-w-0 flex-wrap' : ''}`}
-                  >
-                    <ChevronRight size={14} className="shrink-0 text-slate-400" aria-hidden />
-                    {i < productDrillPath.length - 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProductDrillPath(productDrillPath.slice(0, i + 1));
-                          setRegionsDrillBreadcrumb(null);
-                          setLocationTypeSubDrillBreadcrumb(null);
-                          setRegionsBreadcrumbHeaders(null);
-                          restoreRegionsSnapshot();
-                        }}
-                        className="inline-flex h-[26px] shrink-0 max-w-[240px] items-center justify-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
-                      >
-                        <span className="truncate">{crumb.label}</span>
-                      </button>
-                    ) : lastCrumbAsWhite && regionsDrillBreadcrumb ? (
-                      <>
+                const hasLocationTypeSubTail =
+                  Boolean(locationTypeSubDrillBreadcrumb) && productDrillPath.length > 0;
+                const crumbCompact =
+                  'inline-flex h-[26px] shrink-0 max-w-[min(100vw-4rem,20rem)] min-w-0 items-center justify-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 text-xs font-normal leading-normal text-[#00050a] whitespace-nowrap transition-colors hover:bg-slate-50';
+                const crumbActive =
+                  'inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-left text-xs font-normal leading-normal text-[#00050a]';
+                return productDrillPath.map((crumb, i) => {
+                  const isLastCrumb = i === productDrillPath.length - 1;
+                  const lastCrumbAsRegionsPair = isLastCrumb && hasRegionsTail;
+                  return (
+                    <span
+                      key={`${crumb.id}-${i}`}
+                      className={`flex items-center gap-2 ${lastCrumbAsRegionsPair ? 'min-w-0 flex-wrap' : ''}`}
+                    >
+                      <ChevronRight size={14} className="shrink-0 text-slate-400" aria-hidden />
+                      {i < productDrillPath.length - 1 ? (
                         <button
                           type="button"
                           onClick={() => {
-                            if (grayBreadcrumbHeaders) {
-                              setProductColumnGrouping(grayBreadcrumbHeaders.productGrouping);
-                              setLocationColumnGrouping(grayBreadcrumbHeaders.locationGrouping);
-                            }
-                            setRegionsDrillBreadcrumb(null);
-                            setRegionsTableSnapshot(null);
-                            setRegionsBreadcrumbHeaders(null);
-                          }}
-                          className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-left font-normal text-[#00050a] transition-colors hover:bg-slate-100"
-                          title={
-                            grayBreadcrumbHeaders
-                              ? `Stored headers: ${grayBreadcrumbHeaders.productGrouping}, ${grayBreadcrumbHeaders.locationGrouping}. Click to leave Region view.`
-                              : undefined
-                          }
-                          data-stored-product-header={grayBreadcrumbHeaders?.productGrouping}
-                          data-stored-location-header={grayBreadcrumbHeaders?.locationGrouping}
-                          aria-current="page"
-                        >
-                          <span className="line-clamp-2 text-xs leading-snug">
-                            {crumb.label}
-                          </span>
-                        </button>
-                        <ChevronRight
-                          size={14}
-                          className="shrink-0 text-slate-400"
-                          aria-hidden
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
+                            setProductDrillPath(productDrillPath.slice(0, i + 1));
                             setRegionsDrillBreadcrumb(null);
                             setLocationTypeSubDrillBreadcrumb(null);
                             setRegionsBreadcrumbHeaders(null);
                             restoreRegionsSnapshot();
                           }}
-                          className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-2 text-left font-normal text-[#00050a] transition-colors hover:bg-slate-50"
-                          title={
-                            regionsTableSnapshot && regionsBreadcrumbHeaders
-                              ? `Stored: ${regionsBreadcrumbHeaders.productGrouping} + ${regionsBreadcrumbHeaders.locationGrouping}. Back to ${regionsTableSnapshot.productGrouping} + ${regionsTableSnapshot.locationGrouping}.`
-                              : regionsTableSnapshot
-                                ? `Back to ${regionsTableSnapshot.productGrouping} + ${regionsTableSnapshot.locationGrouping}`
-                                : 'Back — restore column headers before Region'
-                          }
-                          data-stored-product-header={regionsBreadcrumbHeaders?.productGrouping}
-                          data-stored-location-header={regionsBreadcrumbHeaders?.locationGrouping}
+                          className={crumbCompact}
                         >
-                          <span className="line-clamp-2 text-xs leading-snug">
-                            {`${regionsDrillBreadcrumb.productHeaderLabel}: ${regionsDrillBreadcrumb.productValue} | ${regionsDrillBreadcrumb.locationHeaderLabel}: ${regionsDrillBreadcrumb.locationValue}`}
-                          </span>
+                          <span className="truncate">{crumb.label}</span>
                         </button>
-                      </>
-                    ) : (
-                      <span
-                        className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 font-normal text-[#00050a]"
-                        aria-current="page"
-                      >
-                        <span className="line-clamp-2 text-left text-xs leading-snug">{crumb.label}</span>
-                      </span>
-                    )}
-                  </span>
-                );
-              })}
+                      ) : lastCrumbAsRegionsPair && regionsDrillBreadcrumb ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (grayBreadcrumbHeaders) {
+                                setProductColumnGrouping(grayBreadcrumbHeaders.productGrouping);
+                                setLocationColumnGrouping(grayBreadcrumbHeaders.locationGrouping);
+                              }
+                              setRegionsDrillBreadcrumb(null);
+                              setRegionsTableSnapshot(null);
+                              setRegionsBreadcrumbHeaders(null);
+                            }}
+                            className={crumbCompact}
+                            title={
+                              grayBreadcrumbHeaders
+                                ? `Stored headers: ${grayBreadcrumbHeaders.productGrouping}, ${grayBreadcrumbHeaders.locationGrouping}. Click to leave Region view.`
+                                : undefined
+                            }
+                            data-stored-product-header={grayBreadcrumbHeaders?.productGrouping}
+                            data-stored-location-header={grayBreadcrumbHeaders?.locationGrouping}
+                          >
+                            <span className="truncate">{crumb.label}</span>
+                          </button>
+                          <ChevronRight
+                            size={14}
+                            className="shrink-0 text-slate-400"
+                            aria-hidden
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRegionsDrillBreadcrumb(null);
+                              setLocationTypeSubDrillBreadcrumb(null);
+                              setRegionsBreadcrumbHeaders(null);
+                              restoreRegionsSnapshot();
+                            }}
+                            className={`${crumbActive} transition-colors hover:bg-slate-100`}
+                            title={
+                              regionsTableSnapshot && regionsBreadcrumbHeaders
+                                ? `Stored: ${regionsBreadcrumbHeaders.productGrouping} + ${regionsBreadcrumbHeaders.locationGrouping}. Back to ${regionsTableSnapshot.productGrouping} + ${regionsTableSnapshot.locationGrouping}.`
+                                : regionsTableSnapshot
+                                  ? `Back to ${regionsTableSnapshot.productGrouping} + ${regionsTableSnapshot.locationGrouping}`
+                                  : 'Back — restore column headers before Region'
+                            }
+                            data-stored-product-header={regionsBreadcrumbHeaders?.productGrouping}
+                            data-stored-location-header={regionsBreadcrumbHeaders?.locationGrouping}
+                            aria-current="page"
+                          >
+                            <span className="line-clamp-2 leading-snug">
+                              {`${regionsDrillBreadcrumb.productHeaderLabel}: ${regionsDrillBreadcrumb.productValue} | ${regionsDrillBreadcrumb.locationHeaderLabel}: ${regionsDrillBreadcrumb.locationValue}`}
+                            </span>
+                          </button>
+                        </>
+                      ) : hasLocationTypeSubTail ? (
+                        <span className={crumbCompact}>
+                          <span className="truncate">{crumb.label}</span>
+                        </span>
+                      ) : (
+                        <span className={`${crumbActive}`} aria-current="page">
+                          <span className="line-clamp-2 text-left leading-snug">{crumb.label}</span>
+                        </span>
+                      )}
+                    </span>
+                  );
+                });
+              })()}
               {locationTypeSubDrillBreadcrumb && productDrillPath.length > 0 && (
                 <span className="flex items-center gap-2">
                   <ChevronRight size={14} className="shrink-0 text-slate-400" aria-hidden />
@@ -742,10 +791,11 @@ export function MainContent() {
                       setLocationColumnGrouping('Location Type');
                       setLocationTypeSubDrillBreadcrumb(null);
                     }}
-                    className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-left font-normal text-[#00050a] transition-colors hover:bg-slate-50"
+                    className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-left text-xs font-normal leading-normal text-[#00050a] transition-colors hover:bg-slate-100"
                     title="Back to Location Type grouping"
+                    aria-current="page"
                   >
-                    <span className="line-clamp-2 text-xs leading-snug">
+                    <span className="line-clamp-2 leading-snug">
                       {locationTypeSubDrillBreadcrumb.label}
                     </span>
                   </button>
@@ -935,10 +985,7 @@ export function MainContent() {
           triggerRefs={[advancedFiltersBtnRef, advancedFilterTagRef]}
           selectedIds={advancedFilterIds}
           onToggle={toggleAdvancedFilter}
-          onClearAll={() => {
-            setAdvancedFilterIds([]);
-            setAdvancedFiltersAnchor(null);
-          }}
+          onClearAll={clearAdvancedFiltersForCurrentScope}
           onClose={() => setAdvancedFiltersAnchor(null)}
         />
       )}
