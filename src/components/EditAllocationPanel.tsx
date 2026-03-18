@@ -27,7 +27,7 @@ interface EditAllocationPanelProps {
   onAssortToMax?: (row: AssortmentRow) => void;
   /** When set, Assortment section Unassort button sets row to 0 assorted. */
   onUnassortToZero?: (row: AssortmentRow) => void;
-  onScheduledAssortmentDateChange?: (rowId: string, date: string) => void;
+  onScheduledAssortmentScheduleChange?: (rowId: string, field: 'start' | 'finish', value: string) => void;
   /** Assortment drawer: Cancel draft reverts panel rows to last commit and closes. */
   onAssortmentCancelDraft?: () => void;
 }
@@ -56,26 +56,20 @@ const topProductsMock: { metric: string; committed: number | string; current: st
   { metric: 'Top Product 3', committed: 0, current: '10 Green Coats in Nice' },
 ];
 
-/** Same Impact Summary shape as Initial Allocation panel, for assortment drawer (single row). */
-function buildAssortmentImpactSummaryRows(r: AssortmentRow): { metric: string; committed: number | string; current: string }[] {
-  const committedIa = r.lastCommittedSnapshot?.sumIa ?? r.sumIa;
-  const currentIa = r.sumIa;
-  const totalLocation = r.productGroup.productCount * r.locationCluster.locationCount;
-  const wh = r.whUnits.value;
+/** Impact Summary: Metric | Value (supply / forecast metrics). */
+function buildAssortmentImpactMetricValueRows(r: AssortmentRow): { metric: string; value: string }[] {
+  const m = r.productDrillMetrics;
+  const pfp = Number(/\d+/.exec(r.whUnits.sub)?.[0]) || 0;
+  const pipeline = r.whUnits.value + pfp + (m?.inventory ?? 0) + r.storeOh;
+  const onHand = pipeline > 0 ? pipeline : 3051;
+  const minInv = m?.minQty ?? r.mq;
   return [
-    { metric: 'Total Allocation', committed: committedIa, current: String(currentIa) },
-    { metric: 'Warehouse metrics', committed: wh, current: String(wh - currentIa) },
-    {
-      metric: 'Products affected',
-      committed: committedIa > 0 ? r.productGroup.productCount : 0,
-      current: String(r.productGroup.productCount),
-    },
-    {
-      metric: 'Locations affected',
-      committed: committedIa > 0 ? r.locationCluster.locationCount : 0,
-      current: String(r.locationCluster.locationCount),
-    },
-    { metric: 'Total location', committed: committedIa > 0 ? totalLocation : 0, current: String(totalLocation) },
+    { metric: 'Total on-hand + in-transit + PFP', value: String(onHand) },
+    { metric: 'Forecast sales/wk', value: String(m?.forecastSalesPerWk ?? 0) },
+    { metric: 'Target coverage', value: `${m?.targetCoverageWk ?? 5} weeks` },
+    { metric: 'Total forecast over coverage', value: '0' },
+    { metric: 'Total constrained recommended IA', value: String(r.sumIaRecommendation ?? 84) },
+    { metric: 'Min inventory qty', value: String(minInv > 0 ? minInv : 126) },
   ];
 }
 
@@ -96,10 +90,33 @@ function SummaryTable({
         </thead>
         <tbody className="bg-white">
           {rows.map(({ metric, committed, current }) => (
-            <tr key={metric} className="border-t border-[#e9eaeb]">
+            <tr key={metric} className="border-b border-[#e9eaeb] last:border-b-0">
               <td className="px-3 py-2 text-[#000000]">{metric}</td>
               <td className="px-3 py-2 text-[#000000]">{committed}</td>
               <td className="px-3 py-2 text-[#000000]">{current}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SummaryTableMetricValue({ rows }: { rows: { metric: string; value: string }[] }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-[#e9eaeb]">
+      <table className="w-full min-w-[280px] border-collapse text-sm text-[#000000]">
+        <thead>
+          <tr className="bg-[#f8f8f8]">
+            <th className="px-3 py-2 text-left font-medium text-[#00050a]">Metric</th>
+            <th className="px-3 py-2 text-right font-medium text-[#00050a]">Value</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white">
+          {rows.map(({ metric, value }) => (
+            <tr key={metric} className="border-b border-[#e9eaeb] last:border-b-0">
+              <td className="px-3 py-2 text-left align-top">{metric}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{value}</td>
             </tr>
           ))}
         </tbody>
@@ -118,7 +135,7 @@ export function EditAllocationPanel({
   onUnassort,
   onAssortToMax,
   onUnassortToZero,
-  onScheduledAssortmentDateChange,
+  onScheduledAssortmentScheduleChange,
   onAssortmentCancelDraft,
 }: EditAllocationPanelProps) {
   const isInitialAllocation = openFrom === 'initial-allocation';
@@ -159,20 +176,6 @@ export function EditAllocationPanel({
   };
 
   const singleRow = rows.length === 1 ? rows[0] : null;
-
-  /** Initial allocation impact: warehouse pool across selection; current = pool minus sum of entered IA per row. */
-  const warehouseCommittedAcrossSelection = isInitialAllocation
-    ? rows.reduce((sum, r) => sum + r.whUnits.value, 0)
-    : 0;
-  const totalCurrentIaAcrossSelection = isInitialAllocation
-    ? rows.reduce((sum, r) => {
-        const st = rowState[r.id] ?? getDefaultRowState(r);
-        const cv =
-          st.method === 'recommendation' ? (r.sumIaRecommendation ?? totalIaNum(st)) : totalIaNum(st);
-        return sum + cv;
-      }, 0)
-    : 0;
-  const warehouseCurrentIaAggregate = warehouseCommittedAcrossSelection - totalCurrentIaAcrossSelection;
 
   return (
     <>
@@ -425,21 +428,44 @@ export function EditAllocationPanel({
                                 </button>
                               </div>
                             </div>
-                            <div className="mt-3 flex flex-col gap-1">
-                              <label htmlFor={dateId} className="text-xs font-medium text-slate-600">
-                                Schedule assortment for
-                              </label>
-                              <input
-                                id={dateId}
-                                type="date"
-                                value={r.scheduledAssortmentDate ?? ''}
-                                onChange={(e) => onScheduledAssortmentDateChange?.(r.id, e.target.value)}
-                                disabled={r.assortment.assortedCount === 0}
-                                className="h-9 w-full max-w-[200px] rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
-                                aria-describedby={`${dateId}-hint`}
-                              />
+                            <div className="mt-3 flex flex-col gap-3">
+                              <p className="text-xs font-medium text-slate-600">Assortment schedule</p>
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                  <label htmlFor={`${dateId}-start`} className="text-xs font-medium text-slate-600">
+                                    Schedule start
+                                  </label>
+                                  <input
+                                    id={`${dateId}-start`}
+                                    type="date"
+                                    value={r.scheduledAssortmentStart ?? ''}
+                                    onChange={(e) =>
+                                      onScheduledAssortmentScheduleChange?.(r.id, 'start', e.target.value)
+                                    }
+                                    disabled={r.assortment.assortedCount === 0}
+                                    className="h-9 w-full min-w-0 max-w-full rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                                    aria-describedby={`${dateId}-hint`}
+                                  />
+                                </div>
+                                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                  <label htmlFor={`${dateId}-finish`} className="text-xs font-medium text-slate-600">
+                                    Schedule finish
+                                  </label>
+                                  <input
+                                    id={`${dateId}-finish`}
+                                    type="date"
+                                    value={r.scheduledAssortmentFinish ?? ''}
+                                    onChange={(e) =>
+                                      onScheduledAssortmentScheduleChange?.(r.id, 'finish', e.target.value)
+                                    }
+                                    disabled={r.assortment.assortedCount === 0}
+                                    className="h-9 w-full min-w-0 max-w-full rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                                    aria-describedby={`${dateId}-hint`}
+                                  />
+                                </div>
+                              </div>
                               <p id={`${dateId}-hint`} className="text-xs text-slate-500">
-                                When this assortment change should take effect (optional)
+                                When this assortment change window starts and ends (optional)
                               </p>
                             </div>
                             {r.assortment.assortedCount > 0 && (
@@ -458,7 +484,7 @@ export function EditAllocationPanel({
                                   <p className="mb-2 text-xs text-slate-600">
                                     Editing Allocation does not change the product or location
                                   </p>
-                                  <SummaryTable rows={buildAssortmentImpactSummaryRows(r)} />
+                                  <SummaryTableMetricValue rows={buildAssortmentImpactMetricValueRows(r)} />
                                 </div>
                                 <div className="mt-4">
                                   <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Locations</h4>
@@ -511,21 +537,50 @@ export function EditAllocationPanel({
                         </button>
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-col gap-1">
-                      <label htmlFor="assortment-effective-date" className="text-xs font-medium text-slate-600">
-                        Schedule assortment for
-                      </label>
-                      <input
-                        id="assortment-effective-date"
-                        type="date"
-                        value={singleRow.scheduledAssortmentDate ?? ''}
-                        onChange={(e) => onScheduledAssortmentDateChange?.(singleRow.id, e.target.value)}
-                        disabled={singleRow.assortment.assortedCount === 0}
-                        className="h-9 w-full max-w-[200px] rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
-                        aria-describedby="assortment-effective-date-hint"
-                      />
-                      <p id="assortment-effective-date-hint" className="text-xs text-slate-500">
-                        When this assortment change should take effect (optional)
+                    <div className="mt-3 flex flex-col gap-3">
+                      <p className="text-xs font-medium text-slate-600">Assortment schedule</p>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                          <label
+                            htmlFor="assortment-schedule-start"
+                            className="text-xs font-medium text-slate-600"
+                          >
+                            Schedule start
+                          </label>
+                          <input
+                            id="assortment-schedule-start"
+                            type="date"
+                            value={singleRow.scheduledAssortmentStart ?? ''}
+                            onChange={(e) =>
+                              onScheduledAssortmentScheduleChange?.(singleRow.id, 'start', e.target.value)
+                            }
+                            disabled={singleRow.assortment.assortedCount === 0}
+                            className="h-9 w-full min-w-0 max-w-full rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                            aria-describedby="assortment-schedule-hint"
+                          />
+                        </div>
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                          <label
+                            htmlFor="assortment-schedule-finish"
+                            className="text-xs font-medium text-slate-600"
+                          >
+                            Schedule finish
+                          </label>
+                          <input
+                            id="assortment-schedule-finish"
+                            type="date"
+                            value={singleRow.scheduledAssortmentFinish ?? ''}
+                            onChange={(e) =>
+                              onScheduledAssortmentScheduleChange?.(singleRow.id, 'finish', e.target.value)
+                            }
+                            disabled={singleRow.assortment.assortedCount === 0}
+                            className="h-9 w-full min-w-0 max-w-full rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                            aria-describedby="assortment-schedule-hint"
+                          />
+                        </div>
+                      </div>
+                      <p id="assortment-schedule-hint" className="text-xs text-slate-500">
+                        When this assortment change window starts and ends (optional)
                       </p>
                     </div>
 
@@ -541,7 +596,7 @@ export function EditAllocationPanel({
                           <p className="mb-2 text-xs text-slate-600">
                             Editing Allocation does not change the product or location
                           </p>
-                          <SummaryTable rows={buildAssortmentImpactSummaryRows(singleRow)} />
+                          <SummaryTableMetricValue rows={buildAssortmentImpactMetricValueRows(singleRow)} />
                         </div>
                         <div className="mt-4">
                           <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Locations</h4>
@@ -562,31 +617,9 @@ export function EditAllocationPanel({
           {isInitialAllocation &&
             rows.map((r) => {
               const state = rowState[r.id] ?? getDefaultRowState(r);
-              const committedIa = r.lastCommittedSnapshot?.sumIa ?? r.sumIa;
-              const currentEditValue = state.method === 'recommendation' ? (r.sumIaRecommendation ?? totalIaNum(state)) : totalIaNum(state);
-              const totalLocation = r.productGroup.productCount * r.locationCluster.locationCount;
               const totalWarehouseUnits = r.whUnits.value;
               const isBelowMin = totalIaNum(state) < TOTAL_MIN_QUANTITY;
               const isAboveMax = totalIaNum(state) > totalWarehouseUnits;
-              const impactRows = [
-                { metric: 'Total Allocation', committed: committedIa, current: String(currentEditValue) },
-                {
-                  metric: 'Warehouse metrics',
-                  committed: warehouseCommittedAcrossSelection,
-                  current: String(warehouseCurrentIaAggregate),
-                },
-                {
-                  metric: 'Products affected',
-                  committed: committedIa > 0 ? r.productGroup.productCount : 0,
-                  current: String(r.productGroup.productCount),
-                },
-                {
-                  metric: 'Locations affected',
-                  committed: committedIa > 0 ? r.locationCluster.locationCount : 0,
-                  current: String(r.locationCluster.locationCount),
-                },
-                { metric: 'Total location', committed: committedIa > 0 ? totalLocation : 0, current: String(totalLocation) },
-              ];
               const isExpanded = rows.length === 1 || expandedRowId === r.id;
               const content = (
                 <>
@@ -631,11 +664,13 @@ export function EditAllocationPanel({
                             Assort and generate recommendations to use this option
                           </p>
                         )}
-                        {r.sumIaRecommendation != null && r.hasPendingChanges && (
-                          <p className="pl-6 text-xs text-slate-500">
-                            Regenerate recommendations due to your assortment edit change
-                          </p>
-                        )}
+                        {r.sumIaRecommendation != null &&
+                          r.hasPendingChanges &&
+                          !(r.sumIa > 0 || state.method === 'recommendation') && (
+                            <p className="pl-6 text-xs text-slate-500">
+                              Regenerate recommendations due to your assortment edit change
+                            </p>
+                          )}
                       </div>
                     </div>
                     {state.method === 'recommendation' ? (
@@ -682,13 +717,26 @@ export function EditAllocationPanel({
 
                   {state.method === 'recommendation' && (
                     <div className="mb-3">
-                      <h4 className="mb-2 text-xs font-semibold text-[#000000]">Recommendation Formula</h4>
-                      <div className="space-y-1 text-sm text-[#000000]">
-                        <p>Forecast demand: 4 units over 4 weeks</p>
-                        <p>Total min quantity: {TOTAL_MIN_QUANTITY}</p>
-                        <p className="pt-1 font-medium text-slate-700">
-                          (Forecast × 1.25) + buffer → round to {r.sumIaRecommendation ?? 5} units
+                      <h4 className="mb-2 text-xs font-semibold text-[#000000]">Recommendation formula</h4>
+                      <div className="space-y-2 text-sm leading-relaxed text-[#000000]">
+                        <p>
+                          Recommendation ={' '}
+                          <span className="font-medium">
+                            total forecast sales over the coverage period (in weeks)
+                          </span>
+                          , within these constraints:
                         </p>
+                        <ul className="list-disc space-y-1.5 pl-5 marker:text-slate-500">
+                          <li>
+                            recommendation{' '}
+                            <span className="font-medium tabular-nums">≥</span> Minimum Quantity (a user input from
+                            elsewhere in the platform)
+                          </li>
+                          <li>
+                            recommendation{' '}
+                            <span className="font-medium tabular-nums">≤</span> Available warehouse inventory
+                          </li>
+                        </ul>
                       </div>
                     </div>
                   )}
@@ -702,7 +750,7 @@ export function EditAllocationPanel({
                   <p className="mb-2 text-xs text-slate-600">
                     Editing Allocation does not change the product or location
                   </p>
-                  <SummaryTable rows={impactRows} />
+                  <SummaryTableMetricValue rows={buildAssortmentImpactMetricValueRows(r)} />
 
                   {/* Top Locations */}
                   <div className="mt-4">

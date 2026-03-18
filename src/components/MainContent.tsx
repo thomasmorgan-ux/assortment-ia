@@ -1,15 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
-import { Layers, History, Sparkles, X, Home, ChevronRight } from 'lucide-react';
+import { Layers, History, Sparkles, X, Home, ChevronRight, Filter } from 'lucide-react';
 import { AssortmentTable } from './AssortmentTable';
 import { getProductDimensionLabel } from './DrillDownProductModal';
 import { CommitSuccessBanner } from './CommitSuccessBanner';
 import { ConfirmCommitRevertModal, type ConfirmCommitRevertState } from './ConfirmCommitRevertModal';
 import { EditAllocationPanel } from './EditAllocationPanel';
 import { EditLogDrawer } from './EditLogDrawer';
+import {
+  AdvancedFiltersPopover,
+  getAdvancedFilterLabel,
+  type AdvancedFilterId,
+} from './AdvancedFiltersPopover';
 import { OptimisingIABanner } from './OptimisingIABanner';
 import { SelectionActionBar } from './SelectionActionBar';
 import { mockRows } from '../data/mockAssortment';
 import type { AssortmentRow } from '../types';
+
+type AdvancedFiltersAnchorState = {
+  rect: DOMRect;
+  source: 'button' | 'tag';
+};
 
 const tabs = [
   { id: 'groups', label: 'Groups' },
@@ -108,7 +118,39 @@ export function MainContent() {
   const [focusView, setFocusView] = useState<FocusView>('all');
   const [statusTableFilter, setStatusTableFilter] = useState<StatusTableFilter>('all');
   const [productDrillPath, setProductDrillPath] = useState<{ id: string; label: string }[]>([]);
+  const [regionsDrillBreadcrumb, setRegionsDrillBreadcrumb] = useState<{
+    productHeaderLabel: string;
+    productValue: string;
+    locationHeaderLabel: string;
+    locationValue: string;
+  } | null>(null);
+  /** Table column groupings before opening regions drill (restored when user backs out via breadcrumb). */
+  const [regionsTableSnapshot, setRegionsTableSnapshot] = useState<{
+    productGrouping: string;
+    locationGrouping: string;
+  } | null>(null);
+  /** Breadcrumb after picking countries/locations from Location Type contextual drill */
+  const [locationTypeSubDrillBreadcrumb, setLocationTypeSubDrillBreadcrumb] =
+    useState<{ label: string } | null>(null);
+  /** Table headers when gray crumb applies (Product + Location Group). */
+  const [grayBreadcrumbHeaders, setGrayBreadcrumbHeaders] = useState<{
+    productGrouping: string;
+    locationGrouping: string;
+  } | null>(null);
+  /** Table headers in regions view (Product + Region). */
+  const [regionsBreadcrumbHeaders, setRegionsBreadcrumbHeaders] = useState<{
+    productGrouping: string;
+    locationGrouping: string;
+  } | null>(null);
   const [productColumnGrouping, setProductColumnGrouping] = useState('Product Group');
+  const [locationColumnGrouping, setLocationColumnGrouping] = useState('Location Group');
+
+  const restoreRegionsSnapshot = () => {
+    if (!regionsTableSnapshot) return;
+    setProductColumnGrouping(regionsTableSnapshot.productGrouping);
+    setLocationColumnGrouping(regionsTableSnapshot.locationGrouping);
+    setRegionsTableSnapshot(null);
+  };
   const [isolateRowId, setIsolateRowId] = useState<string | null>(null);
   const [optimisingBannerVisible, setOptimisingBannerVisible] = useState(false);
   const [optimisingBannerDismissed, setOptimisingBannerDismissed] = useState(false);
@@ -117,6 +159,21 @@ export function MainContent() {
   const [showRecommendationsInTable, setShowRecommendationsInTable] = useState(false);
   const [commitSuccessBannerVisible, setCommitSuccessBannerVisible] = useState(false);
   const [editLogOpen, setEditLogOpen] = useState(false);
+  const [advancedFiltersAnchor, setAdvancedFiltersAnchor] =
+    useState<AdvancedFiltersAnchorState | null>(null);
+  const [advancedFilterIds, setAdvancedFilterIds] = useState<AdvancedFilterId[]>([]);
+  const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
+  const advancedFilterTagRef = useRef<HTMLDivElement>(null);
+
+  const toggleAdvancedFilter = (id: AdvancedFilterId) => {
+    setAdvancedFilterIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  useEffect(() => {
+    if (advancedFilterIds.length === 0) setAdvancedFiltersAnchor(null);
+  }, [advancedFilterIds.length]);
   const optimisingToSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSuccessGroupsCountRef = useRef<number>(0);
 
@@ -486,15 +543,82 @@ export function MainContent() {
               <span>Drafts</span>
             </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setEditLogOpen(true)}
-              className="ml-2 flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-[#f0f0f0] transition-colors"
-              aria-label="Edit Log"
-            >
-              <History size={16} className="shrink-0" />
-              Edit Log
-            </button>
+            <div className="ml-2 flex max-w-[min(100%,42rem)] flex-wrap items-center justify-end gap-2">
+              {advancedFilterIds.length > 0 && (
+                <div
+                  ref={advancedFilterTagRef}
+                  className="flex shrink-0 items-center rounded-md bg-[#e9eaeb] py-1.5 pl-3 pr-1"
+                  data-name="tokens"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdvancedFiltersAnchor((prev) => {
+                        const r = advancedFilterTagRef.current?.getBoundingClientRect();
+                        if (!r) return null;
+                        if (prev?.source === 'tag') return null;
+                        return { rect: r, source: 'tag' as const };
+                      });
+                    }}
+                    aria-expanded={Boolean(
+                      advancedFiltersAnchor?.source === 'tag'
+                    )}
+                    aria-haspopup="menu"
+                    className="flex min-w-0 max-w-[220px] items-center gap-1.5 border-0 bg-transparent py-0 pr-1 text-left text-xs font-semibold text-[#12171E] transition-opacity hover:opacity-80"
+                    aria-label="Open advanced filters"
+                  >
+                    <span className="truncate">
+                      Filters: {getAdvancedFilterLabel(advancedFilterIds[0])}
+                    </span>
+                    {advancedFilterIds.length > 1 && (
+                      <span className="shrink-0 font-semibold text-[#12171E]">{` +${advancedFilterIds.length - 1}`}</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAdvancedFilterIds([]);
+                      setAdvancedFiltersAnchor(null);
+                    }}
+                    className="ml-1 flex size-7 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-black/5"
+                    aria-label="Clear all filters"
+                  >
+                    <X size={16} strokeWidth={2} aria-hidden />
+                  </button>
+                </div>
+              )}
+              <button
+                ref={advancedFiltersBtnRef}
+                type="button"
+                onClick={() => {
+                  setAdvancedFiltersAnchor((prev) => {
+                    const r = advancedFiltersBtnRef.current?.getBoundingClientRect();
+                    if (!r) return null;
+                    if (prev?.source === 'button') return null;
+                    return { rect: r, source: 'button' as const };
+                  });
+                }}
+                aria-expanded={Boolean(
+                  advancedFiltersAnchor?.source === 'button'
+                )}
+                aria-haspopup="menu"
+                className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-slate-50 transition-colors"
+                aria-label="Advanced filters"
+              >
+                <Filter size={16} className="shrink-0" strokeWidth={2} aria-hidden />
+                Advanced filters
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditLogOpen(true)}
+                className="flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-[#f0f0f0] transition-colors"
+                aria-label="Edit Log"
+              >
+                <History size={16} className="shrink-0" />
+                Edit Log
+              </button>
+            </div>
           </div>
           {productDrillPath.length > 0 && (
             <nav
@@ -503,33 +627,130 @@ export function MainContent() {
             >
               <button
                 type="button"
-                onClick={() => setProductDrillPath([])}
+                onClick={() => {
+                  setProductDrillPath([]);
+                  setRegionsDrillBreadcrumb(null);
+                  setRegionsTableSnapshot(null);
+                  setLocationTypeSubDrillBreadcrumb(null);
+                  setGrayBreadcrumbHeaders(null);
+                  setRegionsBreadcrumbHeaders(null);
+                  setProductColumnGrouping('Product Group');
+                  setLocationColumnGrouping('Location Group');
+                }}
                 className="inline-flex h-[26px] shrink-0 items-center justify-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
               >
                 <Home size={14} className="shrink-0" aria-hidden />
                 Home
               </button>
-              {productDrillPath.map((crumb, i) => (
-                <span key={`${crumb.id}-${i}`} className="flex items-center gap-2">
+              {productDrillPath.map((crumb, i) => {
+                const isLastCrumb = i === productDrillPath.length - 1;
+                const hasRegionsTail = Boolean(regionsDrillBreadcrumb);
+                const lastCrumbAsWhite = isLastCrumb && hasRegionsTail;
+                return (
+                  <span
+                    key={`${crumb.id}-${i}`}
+                    className={`flex items-center gap-2 ${lastCrumbAsWhite && regionsDrillBreadcrumb ? 'min-w-0 flex-wrap' : ''}`}
+                  >
+                    <ChevronRight size={14} className="shrink-0 text-slate-400" aria-hidden />
+                    {i < productDrillPath.length - 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductDrillPath(productDrillPath.slice(0, i + 1));
+                          setRegionsDrillBreadcrumb(null);
+                          setLocationTypeSubDrillBreadcrumb(null);
+                          setRegionsBreadcrumbHeaders(null);
+                          restoreRegionsSnapshot();
+                        }}
+                        className="inline-flex h-[26px] shrink-0 max-w-[240px] items-center justify-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
+                      >
+                        <span className="truncate">{crumb.label}</span>
+                      </button>
+                    ) : lastCrumbAsWhite && regionsDrillBreadcrumb ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (grayBreadcrumbHeaders) {
+                              setProductColumnGrouping(grayBreadcrumbHeaders.productGrouping);
+                              setLocationColumnGrouping(grayBreadcrumbHeaders.locationGrouping);
+                            }
+                            setRegionsDrillBreadcrumb(null);
+                            setRegionsTableSnapshot(null);
+                            setRegionsBreadcrumbHeaders(null);
+                          }}
+                          className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-left font-normal text-[#00050a] transition-colors hover:bg-slate-100"
+                          title={
+                            grayBreadcrumbHeaders
+                              ? `Stored headers: ${grayBreadcrumbHeaders.productGrouping}, ${grayBreadcrumbHeaders.locationGrouping}. Click to leave Region view.`
+                              : undefined
+                          }
+                          data-stored-product-header={grayBreadcrumbHeaders?.productGrouping}
+                          data-stored-location-header={grayBreadcrumbHeaders?.locationGrouping}
+                          aria-current="page"
+                        >
+                          <span className="line-clamp-2 text-xs leading-snug">
+                            {crumb.label}
+                          </span>
+                        </button>
+                        <ChevronRight
+                          size={14}
+                          className="shrink-0 text-slate-400"
+                          aria-hidden
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRegionsDrillBreadcrumb(null);
+                            setLocationTypeSubDrillBreadcrumb(null);
+                            setRegionsBreadcrumbHeaders(null);
+                            restoreRegionsSnapshot();
+                          }}
+                          className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-2 text-left font-normal text-[#00050a] transition-colors hover:bg-slate-50"
+                          title={
+                            regionsTableSnapshot && regionsBreadcrumbHeaders
+                              ? `Stored: ${regionsBreadcrumbHeaders.productGrouping} + ${regionsBreadcrumbHeaders.locationGrouping}. Back to ${regionsTableSnapshot.productGrouping} + ${regionsTableSnapshot.locationGrouping}.`
+                              : regionsTableSnapshot
+                                ? `Back to ${regionsTableSnapshot.productGrouping} + ${regionsTableSnapshot.locationGrouping}`
+                                : 'Back — restore column headers before Region'
+                          }
+                          data-stored-product-header={regionsBreadcrumbHeaders?.productGrouping}
+                          data-stored-location-header={regionsBreadcrumbHeaders?.locationGrouping}
+                        >
+                          <span className="line-clamp-2 text-xs leading-snug">
+                            {`${regionsDrillBreadcrumb.productHeaderLabel}: ${regionsDrillBreadcrumb.productValue} | ${regionsDrillBreadcrumb.locationHeaderLabel}: ${regionsDrillBreadcrumb.locationValue}`}
+                          </span>
+                        </button>
+                      </>
+                    ) : (
+                      <span
+                        className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 font-normal text-[#00050a]"
+                        aria-current="page"
+                      >
+                        <span className="line-clamp-2 text-left text-xs leading-snug">{crumb.label}</span>
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+              {locationTypeSubDrillBreadcrumb && productDrillPath.length > 0 && (
+                <span className="flex items-center gap-2">
                   <ChevronRight size={14} className="shrink-0 text-slate-400" aria-hidden />
-                  {i < productDrillPath.length - 1 ? (
-                    <button
-                      type="button"
-                      onClick={() => setProductDrillPath(productDrillPath.slice(0, i + 1))}
-                      className="inline-flex h-[26px] shrink-0 max-w-[240px] items-center justify-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
-                    >
-                      <span className="truncate">{crumb.label}</span>
-                    </button>
-                  ) : (
-                    <span
-                      className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 font-normal text-[#00050a]"
-                      aria-current="page"
-                    >
-                      <span className="line-clamp-2 text-left text-xs leading-snug">{crumb.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocationColumnGrouping('Location Type');
+                      setLocationTypeSubDrillBreadcrumb(null);
+                    }}
+                    className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-left font-normal text-[#00050a] transition-colors hover:bg-slate-50"
+                    title="Back to Location Type grouping"
+                  >
+                    <span className="line-clamp-2 text-xs leading-snug">
+                      {locationTypeSubDrillBreadcrumb.label}
                     </span>
-                  )}
+                  </button>
                 </span>
-              ))}
+              )}
             </nav>
           )}
         </div>
@@ -540,6 +761,8 @@ export function MainContent() {
               rows={tableRows}
               productGrouping={productColumnGrouping}
               onProductGroupingChange={setProductColumnGrouping}
+              locationGrouping={locationColumnGrouping}
+              onLocationGroupingChange={setLocationColumnGrouping}
               productDrillDownActive={productDrillPath.length > 0}
               onSelectRow={onSelectRow}
               onSelectAll={onSelectAll}
@@ -576,7 +799,18 @@ export function MainContent() {
               statusTableFilter={statusTableFilter}
               onStatusTableFilterChange={setStatusTableFilter}
               onProductDrillDimensionSelect={(dimensionId, ctx) => {
-                setProductColumnGrouping(getProductDimensionLabel(dimensionId));
+                setRegionsDrillBreadcrumb(null);
+                setRegionsTableSnapshot(null);
+                setRegionsBreadcrumbHeaders(null);
+                setLocationTypeSubDrillBreadcrumb(null);
+                const nextProduct = getProductDimensionLabel(dimensionId);
+                if (ctx) {
+                  setGrayBreadcrumbHeaders({
+                    productGrouping: nextProduct,
+                    locationGrouping: locationColumnGrouping,
+                  });
+                }
+                setProductColumnGrouping(nextProduct);
                 setProductDrillPath((prev) => [
                   ...prev,
                   {
@@ -586,6 +820,41 @@ export function MainContent() {
                       : getProductDimensionLabel(dimensionId),
                   },
                 ]);
+              }}
+              onLocationRegionsDrill={({
+                productGroupingBefore,
+                locationGroupingBefore,
+                productHeaderLabel,
+                productValue,
+                locationHeaderLabel,
+                locationValue,
+              }) => {
+                setLocationTypeSubDrillBreadcrumb(null);
+                setRegionsTableSnapshot({
+                  productGrouping: productGroupingBefore,
+                  locationGrouping: locationGroupingBefore,
+                });
+                setRegionsBreadcrumbHeaders({
+                  productGrouping: productGroupingBefore,
+                  locationGrouping: 'Region',
+                });
+                setRegionsDrillBreadcrumb({
+                  productHeaderLabel,
+                  productValue,
+                  locationHeaderLabel,
+                  locationValue,
+                });
+              }}
+              onLocationTypeSubDrill={({
+                choiceLabel,
+                productValue,
+                locationTypeValue,
+              }) => {
+                setRegionsDrillBreadcrumb(null);
+                setRegionsTableSnapshot(null);
+                setLocationTypeSubDrillBreadcrumb({
+                  label: `product: ${productValue} | location type: ${locationTypeValue} → ${choiceLabel}`,
+                });
               }}
             />
           </div>
@@ -605,9 +874,18 @@ export function MainContent() {
           onUnassort={onUnassort}
           onAssortToMax={(row) => onAssortSelection([row])}
           onUnassortToZero={(row) => onUnassortSelection([row])}
-          onScheduledAssortmentDateChange={(rowId, date) =>
+          onScheduledAssortmentScheduleChange={(rowId, field, value) =>
             setRows((prev) =>
-              prev.map((r) => (r.id === rowId ? { ...r, scheduledAssortmentDate: date || undefined } : r))
+              prev.map((r) =>
+                r.id === rowId
+                  ? {
+                      ...r,
+                      ...(field === 'start'
+                        ? { scheduledAssortmentStart: value || undefined }
+                        : { scheduledAssortmentFinish: value || undefined }),
+                    }
+                  : r
+              )
             )
           }
           onAssortmentCancelDraft={() => {
@@ -650,6 +928,20 @@ export function MainContent() {
         onCommit={onCommit}
         onRevert={onRevert}
       />
+
+      {advancedFiltersAnchor && (
+        <AdvancedFiltersPopover
+          anchorRect={advancedFiltersAnchor.rect}
+          triggerRefs={[advancedFiltersBtnRef, advancedFilterTagRef]}
+          selectedIds={advancedFilterIds}
+          onToggle={toggleAdvancedFilter}
+          onClearAll={() => {
+            setAdvancedFilterIds([]);
+            setAdvancedFiltersAnchor(null);
+          }}
+          onClose={() => setAdvancedFiltersAnchor(null)}
+        />
+      )}
     </main>
   );
 }

@@ -1,27 +1,43 @@
 import { useEffect, useRef } from 'react';
 
-const DIMENSIONS = [
-  { id: 'location', label: 'Location', primary: false },
-  { id: 'country', label: 'Country', primary: true },
-  { id: 'location-type', label: 'Location Type', primary: false },
-  { id: 'region', label: 'Region', primary: false },
-  { id: 'location-group', label: 'Location Group', primary: false },
-  { id: 'location-cluster', label: 'Location Cluster', primary: false },
+/** Same order as design: Location → Country → Location Type → Region → Location Group → Location Cluster */
+export const LOCATION_DIMENSION_MENU = [
+  { id: 'location', label: 'Location' },
+  { id: 'country', label: 'Country' },
+  { id: 'location-type', label: 'Location Type' },
+  { id: 'region', label: 'Region' },
+  { id: 'location-group', label: 'Location Group' },
+  { id: 'location-cluster', label: 'Location Cluster' },
+] as const;
+
+const LOCATION_TYPE_DRILL_OPTIONS = [
+  { id: 'region', label: 'regions' },
+  { id: 'country', label: 'countries' },
+  { id: 'location', label: 'locations' },
 ] as const;
 
 const GAP = 4;
 const MIN_WIDTH = 200;
+const MIN_WIDTH_LOCATION_TYPE = 280;
 
 interface DrillDownLocationModalProps {
   anchorRect: DOMRect | null;
   onClose: () => void;
   onSelectDimension?: (id: string) => void;
+  /** When Location header is "Location Type", show contextual drill (product + location type + regions/countries/locations). */
+  locationTypeDrill?: boolean;
+  /** Same as product column primary for this row (e.g. Cargo pants, Mens). */
+  productColumnTitle?: string;
+  locationTypeName?: string;
 }
 
 export function DrillDownLocationModal({
   anchorRect,
   onClose,
   onSelectDimension,
+  locationTypeDrill = false,
+  productColumnTitle = '',
+  locationTypeName = '',
 }: DrillDownLocationModalProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +67,12 @@ export function DrillDownLocationModal({
 
   const viewportW = typeof window !== 'undefined' ? window.innerWidth : 0;
   const viewportH = typeof window !== 'undefined' ? window.innerHeight : 0;
-  const minW = Math.max(anchorRect.width, MIN_WIDTH);
+  const useLocationTypeUi =
+    locationTypeDrill && productColumnTitle && locationTypeName;
+  const minW = Math.max(
+    anchorRect.width,
+    useLocationTypeUi ? MIN_WIDTH_LOCATION_TYPE : MIN_WIDTH
+  );
   let left = anchorRect.right + GAP;
   if (left + minW > viewportW - 16) {
     left = Math.max(8, anchorRect.left - minW - GAP);
@@ -63,7 +84,7 @@ export function DrillDownLocationModal({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-[70] max-h-[min(320px,85vh)] overflow-y-auto rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
+      className="fixed z-[70] max-h-[min(360px,85vh)] overflow-y-auto rounded-[2px] border border-[#e9eaeb] bg-white shadow-lg"
       style={{
         top: `${top}px`,
         left: `${left}px`,
@@ -71,25 +92,49 @@ export function DrillDownLocationModal({
         maxHeight: `${maxHeight}px`,
       }}
       role="menu"
-      aria-label="Drill down location dimension"
+      aria-label={useLocationTypeUi ? 'Show locations by scope' : 'Location'}
     >
-      <span className="sr-only">Drill down location dimension</span>
-      {DIMENSIONS.map(({ id, label, primary }) => (
-        <button
-          key={id}
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            onSelectDimension?.(id);
-            onClose();
-          }}
-          className={`flex w-full cursor-pointer items-center px-3 py-2 text-left text-sm transition-colors hover:opacity-90 ${
-            primary ? 'text-[#0267ff]' : 'text-[#12171E]'
-          }`}
-        >
-          {label}
-        </button>
-      ))}
+      {useLocationTypeUi ? (
+        <>
+          <div className="border-b border-[#e9eaeb] px-3 py-2.5 text-sm leading-snug text-[#00050a]">
+            For <span className="font-medium">{productColumnTitle}</span> and{' '}
+            <span className="font-medium">{locationTypeName}</span> show all:
+          </div>
+          <div className="py-1">
+            {LOCATION_TYPE_DRILL_OPTIONS.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onSelectDimension?.(id);
+                  onClose();
+                }}
+                className="flex w-full cursor-pointer items-center px-3 py-2.5 text-left text-sm font-normal lowercase leading-normal text-[#00050a] transition-colors hover:bg-slate-100"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="py-1">
+          {LOCATION_DIMENSION_MENU.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onSelectDimension?.(id);
+                onClose();
+              }}
+              className="flex w-full cursor-pointer items-center px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors hover:bg-slate-100"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

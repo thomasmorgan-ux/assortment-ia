@@ -25,8 +25,9 @@ export interface AssortmentRow {
   sumIaRecommendation?: number;
   /** Recommendation value shown below Avg IA after generating recommendations */
   avgIaRecommendation?: number;
-  /** Optional ISO date (YYYY-MM-DD) when assortment change is scheduled to take effect. Set from EditAllocationPanel. */
-  scheduledAssortmentDate?: string;
+  /** Optional schedule window (YYYY-MM-DD) for when assortment change applies. Set from EditAllocationPanel. */
+  scheduledAssortmentStart?: string;
+  scheduledAssortmentFinish?: string;
   /** Extra columns when product drill-down breadcrumb is active */
   productDrillMetrics?: {
     skuLocations: number;

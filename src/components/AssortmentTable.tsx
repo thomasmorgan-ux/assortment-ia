@@ -12,7 +12,7 @@ import {
   Calendar,
   GripVertical,
 } from 'lucide-react';
-import { DrillDownLocationModal } from './DrillDownLocationModal';
+import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
 import type { AssortmentRow, ModalKind } from '../types';
 
@@ -23,6 +23,66 @@ const PRODUCT_LEVEL_NAMES: Record<string, string[]> = {
   Kids: ['Hoodie', 'Graphic tee', 'Cargo shorts', 'Sneakers', 'Puffer jacket', 'Leggings', 'Rain jacket', 'Joggers'],
   Core: ['Essential tee', 'Slim denim', 'Crewneck sweater', 'Chino trousers', 'Oxford shirt', 'Bomber jacket', 'Knit polo', '5-pocket jeans'],
 };
+
+/** Matches Location Type drill column design (9-row cycle). */
+const LOCATION_TYPE_COLUMN_SEQUENCE = [
+  'Outlet',
+  'Flagship Store',
+  'Department Store',
+  'Flagship Store',
+  'Department Store',
+  'Outlet',
+  'Outlet',
+  'Flagship Store',
+  'Department Store',
+] as const;
+
+const REGION_COLUMN_NAMES = ['Europe', 'North America'] as const;
+
+function locationCellForGrouping(
+  row: AssortmentRow,
+  grouping: string,
+  rowIndex: number
+): { primary: string; secondary: string; subtitleChevron: boolean } {
+  if (grouping === 'Location Type') {
+    return {
+      primary: LOCATION_TYPE_COLUMN_SEQUENCE[rowIndex % LOCATION_TYPE_COLUMN_SEQUENCE.length],
+      secondary: 'location_type',
+      subtitleChevron: false,
+    };
+  }
+  if (grouping === 'Region') {
+    return {
+      primary: REGION_COLUMN_NAMES[rowIndex % REGION_COLUMN_NAMES.length],
+      secondary: 'region',
+      subtitleChevron: false,
+    };
+  }
+  return {
+    primary: row.locationCluster.name,
+    secondary: `${row.locationCluster.locationCount} locations`,
+    subtitleChevron: true,
+  };
+}
+
+const LOCATION_DRILL_ID_TO_GROUPING: Record<string, string> = Object.fromEntries(
+  LOCATION_DIMENSION_MENU.map((m) => [m.id, m.label])
+) as Record<string, string>;
+
+function formatAssortmentScheduleLabel(row: AssortmentRow): string | null {
+  const fmt = (iso: string) => {
+    const d = new Date(`${iso}T00:00:00`);
+    return Number.isNaN(d.getTime())
+      ? iso
+      : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  const s = row.scheduledAssortmentStart;
+  const f = row.scheduledAssortmentFinish;
+  if (s && f) return `${fmt(s)} – ${fmt(f)}`;
+  if (s) return `Starts ${fmt(s)}`;
+  if (f) return `Ends ${fmt(f)}`;
+  return null;
+}
 
 function productTitleForGrouping(row: AssortmentRow, grouping: string): { primary: string; secondary: string } {
   if (grouping !== 'Product') {
@@ -74,6 +134,25 @@ interface AssortmentTableProps {
   onProductGroupingChange?: (label: string) => void;
   /** After product drill-down (breadcrumb), show SKU / Min Qty / Inventory / Target / Forecast sales columns */
   productDrillDownActive?: boolean;
+  /** When user picks "regions" from Location Type location drill */
+  onLocationRegionsDrill?: (ctx: {
+    productGroupingBefore: string;
+    locationGroupingBefore: string;
+    /** Table header labels + cell values at drill time (breadcrumb). */
+    productHeaderLabel: string;
+    productValue: string;
+    locationHeaderLabel: string;
+    locationValue: string;
+  }) => void;
+  /** Location Type header: user picked countries/locations (not regions) from contextual drill */
+  onLocationTypeSubDrill?: (ctx: {
+    choiceId: 'country' | 'location';
+    choiceLabel: string;
+    productValue: string;
+    locationTypeValue: string;
+  }) => void;
+  locationGrouping?: string;
+  onLocationGroupingChange?: (label: string) => void;
 }
 
 export function AssortmentTable({
@@ -100,11 +179,19 @@ export function AssortmentTable({
   productGrouping: productGroupingProp,
   onProductGroupingChange,
   productDrillDownActive = false,
+  onLocationRegionsDrill,
+  onLocationTypeSubDrill,
+  locationGrouping: locationGroupingProp,
+  onLocationGroupingChange,
 }: AssortmentTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => r.selected);
   const [drillDownAnchor, setDrillDownAnchor] = useState<DOMRect | null>(null);
   const [productDrillSourceRow, setProductDrillSourceRow] = useState<AssortmentRow | null>(null);
   const [locationDrillDownAnchor, setLocationDrillDownAnchor] = useState<DOMRect | null>(null);
+  const [locationDrillSource, setLocationDrillSource] = useState<{
+    rowId: string;
+    rowIndex: number;
+  } | null>(null);
   const [productGroupDropdownOpen, setProductGroupDropdownOpen] = useState(false);
   const [productGroupingLocal, setProductGroupingLocal] = useState('Product Group');
   const productGrouping =
@@ -115,7 +202,13 @@ export function AssortmentTable({
   };
   const productGroupDropdownRef = useRef<HTMLDivElement>(null);
   const [locationGroupDropdownOpen, setLocationGroupDropdownOpen] = useState(false);
-  const [locationGrouping, setLocationGrouping] = useState('Location Group');
+  const [locationGroupingLocal, setLocationGroupingLocal] = useState('Location Group');
+  const locationGrouping =
+    locationGroupingProp !== undefined ? locationGroupingProp : locationGroupingLocal;
+  const setLocationGrouping = (label: string) => {
+    onLocationGroupingChange?.(label);
+    if (locationGroupingProp === undefined) setLocationGroupingLocal(label);
+  };
   const locationGroupDropdownRef = useRef<HTMLDivElement>(null);
 
   const PRODUCT_GROUPING_OPTIONS = [
@@ -129,8 +222,6 @@ export function AssortmentTable({
     'Gender',
     'Product Group',
   ];
-  const LOCATION_GROUPING_OPTIONS = ['Region', 'Country', 'Location', 'Location Type', 'Location Group'];
-
   useEffect(() => {
     if (!productGroupDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -175,7 +266,7 @@ export function AssortmentTable({
                   />
                 </label>
               </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left">
+              <th className="h-12 min-h-[48px] min-w-[170px] px-4 py-3 text-left">
                 <div className="relative inline-block" ref={productGroupDropdownRef}>
                   <button
                     type="button"
@@ -207,7 +298,7 @@ export function AssortmentTable({
                   )}
                 </div>
               </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left">
+              <th className="h-12 min-h-[48px] min-w-[170px] px-4 py-3 text-left">
                 <div className="relative inline-block" ref={locationGroupDropdownRef}>
                   <button
                     type="button"
@@ -219,20 +310,22 @@ export function AssortmentTable({
                   </button>
                   {locationGroupDropdownOpen && (
                     <div className="absolute left-0 top-full z-[70] mt-1 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
-                      {LOCATION_GROUPING_OPTIONS.map((opt) => (
+                      {LOCATION_DIMENSION_MENU.map(({ id, label }) => (
                         <button
-                          key={opt}
+                          key={id}
                           type="button"
                           onClick={() => {
-                            setLocationGrouping(opt);
+                            setLocationGrouping(label);
                             setLocationGroupDropdownOpen(false);
                           }}
-                          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors hover:bg-slate-100 ${
-                            locationGrouping === opt ? 'bg-slate-100' : ''
+                          className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors hover:bg-slate-100 ${
+                            locationGrouping === label ? 'bg-slate-100' : ''
                           }`}
                         >
-                          {opt}
-                          {locationGrouping === opt && <Check size={14} className="shrink-0 text-[#00050a]" />}
+                          {label}
+                          {locationGrouping === label && (
+                            <Check size={14} className="shrink-0 text-[#00050a]" />
+                          )}
                         </button>
                       ))}
                     </div>
@@ -349,7 +442,7 @@ export function AssortmentTable({
               </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {rows.map((row, rowIndex) => {
               const drillM = productDrillDownActive
                 ? row.productDrillMetrics ?? {
                     skuLocations: row.productGroup.productCount * row.locationCluster.locationCount,
@@ -360,6 +453,8 @@ export function AssortmentTable({
                   }
                 : null;
               const productCell = productTitleForGrouping(row, productGrouping);
+              const locationCell = locationCellForGrouping(row, locationGrouping, rowIndex);
+              const scheduleLabel = formatAssortmentScheduleLabel(row);
               return (
               <tr
                 key={row.id}
@@ -385,20 +480,22 @@ export function AssortmentTable({
                     </button>
                   </div>
                 </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle group relative">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      setProductDrillSourceRow(row);
-                      setDrillDownAnchor(e.currentTarget.getBoundingClientRect());
-                    }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-slate-500 hover:bg-slate-100 hover:opacity-80 transition-all"
-                    aria-label="Drill down product dimension"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-                      <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="#A6AAAF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                <td className="min-h-[72px] min-w-[170px] py-3 px-4 align-middle group relative">
+                  {locationGrouping !== 'Region' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        setProductDrillSourceRow(row);
+                        setDrillDownAnchor(e.currentTarget.getBoundingClientRect());
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-slate-500 hover:bg-slate-100 hover:opacity-80 transition-all"
+                      aria-label="Drill down product dimension"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
+                        <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="#A6AAAF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
                   <div>
                     <div className="text-sm font-medium text-slate-900">
                       {productCell.primary}
@@ -411,26 +508,39 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle group relative">
-                  <button
-                    type="button"
-                    onClick={(e) => setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect())}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-slate-500 hover:bg-slate-100 hover:opacity-80 transition-all"
-                    aria-label="Drill down location dimension"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-                      <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="#A6AAAF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                <td className="min-h-[72px] min-w-[170px] py-3 px-4 align-middle group relative">
+                  {locationGrouping !== 'Region' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        setLocationDrillSource({ rowId: row.id, rowIndex });
+                        setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect());
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0.5 rounded text-slate-500 hover:bg-slate-100 hover:opacity-80 transition-all"
+                      aria-label="Drill down location dimension"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
+                        <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="#A6AAAF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
                   <div className="flex items-start gap-2">
                     <MapPin size={12} className="text-slate-400 mt-1 shrink-0" />
                     <div>
-                      <div className="text-sm font-medium text-slate-900">
-                        {row.locationCluster.name}
-                      </div>
+                      <div className="text-sm font-medium text-slate-900">{locationCell.primary}</div>
                       <div className="flex items-center gap-1 text-xs text-slate-500">
-                        {row.locationCluster.locationCount} locations
-                        <ChevronDown size={12} className="text-slate-400 shrink-0" />
+                        <span
+                          className={
+                            locationGrouping === 'Location Type' || locationGrouping === 'Region'
+                              ? 'font-mono text-[11px] text-slate-500'
+                              : ''
+                          }
+                        >
+                          {locationCell.secondary}
+                        </span>
+                        {locationCell.subtitleChevron && (
+                          <ChevronDown size={12} className="text-slate-400 shrink-0" />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -507,7 +617,7 @@ export function AssortmentTable({
                     {drillM.skuLocations}
                   </td>
                 )}
-                <td className="min-h-[72px] py-3 px-4 align-middle group relative">
+                <td className="min-h-[72px] min-w-0 py-3 px-4 align-middle group relative">
                   <button
                     type="button"
                     onClick={() => onEditRow?.(row, 'assortment')}
@@ -527,15 +637,15 @@ export function AssortmentTable({
                       />
                     )}
                   <div
-                    className={
+                    className={`min-w-0 max-w-full ${
                       row.hasPendingChanges &&
                       row.lastCommittedSnapshot &&
                       row.lastCommittedSnapshot.assortment.assortedCount !== row.assortment.assortedCount
                         ? 'pl-[18px]'
                         : ''
-                    }
+                    }`}
                   >
-                    <div>
+                    <div className="min-w-0 max-w-full">
                       {row.hasPendingChanges && row.lastCommittedSnapshot && (
                         <div className="mb-1 text-xs font-medium text-[#4B535C]">
                           {row.lastCommittedSnapshot.assortment.assortedCount} → {row.assortment.assortedCount}/{row.assortment.totalCount} Assorted
@@ -549,16 +659,14 @@ export function AssortmentTable({
                           /{row.assortment.totalCount} Assorted
                         </span>
                       </div>
-                      {row.scheduledAssortmentDate && (
-                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-600">
+                      {scheduleLabel && (
+                        <div className="mt-1.5 flex w-full min-w-0 items-center gap-1.5 text-xs text-slate-600">
                           <Calendar size={12} className="shrink-0 text-slate-500" aria-hidden />
-                          <span>
-                            {(() => {
-                              const d = new Date(row.scheduledAssortmentDate + 'T00:00:00');
-                              return Number.isNaN(d.getTime())
-                                ? row.scheduledAssortmentDate
-                                : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                            })()}
+                          <span
+                            className="min-w-0 max-w-[50%] truncate"
+                            title={scheduleLabel}
+                          >
+                            {scheduleLabel}
                           </span>
                         </div>
                       )}
@@ -705,7 +813,68 @@ export function AssortmentTable({
           setProductDrillSourceRow(null);
         }}
       />
-      <DrillDownLocationModal anchorRect={locationDrillDownAnchor} onClose={() => setLocationDrillDownAnchor(null)} />
+      {(() => {
+        const drillRow =
+          locationDrillSource && rows.find((r) => r.id === locationDrillSource.rowId);
+        const useTypeDrill =
+          locationGrouping === 'Location Type' && drillRow && locationDrillSource;
+        return (
+          <DrillDownLocationModal
+            anchorRect={locationDrillDownAnchor}
+            locationTypeDrill={Boolean(useTypeDrill)}
+            productColumnTitle={
+              drillRow ? productTitleForGrouping(drillRow, productGrouping).primary : ''
+            }
+            locationTypeName={
+              useTypeDrill
+                ? locationCellForGrouping(drillRow, 'Location Type', locationDrillSource.rowIndex)
+                    .primary
+                : ''
+            }
+            onClose={() => {
+              setLocationDrillDownAnchor(null);
+              setLocationDrillSource(null);
+            }}
+            onSelectDimension={(id) => {
+              if (useTypeDrill && drillRow && locationDrillSource) {
+                if (id === 'region') {
+                  onLocationRegionsDrill?.({
+                    productGroupingBefore: productGrouping,
+                    locationGroupingBefore: locationGrouping,
+                    productHeaderLabel: productGrouping,
+                    productValue: productTitleForGrouping(
+                      drillRow,
+                      productGrouping
+                    ).primary,
+                    locationHeaderLabel: locationGrouping,
+                    locationValue: locationCellForGrouping(
+                      drillRow,
+                      locationGrouping,
+                      locationDrillSource.rowIndex
+                    ).primary,
+                  });
+                } else if (id === 'country' || id === 'location') {
+                  onLocationTypeSubDrill?.({
+                    choiceId: id,
+                    choiceLabel: id === 'country' ? 'countries' : 'locations',
+                    productValue: productTitleForGrouping(
+                      drillRow,
+                      productGrouping
+                    ).primary,
+                    locationTypeValue: locationCellForGrouping(
+                      drillRow,
+                      'Location Type',
+                      locationDrillSource.rowIndex
+                    ).primary,
+                  });
+                }
+              }
+              const label = LOCATION_DRILL_ID_TO_GROUPING[id];
+              if (label) setLocationGrouping(label);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
