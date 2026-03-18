@@ -356,8 +356,10 @@ export function EditAllocationPanel({
                     const isExpanded = expandedRowId === r.id;
                     const dateId = `assortment-effective-date-${r.id}`;
                     return (
-                      <section
+                      <div
                         key={r.id}
+                        role="region"
+                        aria-label={`${r.productGroup.name}, ${r.locationCluster.name}`}
                         ref={(el) => {
                           sectionRefs.current[r.id] = el;
                         }}
@@ -469,7 +471,7 @@ export function EditAllocationPanel({
                             )}
                           </div>
                         )}
-                      </section>
+                      </div>
                     );
                   })}
                 </div>
