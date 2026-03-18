@@ -180,7 +180,7 @@ export function AssortmentTable({
                   <button
                     type="button"
                     onClick={() => setProductGroupDropdownOpen((o) => !o)}
-                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-3 text-sm font-medium leading-normal text-[#00050a] whitespace-nowrap hover:border-[#d1d5db] transition-colors"
+                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 text-xs font-medium leading-normal text-[#00050a] whitespace-nowrap hover:border-[#d1d5db] transition-colors"
                   >
                     <span className="shrink-0">{productGrouping}</span>
                     <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" />
@@ -212,7 +212,7 @@ export function AssortmentTable({
                   <button
                     type="button"
                     onClick={() => setLocationGroupDropdownOpen((o) => !o)}
-                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-3 text-sm font-medium leading-normal text-[#00050a] whitespace-nowrap hover:border-[#d1d5db] transition-colors"
+                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 text-xs font-medium leading-normal text-[#00050a] whitespace-nowrap hover:border-[#d1d5db] transition-colors"
                   >
                     <span className="shrink-0">{locationGrouping}</span>
                     <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" />
@@ -239,32 +239,32 @@ export function AssortmentTable({
                   )}
                 </div>
               </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">WH units</span>
               </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">WH IA%</span>
               </th>
               {!designOnly && (
-                <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+                <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                   <span className="inline-flex items-center gap-1">Sales</span>
                 </th>
               )}
               {productDrillDownActive && (
                 <>
-                  <th className="h-12 min-h-[48px] px-3 py-3 text-left text-sm font-medium text-[#00050a]">
+                  <th className="h-12 min-h-[48px] px-3 py-3 text-left text-xs font-medium text-[#00050a]">
                     <span className="inline-flex items-center gap-1.5">
                       <GripVertical className="h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
                       Min Qty
                     </span>
                   </th>
-                  <th className="h-12 min-h-[48px] px-3 py-3 text-left text-sm font-medium text-[#00050a]">
+                  <th className="h-12 min-h-[48px] px-3 py-3 text-left text-xs font-medium text-[#00050a]">
                     <span className="inline-flex items-center gap-1.5">
                       <GripVertical className="h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
                       Inventory
                     </span>
                   </th>
-                  <th className="h-12 min-h-[48px] px-3 py-3 text-left text-sm font-medium text-[#00050a]">
+                  <th className="h-12 min-h-[48px] px-3 py-3 text-left text-xs font-medium text-[#00050a]">
                     <span className="inline-flex items-start gap-1.5">
                       <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
                       <span className="leading-tight">
@@ -274,7 +274,7 @@ export function AssortmentTable({
                       </span>
                     </span>
                   </th>
-                  <th className="h-12 min-h-[48px] px-3 py-3 text-center text-sm font-medium text-[#00050a]">
+                  <th className="h-12 min-h-[48px] px-3 py-3 text-center text-xs font-medium text-[#00050a]">
                     <span className="inline-flex items-start justify-center gap-1.5">
                       <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
                       <span className="leading-tight text-left">
@@ -286,19 +286,19 @@ export function AssortmentTable({
                   </th>
                 </>
               )}
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">Store OH</span>
               </th>
               {!designOnly && (
-                <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+                <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                   <span className="inline-flex items-center gap-1">Sell Thru</span>
                 </th>
               )}
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">Forecast</span>
               </th>
               {productDrillDownActive && (
-                <th className="h-12 min-h-[48px] w-[108px] px-3 py-3 text-left text-sm font-medium text-[#00050a]">
+                <th className="h-12 min-h-[48px] w-[108px] px-3 py-3 text-left text-xs font-medium text-[#00050a]">
                   <span className="inline-flex items-start gap-1.5">
                     <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
                     <span className="leading-tight">
@@ -309,15 +309,15 @@ export function AssortmentTable({
                   </span>
                 </th>
               )}
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">Assortment <Pencil size={14} className="shrink-0 text-slate-400" /></span>
               </th>
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-sm font-medium text-[#00050a]">
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">Initial Allocation <Pencil size={14} className="shrink-0 text-slate-400" /></span>
               </th>
               <th className="h-12 min-h-[48px] min-w-[280px] px-4 py-3 text-left align-middle">
                 <div className="flex flex-nowrap items-center gap-2">
-                  <span className="shrink-0 text-sm font-semibold text-[#00050a]">Status:</span>
+                  <span className="shrink-0 text-xs font-semibold text-[#00050a]">Status:</span>
                   <div
                     className="inline-flex w-fit overflow-hidden rounded-[1000px] border border-[#e9eaeb] bg-white"
                     role="group"
@@ -400,7 +400,7 @@ export function AssortmentTable({
                     </svg>
                   </button>
                   <div>
-                    <div className="font-medium text-slate-900">
+                    <div className="text-sm font-medium text-slate-900">
                       {productCell.primary}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-slate-500">
@@ -425,7 +425,7 @@ export function AssortmentTable({
                   <div className="flex items-start gap-2">
                     <MapPin size={12} className="text-slate-400 mt-1 shrink-0" />
                     <div>
-                      <div className="font-medium text-slate-900">
+                      <div className="text-sm font-medium text-slate-900">
                         {row.locationCluster.name}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-slate-500">
@@ -437,13 +437,13 @@ export function AssortmentTable({
                 </td>
                 <td className="min-h-[72px] py-3 px-4 align-middle">
                   <div>
-                    <div className="font-medium text-slate-900">
+                    <div className="text-sm font-medium text-slate-900">
                       {row.whUnits.value}
                     </div>
                     <div className="text-xs text-slate-500">{row.whUnits.sub}</div>
                   </div>
                 </td>
-                <td className="min-h-[72px] py-3 px-4 align-middle text-slate-900 font-medium">
+                <td className="min-h-[72px] py-3 px-4 align-middle text-sm text-slate-900 font-medium">
                   {row.whUnits.value > 0
                     ? `${Math.round((row.sumIa / row.whUnits.value) * 100)}%`
                     : '0%'}
@@ -451,7 +451,7 @@ export function AssortmentTable({
                 {!designOnly && (
                   <td className="min-h-[72px] py-3 px-4 align-middle">
                     <div>
-                      <div className="font-medium text-slate-900">
+                      <div className="text-sm font-medium text-slate-900">
                         {row.sales.value}
                       </div>
                       <div className="text-xs text-slate-500">{row.sales.sub}</div>
@@ -474,13 +474,13 @@ export function AssortmentTable({
                     </td>
                   </>
                 )}
-                <td className="min-h-[72px] py-3 px-4 align-middle text-slate-900 font-medium">
+                <td className="min-h-[72px] py-3 px-4 align-middle text-sm text-slate-900 font-medium">
                   {row.storeOh}
                 </td>
                 {!designOnly && (
                   <td className="min-h-[72px] py-3 px-4 align-middle">
                     <div>
-                      <div className="font-medium text-slate-900">
+                      <div className="text-sm font-medium text-slate-900">
                         {row.sellThru.percent}%
                       </div>
                       <div className="mt-1 w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
@@ -494,7 +494,7 @@ export function AssortmentTable({
                 )}
                 <td className="min-h-[72px] py-3 px-4 align-middle">
                   <div>
-                    <div className="font-medium text-slate-900">
+                    <div className="text-sm font-medium text-slate-900">
                       {row.forecast.value}
                     </div>
                     <div className="text-xs text-slate-500">
@@ -598,7 +598,7 @@ export function AssortmentTable({
                     <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-slate-900">Item IA</span>
-                      <span className="font-medium text-slate-900">{row.sumIa}</span>
+                      <span className="text-sm font-medium text-slate-900">{row.sumIa}</span>
                     </div>
                     {showRecommendationBadge && row.sumIaRecommendation != null && (
                       <div className="group/reason relative inline-flex w-fit">
@@ -679,7 +679,7 @@ export function AssortmentTable({
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between gap-4 border-t border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-sm text-[#00050a]">
+      <div className="flex items-center justify-between gap-4 border-t border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-xs text-[#00050a]">
         <span>{rows.length} rows</span>
         <div className="flex items-center gap-1">
           <button type="button" className="flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-40" aria-label="Previous page" disabled>

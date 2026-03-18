@@ -125,7 +125,8 @@ export function EditAllocationPanel({
   const [view, setView] = useState<PanelView>('allocation');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(() => rows[0]?.id ?? null);
   const [headerAccordionExpanded, setHeaderAccordionExpanded] = useState(false);
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  /** HTMLElement so both <div> and <section> refs type-check (Vercel/Linux tsc). */
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [rowState, setRowState] = useState<Record<string, RowEditState>>(() =>
     Object.fromEntries(rows.map((r) => [r.id, getDefaultRowState(r)]))
   );
