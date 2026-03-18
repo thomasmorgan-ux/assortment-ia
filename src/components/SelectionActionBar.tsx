@@ -4,6 +4,7 @@ import { X, Sparkles, Check } from 'lucide-react';
 import type { AssortmentRow } from '../types';
 
 const ASSORT_ALL_TOOLTIP = 'Assort all selected to generate recommendations';
+const RECS_ALREADY_TOOLTIP = 'Recommendations already generated for the selected rows';
 const INITIAL_ALLOC_TOOLTIP = 'Assort all selected to initial allocation';
 
 interface SelectionActionBarProps {
@@ -54,10 +55,14 @@ export function SelectionActionBar({
   const allSelectedUnassorted = selectedRows.every(
     (r) => r.assortment.assortedCount === 0
   );
+  const allSelectedHaveRecommendations =
+    selectedRows.length > 0 && selectedRows.every((r) => r.sumIaRecommendation != null);
+  const generateRecsDisabled = !allSelectedAssorted || allSelectedHaveRecommendations;
+
   const [generateRecsTooltipVisible, setGenerateRecsTooltipVisible] = useState(false);
   const [tooltipRect, setTooltipRect] = useState<DOMRect | null>(null);
   const generateRecsRef = useRef<HTMLSpanElement>(null);
-  const showGenerateRecsTooltip = !allSelectedAssorted && generateRecsTooltipVisible;
+  const showGenerateRecsTooltip = generateRecsDisabled && generateRecsTooltipVisible;
 
   const [initialAllocTooltipVisible, setInitialAllocTooltipVisible] = useState(false);
   const [initialAllocTooltipRect, setInitialAllocTooltipRect] = useState<DOMRect | null>(null);
@@ -65,7 +70,7 @@ export function SelectionActionBar({
   const showInitialAllocTooltip = !allSelectedAssorted && initialAllocTooltipVisible;
 
   const handleGenerateRecsMouseEnter = () => {
-    if (allSelectedAssorted) return;
+    if (!generateRecsDisabled) return;
     const el = generateRecsRef.current;
     if (el) setTooltipRect(el.getBoundingClientRect());
     setGenerateRecsTooltipVisible(true);
@@ -147,7 +152,7 @@ export function SelectionActionBar({
           <button
             type="button"
             onClick={onGenerateRecommendations}
-            disabled={!allSelectedAssorted}
+            disabled={generateRecsDisabled}
             className="inline-flex h-10 items-center justify-center gap-2 px-4 py-0 text-base font-medium leading-normal text-white whitespace-nowrap transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               borderRadius: 'var(--Tokens-Border-s, 4px)',
@@ -155,7 +160,13 @@ export function SelectionActionBar({
               background: 'var(--Tokens-Background, #12171E)',
             }}
             aria-label="Generate Recommendations"
-            title={allSelectedAssorted ? undefined : ASSORT_ALL_TOOLTIP}
+            title={
+              generateRecsDisabled
+                ? !allSelectedAssorted
+                  ? ASSORT_ALL_TOOLTIP
+                  : RECS_ALREADY_TOOLTIP
+                : undefined
+            }
           >
             <Sparkles size={16} className="shrink-0" />
             Generate Recommendations
@@ -173,7 +184,7 @@ export function SelectionActionBar({
                 }}
                 role="tooltip"
               >
-                {ASSORT_ALL_TOOLTIP}
+                {!allSelectedAssorted ? ASSORT_ALL_TOOLTIP : RECS_ALREADY_TOOLTIP}
                 <span
                   className="absolute left-1/2 top-full -translate-x-1/2 border-[6px] border-transparent border-t-[#1e293b]"
                   aria-hidden

@@ -27,9 +27,9 @@ interface EditAllocationPanelProps {
   onAssortToMax?: (row: AssortmentRow) => void;
   /** When set, Assortment section Unassort button sets row to 0 assorted. */
   onUnassortToZero?: (row: AssortmentRow) => void;
-  /** When set (assortment view), schedule date input is controlled and this is called on change. */
-  scheduledAssortmentDate?: string;
   onScheduledAssortmentDateChange?: (rowId: string, date: string) => void;
+  /** Assortment drawer: Cancel draft reverts panel rows to last commit and closes. */
+  onAssortmentCancelDraft?: () => void;
 }
 
 type RowEditState = { method: AllocationMethod; totalIaInput: string };
@@ -55,6 +55,29 @@ const topProductsMock: { metric: string; committed: number | string; current: st
   { metric: 'Top Product 2', committed: 0, current: '5 Black T-shirt in Bordeaux' },
   { metric: 'Top Product 3', committed: 0, current: '10 Green Coats in Nice' },
 ];
+
+/** Same Impact Summary shape as Initial Allocation panel, for assortment drawer (single row). */
+function buildAssortmentImpactSummaryRows(r: AssortmentRow): { metric: string; committed: number | string; current: string }[] {
+  const committedIa = r.lastCommittedSnapshot?.sumIa ?? r.sumIa;
+  const currentIa = r.sumIa;
+  const totalLocation = r.productGroup.productCount * r.locationCluster.locationCount;
+  const wh = r.whUnits.value;
+  return [
+    { metric: 'Total Allocation', committed: committedIa, current: String(currentIa) },
+    { metric: 'Warehouse metrics', committed: wh, current: String(wh - currentIa) },
+    {
+      metric: 'Products affected',
+      committed: committedIa > 0 ? r.productGroup.productCount : 0,
+      current: String(r.productGroup.productCount),
+    },
+    {
+      metric: 'Locations affected',
+      committed: committedIa > 0 ? r.locationCluster.locationCount : 0,
+      current: String(r.locationCluster.locationCount),
+    },
+    { metric: 'Total location', committed: committedIa > 0 ? totalLocation : 0, current: String(totalLocation) },
+  ];
+}
 
 function SummaryTable({
   rows,
@@ -95,15 +118,13 @@ export function EditAllocationPanel({
   onUnassort,
   onAssortToMax,
   onUnassortToZero,
-  scheduledAssortmentDate,
   onScheduledAssortmentDateChange,
+  onAssortmentCancelDraft,
 }: EditAllocationPanelProps) {
   const isInitialAllocation = openFrom === 'initial-allocation';
   const [view, setView] = useState<PanelView>('allocation');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(() => rows[0]?.id ?? null);
   const [headerAccordionExpanded, setHeaderAccordionExpanded] = useState(false);
-  /** When true, schedule date input is enabled (user has clicked Assort in this session). */
-  const [scheduleDateUnlocked, setScheduleDateUnlocked] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [rowState, setRowState] = useState<Record<string, RowEditState>>(() =>
     Object.fromEntries(rows.map((r) => [r.id, getDefaultRowState(r)]))
@@ -121,11 +142,6 @@ export function EditAllocationPanel({
     setExpandedRowId((prev) => (rows.some((r) => r.id === prev) ? prev : rows[0]?.id ?? null));
   }, [rowIdList]);
 
-  const assortmentRowId = openFrom === 'assortment' ? rows[0]?.id : null;
-  useEffect(() => {
-    if (assortmentRowId != null) setScheduleDateUnlocked(false);
-  }, [assortmentRowId]);
-
   const updateRowState = (id: string, patch: Partial<RowEditState>) => {
     setRowState((prev) => ({ ...prev, [id]: { ...(prev[id] ?? getDefaultRowState(rows.find((r) => r.id === id)!)), ...patch } }));
   };
@@ -142,6 +158,20 @@ export function EditAllocationPanel({
   };
 
   const singleRow = rows.length === 1 ? rows[0] : null;
+
+  /** Initial allocation impact: warehouse pool across selection; current = pool minus sum of entered IA per row. */
+  const warehouseCommittedAcrossSelection = isInitialAllocation
+    ? rows.reduce((sum, r) => sum + r.whUnits.value, 0)
+    : 0;
+  const totalCurrentIaAcrossSelection = isInitialAllocation
+    ? rows.reduce((sum, r) => {
+        const st = rowState[r.id] ?? getDefaultRowState(r);
+        const cv =
+          st.method === 'recommendation' ? (r.sumIaRecommendation ?? totalIaNum(st)) : totalIaNum(st);
+        return sum + cv;
+      }, 0)
+    : 0;
+  const warehouseCurrentIaAggregate = warehouseCommittedAcrossSelection - totalCurrentIaAcrossSelection;
 
   return (
     <>
@@ -178,7 +208,9 @@ export function EditAllocationPanel({
               >
                 {view === 'edit-log'
                   ? 'Edit Log'
-                  : 'Editing allocation for:'}
+                  : openFrom === 'assortment'
+                    ? 'Editing assortment for:'
+                    : 'Editing allocation for:'}
               </h2>
               {view !== 'edit-log' && (
                 <div className="mt-1 flex flex-col gap-0.5">
@@ -315,59 +347,213 @@ export function EditAllocationPanel({
           </div>
         ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5">
-          {/* Assortment – only when opened from Assortment column */}
-          {openFrom === 'assortment' && singleRow && ((onAssortToMax ?? onAssort) || (onUnassortToZero ?? onUnassort)) && (
-            <section>
-              <h3 className="mb-3 text-sm font-semibold text-[#000000]">Assortment</h3>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-sm text-[#000000]">
-                  <span className={singleRow.hasPendingChanges ? 'font-medium text-amber-600' : ''}>
-                    {singleRow.assortment.assortedCount}
-                  </span>
-                  <span>/{singleRow.assortment.totalCount} Assorted</span>
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onAssortToMax) onAssortToMax(singleRow);
-                      else onAssort?.(singleRow);
-                      setScheduleDateUnlocked(true);
-                    }}
-                    disabled={singleRow.assortment.assortedCount >= singleRow.assortment.totalCount}
-                    className="px-2 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Assort
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => (onUnassortToZero ? onUnassortToZero(singleRow) : onUnassort?.(singleRow))}
-                    disabled={singleRow.assortment.assortedCount <= 0}
-                    className="px-2 py-1 text-xs font-medium rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Unassort
-                  </button>
+          {/* Assortment – column edit (1 row) or multi-select Assort (accordion per row) */}
+          {openFrom === 'assortment' && ((onAssortToMax ?? onAssort) || (onUnassortToZero ?? onUnassort)) && (
+            <>
+              {rows.length > 1 ? (
+                <div className="flex flex-col gap-6">
+                  {rows.map((r) => {
+                    const isExpanded = expandedRowId === r.id;
+                    const dateId = `assortment-effective-date-${r.id}`;
+                    return (
+                      <section
+                        key={r.id}
+                        ref={(el) => {
+                          sectionRefs.current[r.id] = el;
+                        }}
+                        className="overflow-hidden rounded-lg border border-[#e9eaeb]"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setExpandedRowId((prev) => (prev === r.id ? null : r.id))}
+                          className="flex w-full items-center justify-between gap-2 bg-white px-4 py-3 text-left transition-colors hover:bg-slate-50"
+                        >
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                            {r.hasPendingChanges && (
+                              <span
+                                className="h-2.5 w-2.5 shrink-0 rounded-full border border-[#f29a35]"
+                                style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
+                                title="Pending changes"
+                                aria-hidden
+                              />
+                            )}
+                            <span className="min-w-0 text-sm font-semibold text-[#000000]">
+                              {r.productGroup.name} – {r.locationCluster.name} · {r.productGroup.productCount}{' '}
+                              products – {r.locationCluster.locationCount} locations
+                            </span>
+                          </div>
+                          {isExpanded ? (
+                            <ChevronDown size={18} className="shrink-0 text-slate-500" />
+                          ) : (
+                            <ChevronRight size={18} className="shrink-0 text-slate-500" />
+                          )}
+                        </button>
+                        {isExpanded && (
+                          <div className="border-t border-[#e9eaeb] p-4">
+                            <h4 className="mb-3 text-sm font-semibold text-[#000000]">Assortment</h4>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="text-sm text-[#000000]">
+                                <span className={r.hasPendingChanges ? 'font-medium text-amber-600' : ''}>
+                                  {r.assortment.assortedCount}
+                                </span>
+                                <span>/{r.assortment.totalCount} Assorted</span>
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (onAssortToMax) onAssortToMax(r);
+                                    else onAssort?.(r);
+                                  }}
+                                  disabled={r.assortment.assortedCount >= r.assortment.totalCount}
+                                  className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Assort
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onUnassortToZero ? onUnassortToZero(r) : onUnassort?.(r)
+                                  }
+                                  disabled={r.assortment.assortedCount <= 0}
+                                  className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Unassort
+                                </button>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-col gap-1">
+                              <label htmlFor={dateId} className="text-xs font-medium text-slate-600">
+                                Schedule assortment for
+                              </label>
+                              <input
+                                id={dateId}
+                                type="date"
+                                value={r.scheduledAssortmentDate ?? ''}
+                                onChange={(e) => onScheduledAssortmentDateChange?.(r.id, e.target.value)}
+                                disabled={r.assortment.assortedCount === 0}
+                                className="h-9 w-full max-w-[200px] rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                                aria-describedby={`${dateId}-hint`}
+                              />
+                              <p id={`${dateId}-hint`} className="text-xs text-slate-500">
+                                When this assortment change should take effect (optional)
+                              </p>
+                            </div>
+                            {r.assortment.assortedCount > 0 && (
+                              <div className="mt-4 flex flex-col gap-4 border-t border-[#e9eaeb] pt-4">
+                                <div>
+                                  <div className="mb-2 flex items-center gap-1.5">
+                                    <h4 className="text-xs font-semibold text-[#000000]">Impact Summary</h4>
+                                    <button
+                                      type="button"
+                                      className="text-slate-400 hover:text-slate-600"
+                                      aria-label="Info"
+                                    >
+                                      <Info size={14} />
+                                    </button>
+                                  </div>
+                                  <p className="mb-2 text-xs text-slate-600">
+                                    Editing Allocation does not change the product or location
+                                  </p>
+                                  <SummaryTable rows={buildAssortmentImpactSummaryRows(r)} />
+                                </div>
+                                <div className="mt-4">
+                                  <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Locations</h4>
+                                  <SummaryTable rows={topLocationsMock} />
+                                </div>
+                                <div className="mt-4">
+                                  <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Products</h4>
+                                  <SummaryTable rows={topProductsMock} />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })}
                 </div>
-              </div>
-              {/* Schedule date for assortment to take effect */}
-              <div className="mt-3 flex flex-col gap-1">
-                <label htmlFor="assortment-effective-date" className="text-xs font-medium text-slate-600">
-                  Schedule assortment for
-                </label>
-                <input
-                  id="assortment-effective-date"
-                  type="date"
-                  value={scheduledAssortmentDate ?? ''}
-                  onChange={(e) => onScheduledAssortmentDateChange?.(singleRow.id, e.target.value)}
-                  disabled={!scheduleDateUnlocked}
-                  className="h-9 w-full max-w-[200px] rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-slate-50"
-                  aria-describedby="assortment-effective-date-hint"
-                />
-                <p id="assortment-effective-date-hint" className="text-xs text-slate-500">
-                  When this assortment change should take effect (optional)
-                </p>
-              </div>
-            </section>
+              ) : (
+                singleRow && (
+                  <section>
+                    <h3 className="mb-3 text-sm font-semibold text-[#000000]">Assortment</h3>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-sm text-[#000000]">
+                        <span className={singleRow.hasPendingChanges ? 'font-medium text-amber-600' : ''}>
+                          {singleRow.assortment.assortedCount}
+                        </span>
+                        <span>/{singleRow.assortment.totalCount} Assorted</span>
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onAssortToMax) onAssortToMax(singleRow);
+                            else onAssort?.(singleRow);
+                          }}
+                          disabled={singleRow.assortment.assortedCount >= singleRow.assortment.totalCount}
+                          className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Assort
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUnassortToZero ? onUnassortToZero(singleRow) : onUnassort?.(singleRow)
+                          }
+                          disabled={singleRow.assortment.assortedCount <= 0}
+                          className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Unassort
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-col gap-1">
+                      <label htmlFor="assortment-effective-date" className="text-xs font-medium text-slate-600">
+                        Schedule assortment for
+                      </label>
+                      <input
+                        id="assortment-effective-date"
+                        type="date"
+                        value={singleRow.scheduledAssortmentDate ?? ''}
+                        onChange={(e) => onScheduledAssortmentDateChange?.(singleRow.id, e.target.value)}
+                        disabled={singleRow.assortment.assortedCount === 0}
+                        className="h-9 w-full max-w-[200px] rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                        aria-describedby="assortment-effective-date-hint"
+                      />
+                      <p id="assortment-effective-date-hint" className="text-xs text-slate-500">
+                        When this assortment change should take effect (optional)
+                      </p>
+                    </div>
+
+                    {singleRow.assortment.assortedCount > 0 && (
+                      <div className="mt-4 flex flex-col gap-4 border-t border-[#e9eaeb] pt-4">
+                        <div>
+                          <div className="mb-2 flex items-center gap-1.5">
+                            <h4 className="text-xs font-semibold text-[#000000]">Impact Summary</h4>
+                            <button type="button" className="text-slate-400 hover:text-slate-600" aria-label="Info">
+                              <Info size={14} />
+                            </button>
+                          </div>
+                          <p className="mb-2 text-xs text-slate-600">
+                            Editing Allocation does not change the product or location
+                          </p>
+                          <SummaryTable rows={buildAssortmentImpactSummaryRows(singleRow)} />
+                        </div>
+                        <div className="mt-4">
+                          <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Locations</h4>
+                          <SummaryTable rows={topLocationsMock} />
+                        </div>
+                        <div className="mt-4">
+                          <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Products</h4>
+                          <SummaryTable rows={topProductsMock} />
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )
+              )}
+            </>
           )}
 
           {isInitialAllocation &&
@@ -381,7 +567,11 @@ export function EditAllocationPanel({
               const isAboveMax = totalIaNum(state) > totalWarehouseUnits;
               const impactRows = [
                 { metric: 'Total Allocation', committed: committedIa, current: String(currentEditValue) },
-                { metric: 'Warehouse metrics', committed: totalWarehouseUnits, current: String(totalWarehouseUnits - currentEditValue) },
+                {
+                  metric: 'Warehouse metrics',
+                  committed: warehouseCommittedAcrossSelection,
+                  current: String(warehouseCurrentIaAggregate),
+                },
                 {
                   metric: 'Products affected',
                   committed: committedIa > 0 ? r.productGroup.productCount : 0,
@@ -589,24 +779,27 @@ export function EditAllocationPanel({
         </div>
         )}
 
-        {/* Footer – only when on allocation view and opened from Initial Allocation */}
-        {view === 'allocation' && isInitialAllocation && (
-        <div className="shrink-0 flex justify-end gap-2 border-t border-[#e9eaeb] p-5">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            className="inline-flex h-10 items-center justify-center rounded bg-[#0267ff] px-4 text-sm font-medium text-white transition-colors hover:opacity-90"
-          >
-            Save Draft
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-10 items-center justify-center rounded border border-[#e9eaeb] bg-white px-4 text-sm font-medium text-[#000000] transition-colors hover:bg-slate-50"
-          >
-            Cancel draft
-          </button>
-        </div>
+        {/* Footer – Initial Allocation or Assortment drawer */}
+        {view === 'allocation' && (isInitialAllocation || openFrom === 'assortment') && (
+          <div className="shrink-0 flex justify-end gap-2 border-t border-[#e9eaeb] p-5">
+            <button
+              type="button"
+              onClick={openFrom === 'assortment' ? onClose : handleSaveDraft}
+              className="inline-flex h-10 items-center justify-center rounded bg-[#0267ff] px-4 text-sm font-medium text-white transition-colors hover:opacity-90"
+            >
+              Save Draft
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (openFrom === 'assortment' && onAssortmentCancelDraft) onAssortmentCancelDraft();
+                else onClose();
+              }}
+              className="inline-flex h-10 items-center justify-center rounded border border-[#e9eaeb] bg-white px-4 text-sm font-medium text-[#000000] transition-colors hover:bg-slate-50"
+            >
+              Cancel draft
+            </button>
+          </div>
         )}
       </div>
     </>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { Layers, History, Sparkles, X } from 'lucide-react';
+import { Layers, History, Sparkles, X, Home, ChevronRight } from 'lucide-react';
 import { AssortmentTable } from './AssortmentTable';
+import { getProductDimensionLabel } from './DrillDownProductModal';
 import { CommitSuccessBanner } from './CommitSuccessBanner';
 import { ConfirmCommitRevertModal, type ConfirmCommitRevertState } from './ConfirmCommitRevertModal';
 import { EditAllocationPanel } from './EditAllocationPanel';
@@ -55,17 +56,26 @@ function InSeasonIAIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-type FocusView = 'all' | 'pre-season-ia' | 'in-season-ia' | 'drafts';
+type FocusView = 'all' | 'pre-season-ia' | 'in-season-ia';
+
+type StatusTableFilter = 'all' | 'draft' | 'committed';
 
 function filterRowsByFocusView(rows: AssortmentRow[], view: FocusView): AssortmentRow[] {
   switch (view) {
-    case 'pre-season-ia':
-      // Pre-season = not assorted (0 assorted)
-      return rows.filter((r) => r.assortment.assortedCount === 0);
-    case 'in-season-ia':
-      return rows.filter((r) => r.assortment.assortedCount > 0);
-    case 'drafts':
-      return rows.filter((r) => r.hasPendingChanges);
+    case 'pre-season-ia': {
+      return rows.filter((r) => {
+        if (r.assortment.assortedCount === 0) return true;
+        const snap = r.lastCommittedSnapshot?.assortment.assortedCount;
+        return Boolean(r.hasPendingChanges && snap === 0);
+      });
+    }
+    case 'in-season-ia': {
+      return rows.filter((r) => {
+        if (r.assortment.assortedCount > 0) return true;
+        const snap = r.lastCommittedSnapshot?.assortment.assortedCount;
+        return Boolean(r.hasPendingChanges && snap != null && snap > 0);
+      });
+    }
     default:
       return rows;
   }
@@ -96,6 +106,9 @@ export function MainContent() {
   } | null>(null);
   const [confirmCommitRevert, setConfirmCommitRevert] = useState<ConfirmCommitRevertState | null>(null);
   const [focusView, setFocusView] = useState<FocusView>('all');
+  const [statusTableFilter, setStatusTableFilter] = useState<StatusTableFilter>('all');
+  const [productDrillPath, setProductDrillPath] = useState<{ id: string; label: string }[]>([]);
+  const [productColumnGrouping, setProductColumnGrouping] = useState('Product Group');
   const [isolateRowId, setIsolateRowId] = useState<string | null>(null);
   const [optimisingBannerVisible, setOptimisingBannerVisible] = useState(false);
   const [optimisingBannerDismissed, setOptimisingBannerDismissed] = useState(false);
@@ -162,7 +175,12 @@ export function MainContent() {
     return () => clearTimeout(id);
   }, [commitSuccessBannerVisible]);
 
-  const filteredRows = filterRowsByFocusView(rows, focusView);
+  const filteredRows = (() => {
+    let f = filterRowsByFocusView(rows, focusView);
+    if (statusTableFilter === 'draft') f = f.filter((r) => r.hasPendingChanges);
+    else if (statusTableFilter === 'committed') f = f.filter((r) => !r.hasPendingChanges);
+    return f;
+  })();
   const tableRows = isolateRowId
     ? filteredRows.filter((r) => r.id === isolateRowId)
     : filteredRows;
@@ -237,24 +255,30 @@ export function MainContent() {
 
   /** Set each of the given rows to fully assorted (used by SelectionActionBar Assort button). */
   const onAssortSelection = (rowsToAssort: AssortmentRow[]) => {
+    const applyAssort = (r: AssortmentRow): AssortmentRow => {
+      const { totalCount } = r.assortment;
+      const assorted = `${totalCount}/${totalCount} Assorted`;
+      const snapshot = r.lastCommittedSnapshot ?? {
+        assortment: { assortedCount: r.assortment.assortedCount, totalCount: r.assortment.totalCount },
+        sumIa: r.sumIa,
+        avgIa: r.avgIa,
+      };
+      return {
+        ...r,
+        assortment: { ...r.assortment, assortedCount: totalCount, assorted },
+        hasPendingChanges: true,
+        lastCommittedSnapshot: snapshot,
+      };
+    };
     setRows((prev) =>
-      prev.map((r) => {
-        if (!rowsToAssort.some((x) => x.id === r.id)) return r;
-        const { totalCount } = r.assortment;
-        const assorted = `${totalCount}/${totalCount} Assorted`;
-        const snapshot = r.lastCommittedSnapshot ?? {
-          assortment: { assortedCount: r.assortment.assortedCount, totalCount: r.assortment.totalCount },
-          sumIa: r.sumIa,
-          avgIa: r.avgIa,
-        };
-        return {
-          ...r,
-          assortment: { ...r.assortment, assortedCount: totalCount, assorted },
-          hasPendingChanges: true,
-          lastCommittedSnapshot: snapshot,
-        };
-      })
+      prev.map((r) => (rowsToAssort.some((x) => x.id === r.id) ? applyAssort(r) : r))
     );
+    if (rowsToAssort.length >= 2) {
+      setEditAllocation({
+        rows: rowsToAssort.map(applyAssort),
+        openFrom: 'assortment',
+      });
+    }
   };
 
   /** Set each of the given rows to unassorted (used by SelectionActionBar Unassort button). */
@@ -408,71 +432,115 @@ export function MainContent() {
       )}
 
       <div className="flex flex-1 flex-col min-h-0 px-6 py-4 gap-4">
-        {/* Figma 618:142167 – Focus bar + Edit Log */}
-        <div className="flex items-center gap-0 rounded-[5px] border border-[#e9eaeb] bg-white p-2">
-          <div className="flex flex-1 flex-wrap items-center gap-2">
+        {/* Figma 618:142167 – Focus bar + Edit Log + drill-down breadcrumb */}
+        <div className="flex flex-col gap-2 rounded-[5px] border border-[#e9eaeb] bg-white p-2">
+          <div className="flex items-center gap-0">
+            <div className="flex flex-1 flex-wrap items-center gap-2">
             <span className="shrink-0 text-sm text-[#00050a]">Focus:</span>
             <button
               type="button"
-              onClick={() => setFocusView('all')}
-              className={`inline-flex h-[26px] items-center justify-center rounded-[1000px] border border-[#e9eaeb] px-4 py-1 text-xs font-normal leading-normal ${focusView === 'all' ? 'bg-[#f8f8f8] text-[#00050a]' : 'bg-white text-[#00050a] hover:bg-slate-50'}`}
+              onClick={() => {
+                setFocusView('all');
+                setStatusTableFilter('all');
+              }}
+              className={`inline-flex h-[26px] items-center justify-center rounded-[1000px] border border-[#e9eaeb] px-4 py-1 text-xs font-normal leading-normal transition-colors ${focusView === 'all' && statusTableFilter === 'all' ? 'bg-[#f8f8f8] text-[#00050a]' : 'bg-white text-[#00050a] hover:bg-slate-50'}`}
             >
               All
             </button>
             <button
               type="button"
-              onClick={() => setFocusView('pre-season-ia')}
-              className={`inline-flex h-[26px] items-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] px-4 py-1 text-xs font-normal leading-normal ${focusView === 'pre-season-ia' ? 'bg-[#f8f8f8] text-[#00050a]' : 'bg-white text-[#00050a] hover:bg-slate-50'}`}
+              onClick={() => {
+                setFocusView('pre-season-ia');
+                setStatusTableFilter('all');
+              }}
+              className={`inline-flex h-[26px] items-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] px-4 py-1 text-xs font-normal leading-normal transition-colors ${focusView === 'pre-season-ia' && statusTableFilter === 'all' ? 'bg-[#f8f8f8] text-[#00050a]' : 'bg-white text-[#00050a] hover:bg-slate-50'}`}
             >
               <PreSeasonIAIcon size={14} />
               Pre-Season IA
             </button>
             <button
               type="button"
-              onClick={() => setFocusView('in-season-ia')}
-              className={`inline-flex h-[26px] items-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] px-4 py-1 text-xs font-normal leading-normal ${focusView === 'in-season-ia' ? 'bg-[#f8f8f8] text-[#00050a]' : 'bg-white text-[#00050a] hover:bg-slate-50'}`}
+              onClick={() => {
+                setFocusView('in-season-ia');
+                setStatusTableFilter('all');
+              }}
+              className={`inline-flex h-[26px] items-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] px-4 py-1 text-xs font-normal leading-normal transition-colors ${focusView === 'in-season-ia' && statusTableFilter === 'all' ? 'bg-[#f8f8f8] text-[#00050a]' : 'bg-white text-[#00050a] hover:bg-slate-50'}`}
             >
               <InSeasonIAIcon size={14} />
               In Season IA
             </button>
-            {/* Drafts chip: match other view chips (pill), active = muted */}
+            {/* Drafts: toggle; segment chips above clear draft/committed so navigation is predictable */}
             <button
               type="button"
-              onClick={() => setFocusView('drafts')}
-              className={`inline-flex h-[26px] items-center justify-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] px-4 py-1 text-xs font-normal leading-normal whitespace-nowrap ${focusView === 'drafts' ? 'bg-[#f8f8f8] text-[#00050a]' : 'bg-white text-[#00050a] hover:bg-slate-50'}`}
+              onClick={() =>
+                setStatusTableFilter((s) => {
+                  if (s === 'draft') return 'all';
+                  return 'draft';
+                })
+              }
+              title="Draft rows only. Click again to show all statuses."
+              aria-pressed={statusTableFilter === 'draft'}
+              className={`inline-flex h-[26px] items-center justify-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] px-4 py-1 text-xs font-normal leading-normal whitespace-nowrap transition-colors ${statusTableFilter === 'draft' ? 'bg-[#fff6e5] text-[#00050a]' : 'bg-white text-[#00050a] hover:bg-slate-50'}`}
             >
               <Layers size={14} className="shrink-0" aria-hidden />
               <span>Drafts</span>
             </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => setEditLogOpen(true)}
-            className="ml-2 flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-[#f0f0f0] transition-colors"
-            aria-label="Edit Log"
-          >
-            <History size={16} className="shrink-0" />
-            Edit Log
-          </button>
-        </div>
-
-        {isolateRowId && (
-          <div className="flex items-center gap-2 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
-            <span>Showing 1 row</span>
+            </div>
             <button
               type="button"
-              onClick={() => setIsolateRowId(null)}
-              className="font-medium text-sky-600 underline hover:text-sky-700"
+              onClick={() => setEditLogOpen(true)}
+              className="ml-2 flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-[#f0f0f0] transition-colors"
+              aria-label="Edit Log"
             >
-              Show all
+              <History size={16} className="shrink-0" />
+              Edit Log
             </button>
           </div>
-        )}
+          {productDrillPath.length > 0 && (
+            <nav
+              className="flex flex-wrap items-center gap-2 border-t border-[#e9eaeb] pt-2 text-xs font-normal leading-normal text-[#00050a]"
+              aria-label="Product drill-down"
+            >
+              <button
+                type="button"
+                onClick={() => setProductDrillPath([])}
+                className="inline-flex h-[26px] shrink-0 items-center justify-center gap-1.5 rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
+              >
+                <Home size={14} className="shrink-0" aria-hidden />
+                Home
+              </button>
+              {productDrillPath.map((crumb, i) => (
+                <span key={`${crumb.id}-${i}`} className="flex items-center gap-2">
+                  <ChevronRight size={14} className="shrink-0 text-slate-400" aria-hidden />
+                  {i < productDrillPath.length - 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setProductDrillPath(productDrillPath.slice(0, i + 1))}
+                      className="inline-flex h-[26px] shrink-0 max-w-[240px] items-center justify-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 whitespace-nowrap transition-colors hover:bg-slate-50"
+                    >
+                      <span className="truncate">{crumb.label}</span>
+                    </button>
+                  ) : (
+                    <span
+                      className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 font-normal text-[#00050a]"
+                      aria-current="page"
+                    >
+                      <span className="line-clamp-2 text-left text-xs leading-snug">{crumb.label}</span>
+                    </span>
+                  )}
+                </span>
+              ))}
+            </nav>
+          )}
+        </div>
 
         <div className="flex min-h-0 flex-1 gap-0 overflow-hidden">
           <div className="min-w-0 flex-1">
             <AssortmentTable
               rows={tableRows}
+              productGrouping={productColumnGrouping}
+              onProductGroupingChange={setProductColumnGrouping}
+              productDrillDownActive={productDrillPath.length > 0}
               onSelectRow={onSelectRow}
               onSelectAll={onSelectAll}
               onAssort={onAssort}
@@ -505,8 +573,20 @@ export function MainContent() {
               isolateRowId={isolateRowId}
               onIsolateRow={setIsolateRowId}
               showRecommendationBadge={showRecommendationsInTable}
-              showDraftsOnly={focusView === 'drafts'}
-              onDraftToggle={(on) => setFocusView(on ? 'drafts' : 'all')}
+              statusTableFilter={statusTableFilter}
+              onStatusTableFilterChange={setStatusTableFilter}
+              onProductDrillDimensionSelect={(dimensionId, ctx) => {
+                setProductColumnGrouping(getProductDimensionLabel(dimensionId));
+                setProductDrillPath((prev) => [
+                  ...prev,
+                  {
+                    id: dimensionId,
+                    label: ctx
+                      ? `product group: ${ctx.productGroupName} | location group: ${ctx.locationClusterName}`
+                      : getProductDimensionLabel(dimensionId),
+                  },
+                ]);
+              }}
             />
           </div>
         </div>
@@ -525,16 +605,16 @@ export function MainContent() {
           onUnassort={onUnassort}
           onAssortToMax={(row) => onAssortSelection([row])}
           onUnassortToZero={(row) => onUnassortSelection([row])}
-          scheduledAssortmentDate={
-            editAllocation.openFrom === 'assortment' && editAllocation.rows[0]
-              ? (rows.find((r) => r.id === editAllocation.rows[0].id)?.scheduledAssortmentDate ?? '')
-              : undefined
-          }
           onScheduledAssortmentDateChange={(rowId, date) =>
             setRows((prev) =>
               prev.map((r) => (r.id === rowId ? { ...r, scheduledAssortmentDate: date || undefined } : r))
             )
           }
+          onAssortmentCancelDraft={() => {
+            if (!editAllocation || editAllocation.openFrom !== 'assortment') return;
+            editAllocation.rows.forEach((r) => onRevert(r.id));
+            setEditAllocation(null);
+          }}
         />
       )}
 

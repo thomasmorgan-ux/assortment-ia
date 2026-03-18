@@ -367,9 +367,16 @@ export function ConfirmCommitRevertModal({
                                 className="border-b border-[#e9eaeb] last:border-b-0 bg-slate-50/50"
                               >
                                 <td className="w-10 px-3 py-2.5 pl-6 align-middle">
-                                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-[2px] border border-[#e9eaeb] bg-[#0267ff] text-white">
-                                    <span className="sr-only">Included</span>
-                                  </span>
+                                  <button
+                                    type="button"
+                                    role="checkbox"
+                                    aria-checked="true"
+                                    disabled
+                                    aria-label={`Included ${label}`}
+                                    className="flex h-4 w-4 cursor-default items-center justify-center rounded border border-[#e9eaeb] bg-white disabled:opacity-100"
+                                  >
+                                    <Check size={12} strokeWidth={2.5} className="text-[#0267ff]" />
+                                  </button>
                                 </td>
                                 <td className="px-3 py-2.5 text-[#00050a]">{label}</td>
                                 <td className="px-3 py-2.5 text-[#00050a]">{from}</td>
@@ -407,9 +414,16 @@ export function ConfirmCommitRevertModal({
                               className="border-b border-[#e9eaeb] last:border-b-0 bg-slate-50/50"
                             >
                               <td className="w-10 px-3 py-2.5 pl-6 align-middle">
-                                <span className="inline-flex h-4 w-4 items-center justify-center rounded-[2px] border border-[#e9eaeb] bg-[#0267ff] text-white">
-                                  <span className="sr-only">Included</span>
-                                </span>
+                                <button
+                                  type="button"
+                                  role="checkbox"
+                                  aria-checked="true"
+                                  disabled
+                                  aria-label={`Included ${name}`}
+                                  className="flex h-4 w-4 cursor-default items-center justify-center rounded border border-[#e9eaeb] bg-white disabled:opacity-100"
+                                >
+                                  <Check size={12} strokeWidth={2.5} className="text-[#0267ff]" />
+                                </button>
                               </td>
                               <td className="px-3 py-2.5 text-[#00050a]">{name}</td>
                               <td className="px-3 py-2.5 text-[#00050a]">{from}</td>

@@ -16,6 +16,7 @@ const preSeasonRows: AssortmentRow[] = [
     avgIa: 0,
     mq: 16,
     committed: true,
+    productDrillMetrics: { skuLocations: 8, minQty: 17, inventory: 0, targetCoverageWk: 5, forecastSalesPerWk: 0 },
   },
   {
     id: 'ps-2',
@@ -31,6 +32,7 @@ const preSeasonRows: AssortmentRow[] = [
     avgIa: 0,
     mq: 16,
     committed: true,
+    productDrillMetrics: { skuLocations: 9, minQty: 21, inventory: 23, targetCoverageWk: 5, forecastSalesPerWk: 16 },
   },
   {
     id: 'ps-3',
@@ -61,6 +63,7 @@ const preSeasonRows: AssortmentRow[] = [
     avgIa: 0,
     mq: 14,
     committed: true,
+    productDrillMetrics: { skuLocations: 2, minQty: 3, inventory: 8, targetCoverageWk: 5, forecastSalesPerWk: 9 },
   },
   {
     id: 'ps-5',
@@ -76,7 +79,9 @@ const preSeasonRows: AssortmentRow[] = [
     avgIa: 0,
     mq: 18,
     committed: true,
+    productDrillMetrics: { skuLocations: 8, minQty: 16, inventory: 29, targetCoverageWk: 5, forecastSalesPerWk: 16 },
   },
+  /** Partially assorted — excluded from Pre-Season IA focus (shows filter effect vs All). */
   {
     id: 'ps-6',
     productGroup: { name: 'Kids', productCount: 7 },
@@ -86,11 +91,12 @@ const preSeasonRows: AssortmentRow[] = [
     sales: { value: 0, sub: '0 L30D' },
     sellThru: { percent: 0 },
     forecast: { value: 54, sub: '4 weeks' },
-    assortment: { assorted: '0/10 Assorted', assortedCount: 0, totalCount: 10 },
+    assortment: { assorted: '4/10 Assorted', assortedCount: 4, totalCount: 10 },
     sumIa: 0,
     avgIa: 0,
     mq: 10,
     committed: true,
+    productDrillMetrics: { skuLocations: 17, minQty: 32, inventory: 0, targetCoverageWk: 5, forecastSalesPerWk: 0 },
   },
   {
     id: 'ps-7',
@@ -101,11 +107,12 @@ const preSeasonRows: AssortmentRow[] = [
     sales: { value: 0, sub: '0 L30D' },
     sellThru: { percent: 0 },
     forecast: { value: 42, sub: '4 weeks' },
-    assortment: { assorted: '0/8 Assorted', assortedCount: 0, totalCount: 8 },
+    assortment: { assorted: '2/8 Assorted', assortedCount: 2, totalCount: 8 },
     sumIa: 0,
     avgIa: 0,
     mq: 8,
     committed: true,
+    productDrillMetrics: { skuLocations: 18, minQty: 33, inventory: 64, targetCoverageWk: 5, forecastSalesPerWk: 30 },
   },
 ];
 
@@ -125,6 +132,7 @@ export const mockRows: AssortmentRow[] = [
     avgIa: 0,
     mq: 28,
     committed: true,
+    productDrillMetrics: { skuLocations: 28, minQty: 28, inventory: 32, targetCoverageWk: 5, forecastSalesPerWk: 16 },
   },
   {
     id: '2',
@@ -140,6 +148,7 @@ export const mockRows: AssortmentRow[] = [
     avgIa: 0,
     mq: 65,
     committed: false,
+    productDrillMetrics: { skuLocations: 70, minQty: 65, inventory: 117, targetCoverageWk: 5, forecastSalesPerWk: 24 },
   },
   {
     id: '3',
@@ -155,6 +164,7 @@ export const mockRows: AssortmentRow[] = [
     avgIa: 0,
     mq: 42,
     committed: false,
+    productDrillMetrics: { skuLocations: 98, minQty: 42, inventory: 89, targetCoverageWk: 5, forecastSalesPerWk: 18 },
   },
 ];
 

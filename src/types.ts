@@ -27,6 +27,14 @@ export interface AssortmentRow {
   avgIaRecommendation?: number;
   /** Optional ISO date (YYYY-MM-DD) when assortment change is scheduled to take effect. Set from EditAllocationPanel. */
   scheduledAssortmentDate?: string;
+  /** Extra columns when product drill-down breadcrumb is active */
+  productDrillMetrics?: {
+    skuLocations: number;
+    minQty: number;
+    inventory: number;
+    targetCoverageWk: number;
+    forecastSalesPerWk: number;
+  };
 }
 
 export type ModalKind = 'edit-allocation' | 'product-group' | 'location-cluster' | 'assort' | null;
