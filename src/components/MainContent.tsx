@@ -663,7 +663,7 @@ export function MainContent() {
           </div>
         </div>
 
-        {/* Toolbar: filters + Edit Log + status + breadcrumbs */}
+        {/* Toolbar: filters | status + Edit Log + breadcrumbs */}
         <div className="flex flex-col gap-[18px] rounded-[5px] border border-[#e9eaeb] bg-white p-2">
           <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2">
@@ -739,15 +739,6 @@ export function MainContent() {
                     />
                     Advanced filters
                   </button>
-              <button
-                type="button"
-                onClick={() => setEditLogOpen(true)}
-                className="flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-[#f0f0f0] transition-colors"
-                aria-label="Edit Log"
-              >
-                <History size={16} className="shrink-0" />
-                Edit Log
-              </button>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <div
@@ -795,6 +786,15 @@ export function MainContent() {
                   </button>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setEditLogOpen(true)}
+                className="flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-[#f0f0f0] transition-colors"
+                aria-label="Edit Log"
+              >
+                <History size={16} className="shrink-0" />
+                Edit Log
+              </button>
             </div>
           </div>
           <nav
