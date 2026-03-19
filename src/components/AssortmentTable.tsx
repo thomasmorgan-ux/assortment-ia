@@ -70,6 +70,7 @@ const LOCATION_DRILL_ID_TO_GROUPING: Record<string, string> = Object.fromEntries
 ) as Record<string, string>;
 
 function formatAssortmentScheduleLabel(row: AssortmentRow): string | null {
+  if (row.assortment.assortedCount <= 0) return null;
   const fmt = (iso: string) => {
     const d = new Date(`${iso}T00:00:00`);
     return Number.isNaN(d.getTime())
@@ -269,11 +270,11 @@ export function AssortmentTable({
           className={`w-full border-collapse ${
             productDrillDownActive
               ? showRecommendationColumns
-                ? 'min-w-[2040px]'
-                : 'min-w-[1680px]'
+                ? 'min-w-[2160px]'
+                : 'min-w-[1800px]'
               : showRecommendationColumns
-                ? 'min-w-[1546px]'
-                : 'min-w-[1200px]'
+                ? 'min-w-[1666px]'
+                : 'min-w-[1320px]'
           }`}
         >
           <thead>
@@ -426,6 +427,9 @@ export function AssortmentTable({
               )}
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">Assortment <Pencil size={14} className="shrink-0 text-slate-400" /></span>
+              </th>
+              <th className="h-12 min-h-[48px] min-w-[128px] max-w-[200px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
+                Assortment schedule
               </th>
               {showRecommendationColumns && (
                 <th className="h-12 min-h-[48px] min-w-[173px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
@@ -669,19 +673,20 @@ export function AssortmentTable({
                           /{row.assortment.totalCount} Assorted
                         </span>
                       </div>
-                      {scheduleLabel && (
-                        <div className="mt-1.5 flex w-full min-w-0 items-center gap-1.5 text-xs text-slate-600">
-                          <Calendar size={12} className="shrink-0 text-slate-500" aria-hidden />
-                          <span
-                            className="min-w-0 max-w-[50%] truncate"
-                            title={scheduleLabel}
-                          >
-                            {scheduleLabel}
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
+                </td>
+                <td className="min-h-[72px] min-w-[128px] max-w-[220px] py-3 px-4 align-middle">
+                  {scheduleLabel ? (
+                    <div className="flex items-start gap-1.5 text-xs text-slate-700">
+                      <Calendar size={12} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
+                      <span className="min-w-0 leading-snug" title={scheduleLabel}>
+                        {scheduleLabel}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-slate-400">—</span>
+                  )}
                 </td>
                 {showRecommendationColumns && (
                   <td className="min-h-[72px] min-w-[173px] py-3 px-4 align-middle">
@@ -691,17 +696,48 @@ export function AssortmentTable({
                           row.assortmentRecommendationLabel
                         );
                         return (
-                          <div className="inline-flex w-fit max-w-full items-start gap-1.5 rounded-[5px] bg-[#dbc7f4]/80 px-2 py-1.5">
-                            <Sparkles
-                              size={12}
-                              className="mt-0.5 shrink-0 text-[#a234da]"
-                              aria-hidden
-                            />
-                            <div className="flex min-w-0 flex-col items-center text-center leading-tight">
-                              <span className="text-xs font-medium text-[#a234da]">{line1}</span>
-                              {line2 ? (
-                                <span className="text-xs font-medium text-[#a234da]">{line2}</span>
-                              ) : null}
+                          <div className="group/reason relative inline-flex w-fit max-w-full">
+                            <div className="inline-flex w-fit max-w-full items-start gap-1.5 rounded-[5px] bg-[#dbc7f4]/80 px-2 py-1.5">
+                              <Sparkles
+                                size={12}
+                                className="mt-0.5 shrink-0 text-[#a234da]"
+                                aria-hidden
+                              />
+                              <div className="flex min-w-0 flex-col items-center text-center leading-tight">
+                                <span className="text-xs font-medium text-[#a234da]">{line1}</span>
+                                {line2 ? (
+                                  <span className="text-xs font-medium text-[#a234da]">{line2}</span>
+                                ) : null}
+                              </div>
+                            </div>
+                            <div
+                              className="pointer-events-none absolute right-full top-1/2 z-10 mr-2 hidden min-w-[220px] max-w-[min(280px,85vw)] -translate-y-1/2 rounded-[4px] bg-[#212121] px-4 py-3 text-white shadow-lg group-hover/reason:block"
+                              role="tooltip"
+                            >
+                              <p className="mb-2 text-xs font-medium leading-normal">
+                                Recommendation Reasons
+                              </p>
+                              <p className="mb-2 text-[10px] font-normal leading-normal text-white/70">
+                                Dummy data — assortment model preview
+                              </p>
+                              <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>Regional sell-through vs target</span>
+                                  <span>+0.42</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>Peer cluster assortment depth</span>
+                                  <span>+0.28</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>Seasonal demand index (L4)</span>
+                                  <span>+0.15</span>
+                                </div>
+                              </div>
+                              <span
+                                className="absolute -right-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-l-[#212121]"
+                                aria-hidden
+                              />
                             </div>
                           </div>
                         );

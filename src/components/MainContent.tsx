@@ -349,6 +349,9 @@ export function MainContent() {
         return {
           ...r,
           assortment: { ...r.assortment, assortedCount: next, assorted },
+          ...(next === 0
+            ? { scheduledAssortmentStart: undefined, scheduledAssortmentFinish: undefined }
+            : {}),
           hasPendingChanges: true,
           lastCommittedSnapshot: snapshot,
         };
@@ -399,6 +402,8 @@ export function MainContent() {
         return {
           ...r,
           assortment: { ...r.assortment, assortedCount: 0, assorted },
+          scheduledAssortmentStart: undefined,
+          scheduledAssortmentFinish: undefined,
           hasPendingChanges: true,
           lastCommittedSnapshot: snapshot,
         };
