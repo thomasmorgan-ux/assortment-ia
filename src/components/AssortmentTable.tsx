@@ -865,23 +865,34 @@ export function AssortmentTable({
                 )}
                 <td className="min-h-[72px] w-[88px] px-3 py-3 align-middle">
                   <div className="flex items-center justify-center">
-                    <span
-                      className={`inline-flex shrink-0 items-center justify-center rounded-[4px] border px-1.5 py-1 ${
-                        row.hasPendingChanges
-                          ? 'border-[#f29a35] bg-[#fff6e5]'
-                          : 'border-emerald-600 bg-emerald-50'
-                      }`}
-                      style={{ borderWidth: '0.5px' }}
-                      title={row.hasPendingChanges ? 'Draft' : 'Committed'}
-                      aria-label={row.hasPendingChanges ? 'Draft' : 'Committed'}
-                      data-node-id={row.hasPendingChanges ? '761:65167' : '761:65168'}
-                    >
-                      {row.hasPendingChanges ? (
-                        <Layers size={14} className="text-[#00050a]" strokeWidth={2} aria-hidden />
-                      ) : (
-                        <Check size={14} className="text-emerald-700" strokeWidth={2} aria-hidden />
-                      )}
-                    </span>
+                    <div className="group/status relative inline-flex items-center justify-center">
+                      <span
+                        className={`inline-flex shrink-0 items-center justify-center rounded-[4px] border px-1.5 py-1 ${
+                          row.hasPendingChanges
+                            ? 'border-[#f29a35] bg-[#fff6e5]'
+                            : 'border-emerald-600 bg-emerald-50'
+                        }`}
+                        style={{ borderWidth: '0.5px' }}
+                        aria-label={row.hasPendingChanges ? 'Draft' : 'Committed'}
+                        data-node-id={row.hasPendingChanges ? '761:65167' : '761:65168'}
+                      >
+                        {row.hasPendingChanges ? (
+                          <Layers size={14} className="text-[#00050a]" strokeWidth={2} aria-hidden />
+                        ) : (
+                          <Check size={14} className="text-emerald-700" strokeWidth={2} aria-hidden />
+                        )}
+                      </span>
+                      <div
+                        className="pointer-events-none absolute right-full top-1/2 z-30 mr-2 hidden min-w-[5.5rem] -translate-y-1/2 rounded-[4px] bg-[#212121] px-3 py-2 text-center text-xs font-medium text-white shadow-lg group-hover/status:block"
+                        role="tooltip"
+                      >
+                        {row.hasPendingChanges ? 'Draft' : 'Committed'}
+                        <span
+                          className="absolute -right-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-l-[#212121]"
+                          aria-hidden
+                        />
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td className="min-h-[72px] w-[72px] px-3 py-3 align-middle">
