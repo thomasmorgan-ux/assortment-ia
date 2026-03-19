@@ -655,7 +655,7 @@ export function AssortmentTable({
                       />
                     )}
                   <div
-                    className={`min-w-0 max-w-full ${
+                    className={`min-w-0 max-w-full pr-11 ${
                       row.hasPendingChanges &&
                       row.lastCommittedSnapshot &&
                       row.lastCommittedSnapshot.assortment.assortedCount !== row.assortment.assortedCount
@@ -773,13 +773,16 @@ export function AssortmentTable({
                       />
                     )}
                   <div
-                    className={
+                    className={[
                       row.hasPendingChanges &&
                       row.lastCommittedSnapshot &&
                       row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa)
                         ? 'pl-[18px]'
-                        : ''
-                    }
+                        : '',
+                      row.assortment.assortedCount === row.assortment.totalCount ? 'pr-11' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
                     <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
