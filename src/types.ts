@@ -21,6 +21,8 @@ export interface AssortmentRow {
     sumIa: number;
     avgIa: number;
   };
+  /** Suggested assortment label after generating recommendations (e.g. "3/5 Assorted") */
+  assortmentRecommendationLabel?: string;
   /** Recommendation value shown below Sum IA after generating recommendations */
   sumIaRecommendation?: number;
   /** Recommendation value shown below Avg IA after generating recommendations */

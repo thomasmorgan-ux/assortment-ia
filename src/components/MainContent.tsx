@@ -156,7 +156,6 @@ export function MainContent() {
   const [optimisingBannerDismissed, setOptimisingBannerDismissed] = useState(false);
   const [, setHasGeneratedRecommendations] = useState(false);
   const [recSuccessBanner, setRecSuccessBanner] = useState<{ groupsCount: number } | null>(null);
-  const [showRecommendationsInTable, setShowRecommendationsInTable] = useState(false);
   const [commitSuccessBannerVisible, setCommitSuccessBannerVisible] = useState(false);
   const [editLogOpen, setEditLogOpen] = useState(false);
   const [advancedFiltersAnchor, setAdvancedFiltersAnchor] =
@@ -239,8 +238,14 @@ export function MainContent() {
           r.locationCluster.locationCount > 0
             ? sumRec / r.locationCluster.locationCount
             : r.avgIa;
+        const recAssortCount = Math.min(
+          r.assortment.assortedCount + 1,
+          r.assortment.totalCount
+        );
+        const assortmentRecommendationLabel = `${recAssortCount}/${r.assortment.totalCount} Assorted`;
         return {
           ...r,
+          assortmentRecommendationLabel,
           sumIaRecommendation: sumRec,
           avgIaRecommendation: avgRec,
           hasPendingChanges: true,
@@ -258,7 +263,6 @@ export function MainContent() {
       optimisingToSuccessTimeoutRef.current = null;
       setOptimisingBannerVisible(false);
       setRecSuccessBanner({ groupsCount });
-      setShowRecommendationsInTable(true);
     }, 3000);
   };
 
@@ -421,6 +425,7 @@ export function MainContent() {
           ...r,
           sumIa: committedSum,
           avgIa: committedAvg,
+          assortmentRecommendationLabel: undefined,
           sumIaRecommendation: undefined,
           avgIaRecommendation: undefined,
           committed: true,
@@ -491,7 +496,6 @@ export function MainContent() {
                 optimisingToSuccessTimeoutRef.current = null;
               }
               setRecSuccessBanner({ groupsCount: pendingSuccessGroupsCountRef.current });
-              setShowRecommendationsInTable(true);
             }}
           />
         </div>
@@ -854,9 +858,6 @@ export function MainContent() {
               }}
               isolateRowId={isolateRowId}
               onIsolateRow={setIsolateRowId}
-              showRecommendationBadge={showRecommendationsInTable}
-              statusTableFilter={statusTableFilter}
-              onStatusTableFilterChange={setStatusTableFilter}
               onProductDrillDimensionSelect={(dimensionId, ctx) => {
                 setRegionsDrillBreadcrumb(null);
                 setRegionsTableSnapshot(null);

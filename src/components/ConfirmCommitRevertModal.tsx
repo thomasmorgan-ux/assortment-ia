@@ -24,6 +24,17 @@ function formatAssortmentLabel(assortedCount: number, totalCount: number): strin
   return `${assortedCount}/${totalCount} Assorted`;
 }
 
+/** Parent row summary: one value if all match, otherwise list unique values. */
+function summaryFromTo(froms: string[], tos: string[]): { from: string; to: string } {
+  if (froms.length === 0 || tos.length === 0) return { from: '—', to: '—' };
+  const uniqFrom = [...new Set(froms)];
+  const uniqTo = [...new Set(tos)];
+  return {
+    from: uniqFrom.length === 1 ? uniqFrom[0] : uniqFrom.join(', '),
+    to: uniqTo.length === 1 ? uniqTo[0] : uniqTo.join(', '),
+  };
+}
+
 export function ConfirmCommitRevertModal({
   open,
   state,
@@ -32,7 +43,8 @@ export function ConfirmCommitRevertModal({
   onClose,
 }: ConfirmCommitRevertModalProps) {
   const [assortmentExpanded, setAssortmentExpanded] = useState(true);
-  const [recommendationsExpanded, setRecommendationsExpanded] = useState(true);
+  const [assortmentRecExpanded, setAssortmentRecExpanded] = useState(true);
+  const [initialAllocRecExpanded, setInitialAllocRecExpanded] = useState(true);
   const [includedRowIds, setIncludedRowIds] = useState<Set<string>>(new Set());
 
   const isCommit = state?.action === 'commit';
@@ -74,7 +86,20 @@ export function ConfirmCommitRevertModal({
       )
     : [];
 
-  const hasRecommendationsChange =
+  const hasAssortmentRecChange = rows.some(
+    (r) =>
+      r.assortmentRecommendationLabel != null &&
+      r.lastCommittedSnapshot != null
+  );
+
+  const assortmentRecRows = isCommit
+    ? rows.filter(
+        (r) =>
+          r.assortmentRecommendationLabel != null && r.lastCommittedSnapshot != null
+      )
+    : [];
+
+  const hasInitialAllocRecChange =
     rows.some((r) => r.sumIaRecommendation != null) ||
     (!!snap &&
       rows.some((r) => {
@@ -84,13 +109,23 @@ export function ConfirmCommitRevertModal({
         return s.sumIa !== to;
       }));
 
-  const recommendationRows = rows.map((r) => {
-    const s = r.lastCommittedSnapshot;
-    const from = s ? String(s.sumIa) : '0';
-    const to = String(r.sumIaRecommendation ?? r.sumIa);
-    const name = `${r.productGroup.name} – ${r.locationCluster.name}`;
-    return { id: r.id, name, from, to };
-  });
+  const initialAllocRecRows = rows
+    .filter((r) => {
+      const s = r.lastCommittedSnapshot;
+      if (!s) return false;
+      const to = r.sumIaRecommendation ?? r.sumIa;
+      return s.sumIa !== to || r.sumIaRecommendation != null;
+    })
+    .map((r) => {
+      const s = r.lastCommittedSnapshot!;
+      const from = String(s.sumIa);
+      const to =
+        r.sumIaRecommendation != null
+          ? String(r.sumIaRecommendation)
+          : String(r.sumIa);
+      const name = `${r.productGroup.name} – ${r.locationCluster.name}`;
+      return { id: r.id, name, from, to };
+    });
 
   const toggleRowIncluded = (id: string) => {
     setIncludedRowIds((prev) => {
@@ -118,13 +153,32 @@ export function ConfirmCommitRevertModal({
       )
     : [];
   const hasRevertAssortmentChange = revertAssortmentRows.length > 0;
-  const revertRecommendationRows = !isCommit
+  const revertAssortmentRecRows = !isCommit
+    ? rows
+        .filter(
+          (r) =>
+            r.assortmentRecommendationLabel != null && r.lastCommittedSnapshot != null
+        )
+        .map((r) => {
+          const s = r.lastCommittedSnapshot!;
+          const from = formatAssortmentLabel(
+            s.assortment.assortedCount,
+            r.assortment.totalCount
+          );
+          const to = r.assortmentRecommendationLabel ?? '—';
+          const name = `${r.productGroup.name} – ${r.locationCluster.name}`;
+          return { id: r.id, name, from, to };
+        })
+    : [];
+  const hasRevertAssortmentRecChange = revertAssortmentRecRows.length > 0;
+
+  const revertInitialAllocRecRows = !isCommit
     ? rows
         .filter((r) => {
           const s = r.lastCommittedSnapshot;
           if (!s) return false;
           const to = r.sumIaRecommendation ?? r.sumIa;
-          return s.sumIa !== to;
+          return s.sumIa !== to || r.sumIaRecommendation != null;
         })
         .map((r) => {
           const s = r.lastCommittedSnapshot!;
@@ -134,7 +188,30 @@ export function ConfirmCommitRevertModal({
           return { id: r.id, name, from, to };
         })
     : [];
-  const hasRevertRecommendationChange = revertRecommendationRows.length > 0;
+  const hasRevertInitialAllocRecChange = revertInitialAllocRecRows.length > 0;
+
+  const assortmentRecCommitSummary = summaryFromTo(
+    assortmentRecRows.map((r) => {
+      const s = r.lastCommittedSnapshot!;
+      return formatAssortmentLabel(s.assortment.assortedCount, r.assortment.totalCount);
+    }),
+    assortmentRecRows.map((r) => r.assortmentRecommendationLabel ?? '—')
+  );
+
+  const initialAllocRecCommitSummary = summaryFromTo(
+    initialAllocRecRows.map((r) => r.from),
+    initialAllocRecRows.map((r) => r.to)
+  );
+
+  const assortmentRecRevertSummary = summaryFromTo(
+    revertAssortmentRecRows.map((r) => r.from),
+    revertAssortmentRecRows.map((r) => r.to)
+  );
+
+  const initialAllocRecRevertSummary = summaryFromTo(
+    revertInitialAllocRecRows.map((r) => r.from),
+    revertInitialAllocRecRows.map((r) => r.to)
+  );
 
   const isSlideout = variant === 'slideout';
 
@@ -266,33 +343,99 @@ export function ConfirmCommitRevertModal({
                           })}
                       </>
                     )}
-                    {hasRecommendationsChange && (
+                    {hasAssortmentRecChange && (
                       <>
                         <tr className="border-b border-[#e9eaeb]">
                           <td className="w-10 px-3 py-2.5 align-middle" />
                           <td className="px-3 py-2.5 text-[#00050a]">
                             <button
                               type="button"
-                              onClick={() => setRecommendationsExpanded((e) => !e)}
+                              onClick={() => setAssortmentRecExpanded((e) => !e)}
                               className="flex items-center gap-1.5 text-[#00050a] hover:underline"
                             >
-                              Recommendations
-                              {recommendationsExpanded ? (
+                              Assortment recommendations
+                              {assortmentRecExpanded ? (
                                 <ChevronUp size={16} />
                               ) : (
                                 <ChevronDown size={16} />
                               )}
                             </button>
                           </td>
-                          <td className="px-3 py-2.5 text-[#00050a]">—</td>
-                          <td className="px-3 py-2.5 text-[#00050a]">—</td>
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            {assortmentRecCommitSummary.from}
+                          </td>
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            {assortmentRecCommitSummary.to}
+                          </td>
                         </tr>
-                        {recommendationsExpanded &&
-                          recommendationRows.map(({ id, name, from, to }) => {
+                        {assortmentRecExpanded &&
+                          assortmentRecRows.map((r) => {
+                            const s = r.lastCommittedSnapshot!;
+                            const from = formatAssortmentLabel(
+                              s.assortment.assortedCount,
+                              r.assortment.totalCount
+                            );
+                            const to = r.assortmentRecommendationLabel ?? '—';
+                            const label = `${r.productGroup.name} – ${r.locationCluster.name}`;
+                            const included = includedRowIds.has(r.id);
+                            return (
+                              <tr
+                                key={`ar-${r.id}`}
+                                className="border-b border-[#e9eaeb] last:border-b-0 bg-slate-50/50"
+                              >
+                                <td className="w-10 px-3 py-2.5 pl-6 align-middle">
+                                  <button
+                                    type="button"
+                                    role="checkbox"
+                                    aria-checked={included}
+                                    aria-label={`Include ${label}`}
+                                    onClick={() => toggleRowIncluded(r.id)}
+                                    className="flex h-4 w-4 items-center justify-center rounded border border-[#e9eaeb] bg-white"
+                                  >
+                                    {included ? (
+                                      <Check size={12} strokeWidth={2.5} className="text-[#0267ff]" />
+                                    ) : null}
+                                  </button>
+                                </td>
+                                <td className="px-3 py-2.5 text-[#00050a]">{label}</td>
+                                <td className="px-3 py-2.5 text-[#00050a]">{from}</td>
+                                <td className="px-3 py-2.5 text-[#00050a]">{to}</td>
+                              </tr>
+                            );
+                          })}
+                      </>
+                    )}
+                    {hasInitialAllocRecChange && (
+                      <>
+                        <tr className="border-b border-[#e9eaeb]">
+                          <td className="w-10 px-3 py-2.5 align-middle" />
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            <button
+                              type="button"
+                              onClick={() => setInitialAllocRecExpanded((e) => !e)}
+                              className="flex items-center gap-1.5 text-[#00050a] hover:underline"
+                            >
+                              Initial allocation recommendations
+                              {initialAllocRecExpanded ? (
+                                <ChevronUp size={16} />
+                              ) : (
+                                <ChevronDown size={16} />
+                              )}
+                            </button>
+                          </td>
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            {initialAllocRecCommitSummary.from}
+                          </td>
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            {initialAllocRecCommitSummary.to}
+                          </td>
+                        </tr>
+                        {initialAllocRecExpanded &&
+                          initialAllocRecRows.map(({ id, name, from, to }) => {
                             const included = includedRowIds.has(id);
                             return (
                               <tr
-                                key={id}
+                                key={`iar-${id}`}
                                 className="border-b border-[#e9eaeb] last:border-b-0 bg-slate-50/50"
                               >
                                 <td className="w-10 px-3 py-2.5 pl-6 align-middle">
@@ -315,9 +458,11 @@ export function ConfirmCommitRevertModal({
                               </tr>
                             );
                           })}
-                    </>
+                      </>
                     )}
-                    {!hasAssortmentChange && !hasRecommendationsChange && (
+                    {!hasAssortmentChange &&
+                      !hasAssortmentRecChange &&
+                      !hasInitialAllocRecChange && (
                       <tr className="border-b border-[#e9eaeb] last:border-b-0">
                         <td className="w-10 px-3 py-2.5 align-middle" />
                         <td className="px-3 py-2.5 text-[#00050a]">—</td>
@@ -386,31 +531,35 @@ export function ConfirmCommitRevertModal({
                           })}
                       </>
                     )}
-                    {hasRevertRecommendationChange && (
+                    {hasRevertAssortmentRecChange && (
                       <>
                         <tr className="border-b border-[#e9eaeb]">
                           <td className="w-10 px-3 py-2.5 align-middle" />
                           <td className="px-3 py-2.5 text-[#00050a]">
                             <button
                               type="button"
-                              onClick={() => setRecommendationsExpanded((e) => !e)}
+                              onClick={() => setAssortmentRecExpanded((e) => !e)}
                               className="flex items-center gap-1.5 text-[#00050a] hover:underline"
                             >
-                              Recommendations
-                              {recommendationsExpanded ? (
+                              Assortment recommendations
+                              {assortmentRecExpanded ? (
                                 <ChevronUp size={16} />
                               ) : (
                                 <ChevronDown size={16} />
                               )}
                             </button>
                           </td>
-                          <td className="px-3 py-2.5 text-[#00050a]">—</td>
-                          <td className="px-3 py-2.5 text-[#00050a]">—</td>
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            {assortmentRecRevertSummary.from}
+                          </td>
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            {assortmentRecRevertSummary.to}
+                          </td>
                         </tr>
-                        {recommendationsExpanded &&
-                          revertRecommendationRows.map(({ id, name, from, to }) => (
+                        {assortmentRecExpanded &&
+                          revertAssortmentRecRows.map(({ id, name, from, to }) => (
                             <tr
-                              key={id}
+                              key={`rar-${id}`}
                               className="border-b border-[#e9eaeb] last:border-b-0 bg-slate-50/50"
                             >
                               <td className="w-10 px-3 py-2.5 pl-6 align-middle">
@@ -432,7 +581,59 @@ export function ConfirmCommitRevertModal({
                           ))}
                       </>
                     )}
-                    {!hasRevertAssortmentChange && !hasRevertRecommendationChange && (
+                    {hasRevertInitialAllocRecChange && (
+                      <>
+                        <tr className="border-b border-[#e9eaeb]">
+                          <td className="w-10 px-3 py-2.5 align-middle" />
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            <button
+                              type="button"
+                              onClick={() => setInitialAllocRecExpanded((e) => !e)}
+                              className="flex items-center gap-1.5 text-[#00050a] hover:underline"
+                            >
+                              Initial allocation recommendations
+                              {initialAllocRecExpanded ? (
+                                <ChevronUp size={16} />
+                              ) : (
+                                <ChevronDown size={16} />
+                              )}
+                            </button>
+                          </td>
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            {initialAllocRecRevertSummary.from}
+                          </td>
+                          <td className="px-3 py-2.5 text-[#00050a]">
+                            {initialAllocRecRevertSummary.to}
+                          </td>
+                        </tr>
+                        {initialAllocRecExpanded &&
+                          revertInitialAllocRecRows.map(({ id, name, from, to }) => (
+                            <tr
+                              key={`riar-${id}`}
+                              className="border-b border-[#e9eaeb] last:border-b-0 bg-slate-50/50"
+                            >
+                              <td className="w-10 px-3 py-2.5 pl-6 align-middle">
+                                <button
+                                  type="button"
+                                  role="checkbox"
+                                  aria-checked="true"
+                                  disabled
+                                  aria-label={`Included ${name}`}
+                                  className="flex h-4 w-4 cursor-default items-center justify-center rounded border border-[#e9eaeb] bg-white disabled:opacity-100"
+                                >
+                                  <Check size={12} strokeWidth={2.5} className="text-[#0267ff]" />
+                                </button>
+                              </td>
+                              <td className="px-3 py-2.5 text-[#00050a]">{name}</td>
+                              <td className="px-3 py-2.5 text-[#00050a]">{from}</td>
+                              <td className="px-3 py-2.5 text-[#00050a]">{to}</td>
+                            </tr>
+                          ))}
+                      </>
+                    )}
+                    {!hasRevertAssortmentChange &&
+                      !hasRevertAssortmentRecChange &&
+                      !hasRevertInitialAllocRecChange && (
                       <tr className="border-b border-[#e9eaeb] last:border-b-0">
                         <td className="w-10 px-3 py-2.5 align-middle" />
                         <td className="px-3 py-2.5 text-[#00050a]">—</td>

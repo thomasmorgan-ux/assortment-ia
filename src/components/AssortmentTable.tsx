@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   MapPin,
-  CircleCheck,
   Pencil,
   Check,
   ChevronDown,
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
+import { RowStatusActionsPopover, EllipsisHollowIcon } from './RowStatusActionsPopover';
 import type { AssortmentRow, ModalKind } from '../types';
 
 /** SKU-style titles when column is grouped by Product (vs Product Group name). */
@@ -84,6 +84,17 @@ function formatAssortmentScheduleLabel(row: AssortmentRow): string | null {
   return null;
 }
 
+/** e.g. "16/16 Assorted" → two lines for the recommendations pill. */
+function splitAssortmentRecommendationLabel(label: string): { line1: string; line2: string | null } {
+  const m = label.match(/^(\d+\/\d+)\s+(.+)$/);
+  if (m) return { line1: m[1], line2: m[2] };
+  const space = label.indexOf(' ');
+  if (space > 0) {
+    return { line1: label.slice(0, space).trim(), line2: label.slice(space + 1).trim() };
+  }
+  return { line1: label, line2: null };
+}
+
 function productTitleForGrouping(row: AssortmentRow, grouping: string): { primary: string; secondary: string } {
   if (grouping !== 'Product') {
     return {
@@ -120,10 +131,6 @@ interface AssortmentTableProps {
   /** When set, table shows only this row. Toggle by clicking the row's filter icon. */
   isolateRowId?: string | null;
   onIsolateRow?: (rowId: string | null) => void;
-  /** When true, show the recommendation badge (purple pill) in the Initial Allocation column. Set after success banner is shown. */
-  showRecommendationBadge?: boolean;
-  statusTableFilter?: 'all' | 'draft' | 'committed';
-  onStatusTableFilterChange?: (filter: 'all' | 'draft' | 'committed') => void;
   /** When user picks a dimension in the product drill-down modal */
   onProductDrillDimensionSelect?: (
     dimensionId: string,
@@ -172,9 +179,6 @@ export function AssortmentTable({
   onRequestRevert,
   isolateRowId,
   onIsolateRow,
-  showRecommendationBadge = false,
-  statusTableFilter = 'all',
-  onStatusTableFilterChange,
   onProductDrillDimensionSelect,
   productGrouping: productGroupingProp,
   onProductGroupingChange,
@@ -188,6 +192,10 @@ export function AssortmentTable({
   const [drillDownAnchor, setDrillDownAnchor] = useState<DOMRect | null>(null);
   const [productDrillSourceRow, setProductDrillSourceRow] = useState<AssortmentRow | null>(null);
   const [locationDrillDownAnchor, setLocationDrillDownAnchor] = useState<DOMRect | null>(null);
+  const [statusActionMenu, setStatusActionMenu] = useState<{
+    rowId: string;
+    rect: DOMRect;
+  } | null>(null);
   const [locationDrillSource, setLocationDrillSource] = useState<{
     rowId: string;
     rowIndex: number;
@@ -209,6 +217,12 @@ export function AssortmentTable({
     onLocationGroupingChange?.(label);
     if (locationGroupingProp === undefined) setLocationGroupingLocal(label);
   };
+
+  /** Extra columns once any row has generated recommendations (data set on generate). */
+  const showRecommendationColumns = rows.some(
+    (r) =>
+      r.sumIaRecommendation != null || r.assortmentRecommendationLabel != null
+  );
   const locationGroupDropdownRef = useRef<HTMLDivElement>(null);
 
   const PRODUCT_GROUPING_OPTIONS = [
@@ -252,7 +266,15 @@ export function AssortmentTable({
     >
       <div className="overflow-x-auto">
         <table
-          className={`w-full border-collapse ${productDrillDownActive ? 'min-w-[1680px]' : 'min-w-[1200px]'}`}
+          className={`w-full border-collapse ${
+            productDrillDownActive
+              ? showRecommendationColumns
+                ? 'min-w-[2040px]'
+                : 'min-w-[1680px]'
+              : showRecommendationColumns
+                ? 'min-w-[1546px]'
+                : 'min-w-[1200px]'
+          }`}
         >
           <thead>
             <tr className="bg-[#f8f8f8]">
@@ -405,39 +427,27 @@ export function AssortmentTable({
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">Assortment <Pencil size={14} className="shrink-0 text-slate-400" /></span>
               </th>
+              {showRecommendationColumns && (
+                <th className="h-12 min-h-[48px] min-w-[173px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
+                  <span className="inline-flex items-center gap-1 leading-tight">
+                    <Sparkles size={14} className="shrink-0 text-[#a234da]" aria-hidden />
+                    Assortment recommendations
+                  </span>
+                </th>
+              )}
               <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
                 <span className="inline-flex items-center gap-1">Initial Allocation <Pencil size={14} className="shrink-0 text-slate-400" /></span>
               </th>
-              <th className="h-12 min-h-[48px] min-w-[280px] px-4 py-3 text-left align-middle">
-                <div className="flex flex-nowrap items-center gap-2">
-                  <span className="shrink-0 text-xs font-semibold text-[#00050a]">Status:</span>
-                  <div
-                    className="inline-flex w-fit overflow-hidden rounded-[1000px] border border-[#e9eaeb] bg-white"
-                    role="group"
-                    aria-label="Filter by status"
-                  >
-                    {(['all', 'draft', 'committed'] as const).map((key, i) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => onStatusTableFilterChange?.(key)}
-                        className={`inline-flex h-[26px] items-center justify-center px-4 py-1 text-xs leading-normal transition-colors ${
-                          i > 0 ? 'border-l border-[#e9eaeb]' : ''
-                        } ${
-                          statusTableFilter === key
-                            ? key === 'draft'
-                              ? 'bg-[#fff6e5] font-medium text-[#00050a]'
-                              : key === 'committed'
-                                ? 'bg-[#f8f8f8] font-normal text-[#00050a]'
-                                : 'bg-[#f8f8f8] font-normal text-[#00050a]'
-                            : 'bg-white font-normal text-[#00050a] hover:bg-slate-50'
-                        }`}
-                      >
-                        {key === 'all' ? 'All' : key === 'draft' ? 'Draft' : 'Committed'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {showRecommendationColumns && (
+                <th className="h-12 min-h-[48px] min-w-[173px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
+                  <span className="inline-flex items-center gap-1 leading-tight">
+                    <Sparkles size={14} className="shrink-0 text-[#a234da]" aria-hidden />
+                    Initial allocation recommendations
+                  </span>
+                </th>
+              )}
+              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
+                <span className="inline-flex items-center gap-1">Action</span>
               </th>
               </tr>
           </thead>
@@ -673,6 +683,34 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
+                {showRecommendationColumns && (
+                  <td className="min-h-[72px] min-w-[173px] py-3 px-4 align-middle">
+                    {row.assortmentRecommendationLabel ? (
+                      (() => {
+                        const { line1, line2 } = splitAssortmentRecommendationLabel(
+                          row.assortmentRecommendationLabel
+                        );
+                        return (
+                          <div className="inline-flex w-fit max-w-full items-start gap-1.5 rounded-[5px] bg-[#dbc7f4]/80 px-2 py-1.5">
+                            <Sparkles
+                              size={12}
+                              className="mt-0.5 shrink-0 text-[#a234da]"
+                              aria-hidden
+                            />
+                            <div className="flex min-w-0 flex-col items-center text-center leading-tight">
+                              <span className="text-xs font-medium text-[#a234da]">{line1}</span>
+                              {line2 ? (
+                                <span className="text-xs font-medium text-[#a234da]">{line2}</span>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <span className="text-sm text-slate-400">—</span>
+                    )}
+                  </td>
+                )}
                 <td className="min-h-[72px] py-3 px-4 align-middle group relative">
                   {row.assortment.assortedCount === row.assortment.totalCount && (
                     <button
@@ -708,7 +746,7 @@ export function AssortmentTable({
                       <span className="text-sm text-slate-900">Item IA</span>
                       <span className="text-sm font-medium text-slate-900">{row.sumIa}</span>
                     </div>
-                    {showRecommendationBadge && row.sumIaRecommendation != null && (
+                    {row.sumIaRecommendation != null && !showRecommendationColumns && (
                       <div className="group/reason relative inline-flex w-fit">
                         <div className="inline-flex w-fit items-center gap-[2px] rounded-[5px] bg-[#dbc7f4] p-1">
                           <Sparkles size={10} className="shrink-0 text-[#a234da]" />
@@ -743,10 +781,49 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
+                {showRecommendationColumns && (
+                  <td className="min-h-[72px] min-w-[173px] py-3 px-4 align-middle">
+                    {row.sumIaRecommendation != null ? (
+                      <div className="group/reason relative inline-flex w-fit max-w-full">
+                        <div className="inline-flex w-fit items-center gap-[2px] rounded-[5px] bg-[#dbc7f4] p-1.5">
+                          <Sparkles size={10} className="shrink-0 text-[#a234da]" aria-hidden />
+                          <span className="text-xs font-medium leading-normal text-[#a234da]">
+                            {row.sumIaRecommendation}
+                          </span>
+                          <span className="text-[10px] font-normal text-[#a234da]">Units</span>
+                        </div>
+                        <div
+                          className="pointer-events-none absolute right-full top-1/2 z-10 mr-2 hidden min-w-[200px] -translate-y-1/2 rounded-[4px] bg-[#212121] px-4 py-3 text-white shadow-lg group-hover/reason:block"
+                          role="tooltip"
+                        >
+                          <p className="mb-2 text-xs font-medium leading-normal">
+                            Recommendation Reasons
+                          </p>
+                          <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
+                            <div className="flex items-center justify-between gap-2">
+                              <span>High past sales for similar products</span>
+                              <span>X35</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span>Low past sales for similar products</span>
+                              <span>X18</span>
+                            </div>
+                          </div>
+                          <span
+                            className="absolute -right-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-l-[#212121]"
+                            aria-hidden
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-400">—</span>
+                    )}
+                  </td>
+                )}
                 <td className="min-h-[72px] py-3 px-4 align-middle">
-                  <div className="flex flex-col items-center gap-1">
-                    {row.hasPendingChanges ? (
-                      <div className="flex flex-nowrap items-center gap-1">
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <div className="flex flex-nowrap items-center justify-center gap-2">
+                      {row.hasPendingChanges ? (
                         <span
                           className="inline-flex shrink-0 items-center justify-end rounded-[4px] border border-[#f29a35] bg-[#fff6e5] px-1 py-1 text-[10px] font-normal leading-normal text-[#00050a]"
                           style={{ borderWidth: '0.5px' }}
@@ -754,31 +831,34 @@ export function AssortmentTable({
                         >
                           Draft
                         </span>
-                        <div className="flex items-center gap-1" data-node-id="761:65174">
-                          <button
-                            type="button"
-                            onClick={() => (onRequestCommit ? onRequestCommit(row) : onCommit?.(row.id))}
-                            className="inline-flex h-5 min-w-0 items-center justify-center gap-1 rounded-[4px] bg-[#0267ff] px-1 py-1 text-[10px] font-normal leading-normal text-white transition-colors hover:opacity-90"
-                            aria-label="Commit changes"
-                          >
-                            Commit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => (onRequestRevert ? onRequestRevert(row) : onRevert?.(row.id))}
-                            className="inline-flex h-5 min-w-0 items-center justify-center rounded-[4px] border border-[#e9eaeb] bg-[#f8f8f8] px-1 py-1 text-[10px] font-normal leading-normal text-[#00050a] transition-colors hover:bg-[#e9eaeb]"
-                            aria-label="Revert changes"
-                          >
-                            Revert
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-xs font-normal text-[#6b7280]">
-                        <CircleCheck size={16} className="shrink-0 text-emerald-600" />
-                        Committed
-                      </span>
-                    )}
+                      ) : (
+                        <span
+                          className="inline-flex shrink-0 items-center justify-end rounded-[4px] border border-emerald-600 bg-emerald-50 px-1 py-1 text-[10px] font-normal leading-normal text-[#00050a]"
+                          style={{ borderWidth: '0.5px' }}
+                          data-node-id="761:65168"
+                        >
+                          Committed
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        data-status-menu-trigger
+                        aria-label="Open row actions"
+                        aria-expanded={statusActionMenu?.rowId === row.id}
+                        aria-haspopup="menu"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setStatusActionMenu((prev) =>
+                            prev?.rowId === row.id ? null : { rowId: row.id, rect }
+                          );
+                        }}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-slate-100"
+                        data-node-id="761:65174"
+                      >
+                        <EllipsisHollowIcon className="shrink-0" />
+                      </button>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -799,6 +879,30 @@ export function AssortmentTable({
           </button>
         </div>
       </div>
+      <RowStatusActionsPopover
+        anchorRect={statusActionMenu?.rect ?? null}
+        onClose={() => setStatusActionMenu(null)}
+        actionsDisabled={
+          !(
+            statusActionMenu &&
+            rows.find((x) => x.id === statusActionMenu.rowId)?.hasPendingChanges
+          )
+        }
+        onCommit={() => {
+          const r = statusActionMenu && rows.find((x) => x.id === statusActionMenu.rowId);
+          if (r) {
+            if (onRequestCommit) onRequestCommit(r);
+            else onCommit?.(r.id);
+          }
+        }}
+        onRevert={() => {
+          const r = statusActionMenu && rows.find((x) => x.id === statusActionMenu.rowId);
+          if (r) {
+            if (onRequestRevert) onRequestRevert(r);
+            else onRevert?.(r.id);
+          }
+        }}
+      />
       <DrillDownProductModal
         anchorRect={drillDownAnchor}
         onClose={() => {
