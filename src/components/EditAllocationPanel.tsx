@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { X, Clock, Info, ChevronLeft, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import type { AssortmentRow } from '../types';
 
@@ -40,6 +40,69 @@ function getDefaultRowState(row: AssortmentRow): RowEditState {
 
 function totalIaNum(state: RowEditState): number {
   return Number(state.totalIaInput) || 0;
+}
+
+/** Collapsible grey panel (Impact Summary, Top Locations / Top Products). */
+function ImpactTopTableCollapsible({
+  sectionKey,
+  title,
+  expanded,
+  onToggle,
+  children,
+  titleAccessory,
+  rootClassName = 'mt-4',
+}: {
+  sectionKey: string;
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+  /** e.g. Info button — must not be nested inside the title toggle (valid HTML). */
+  titleAccessory?: ReactNode;
+  rootClassName?: string;
+}) {
+  const triggerId = `${sectionKey}-trigger`;
+  const panelId = `${sectionKey}-panel`;
+  return (
+    <div className={`${rootClassName} rounded-lg border border-[#e9eaeb] bg-slate-50`}>
+      <div className="flex w-full items-center gap-1 px-3 py-2.5 transition-colors hover:bg-slate-100/90">
+        <button
+          type="button"
+          id={triggerId}
+          aria-expanded={expanded}
+          aria-controls={panelId}
+          onClick={onToggle}
+          className="min-w-0 flex-1 text-left text-xs font-semibold text-[#000000]"
+        >
+          {title}
+        </button>
+        {titleAccessory != null ? (
+          <span className="flex shrink-0 items-center">{titleAccessory}</span>
+        ) : null}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={expanded ? 'Collapse section' : 'Expand section'}
+          className="flex shrink-0 rounded p-0.5 text-slate-500 transition-colors hover:bg-slate-200/60"
+        >
+          <ChevronDown
+            size={18}
+            className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            aria-hidden
+          />
+        </button>
+      </div>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={triggerId}
+        hidden={!expanded}
+        className={`px-3 pb-3 ${expanded ? 'border-t border-[#e9eaeb] pt-2' : ''}`}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 const topLocationsMock: { metric: string; committed: number | string; current: string }[] = [
@@ -142,6 +205,19 @@ export function EditAllocationPanel({
   const [view, setView] = useState<PanelView>('allocation');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(() => rows[0]?.id ?? null);
   const [headerAccordionExpanded, setHeaderAccordionExpanded] = useState(false);
+  /** Recommendation formula disclosure per row; collapsed by default. */
+  const [recommendationFormulaExpanded, setRecommendationFormulaExpanded] = useState<
+    Record<string, boolean>
+  >({});
+  /** Top Locations / Top Products impact tables; collapsed by default (keyed by row id). */
+  const [impactTopLocationsExpanded, setImpactTopLocationsExpanded] = useState<
+    Record<string, boolean>
+  >({});
+  const [impactTopProductsExpanded, setImpactTopProductsExpanded] = useState<
+    Record<string, boolean>
+  >({});
+  /** Impact Summary disclosure; open by default (`undefined` → expanded). */
+  const [impactSummaryExpanded, setImpactSummaryExpanded] = useState<Record<string, boolean>>({});
   /** HTMLElement so both <div> and <section> refs type-check (Vercel/Linux tsc). */
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [rowState, setRowState] = useState<Record<string, RowEditState>>(() =>
@@ -470,9 +546,18 @@ export function EditAllocationPanel({
                             </div>
                             {r.assortment.assortedCount > 0 && (
                               <div className="mt-4 flex flex-col gap-4 border-t border-[#e9eaeb] pt-4">
-                                <div>
-                                  <div className="mb-2 flex items-center gap-1.5">
-                                    <h4 className="text-xs font-semibold text-[#000000]">Impact Summary</h4>
+                                <ImpactTopTableCollapsible
+                                  sectionKey={`impact-summary-m-${r.id}`}
+                                  title="Impact Summary"
+                                  expanded={impactSummaryExpanded[r.id] ?? true}
+                                  onToggle={() =>
+                                    setImpactSummaryExpanded((prev) => ({
+                                      ...prev,
+                                      [r.id]: !(prev[r.id] ?? true),
+                                    }))
+                                  }
+                                  rootClassName="mt-0"
+                                  titleAccessory={
                                     <button
                                       type="button"
                                       className="text-slate-400 hover:text-slate-600"
@@ -480,20 +565,39 @@ export function EditAllocationPanel({
                                     >
                                       <Info size={14} />
                                     </button>
-                                  </div>
+                                  }
+                                >
                                   <p className="mb-2 text-xs text-slate-600">
                                     Editing Allocation does not change the product or location
                                   </p>
                                   <SummaryTableMetricValue rows={buildAssortmentImpactMetricValueRows(r)} />
-                                </div>
-                                <div className="mt-4">
-                                  <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Locations</h4>
+                                </ImpactTopTableCollapsible>
+                                <ImpactTopTableCollapsible
+                                  sectionKey={`impact-loc-m-${r.id}`}
+                                  title="Top Locations"
+                                  expanded={Boolean(impactTopLocationsExpanded[r.id])}
+                                  onToggle={() =>
+                                    setImpactTopLocationsExpanded((prev) => ({
+                                      ...prev,
+                                      [r.id]: !prev[r.id],
+                                    }))
+                                  }
+                                >
                                   <SummaryTable rows={topLocationsMock} />
-                                </div>
-                                <div className="mt-4">
-                                  <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Products</h4>
+                                </ImpactTopTableCollapsible>
+                                <ImpactTopTableCollapsible
+                                  sectionKey={`impact-prod-m-${r.id}`}
+                                  title="Top Products"
+                                  expanded={Boolean(impactTopProductsExpanded[r.id])}
+                                  onToggle={() =>
+                                    setImpactTopProductsExpanded((prev) => ({
+                                      ...prev,
+                                      [r.id]: !prev[r.id],
+                                    }))
+                                  }
+                                >
                                   <SummaryTable rows={topProductsMock} />
-                                </div>
+                                </ImpactTopTableCollapsible>
                               </div>
                             )}
                           </div>
@@ -586,26 +690,58 @@ export function EditAllocationPanel({
 
                     {singleRow.assortment.assortedCount > 0 && (
                       <div className="mt-4 flex flex-col gap-4 border-t border-[#e9eaeb] pt-4">
-                        <div>
-                          <div className="mb-2 flex items-center gap-1.5">
-                            <h4 className="text-xs font-semibold text-[#000000]">Impact Summary</h4>
-                            <button type="button" className="text-slate-400 hover:text-slate-600" aria-label="Info">
+                        <ImpactTopTableCollapsible
+                          sectionKey={`impact-summary-s-${singleRow.id}`}
+                          title="Impact Summary"
+                          expanded={impactSummaryExpanded[singleRow.id] ?? true}
+                          onToggle={() =>
+                            setImpactSummaryExpanded((prev) => ({
+                              ...prev,
+                              [singleRow.id]: !(prev[singleRow.id] ?? true),
+                            }))
+                          }
+                          rootClassName="mt-0"
+                          titleAccessory={
+                            <button
+                              type="button"
+                              className="text-slate-400 hover:text-slate-600"
+                              aria-label="Info"
+                            >
                               <Info size={14} />
                             </button>
-                          </div>
+                          }
+                        >
                           <p className="mb-2 text-xs text-slate-600">
                             Editing Allocation does not change the product or location
                           </p>
                           <SummaryTableMetricValue rows={buildAssortmentImpactMetricValueRows(singleRow)} />
-                        </div>
-                        <div className="mt-4">
-                          <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Locations</h4>
+                        </ImpactTopTableCollapsible>
+                        <ImpactTopTableCollapsible
+                          sectionKey={`impact-loc-s-${singleRow.id}`}
+                          title="Top Locations"
+                          expanded={Boolean(impactTopLocationsExpanded[singleRow.id])}
+                          onToggle={() =>
+                            setImpactTopLocationsExpanded((prev) => ({
+                              ...prev,
+                              [singleRow.id]: !prev[singleRow.id],
+                            }))
+                          }
+                        >
                           <SummaryTable rows={topLocationsMock} />
-                        </div>
-                        <div className="mt-4">
-                          <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Products</h4>
+                        </ImpactTopTableCollapsible>
+                        <ImpactTopTableCollapsible
+                          sectionKey={`impact-prod-s-${singleRow.id}`}
+                          title="Top Products"
+                          expanded={Boolean(impactTopProductsExpanded[singleRow.id])}
+                          onToggle={() =>
+                            setImpactTopProductsExpanded((prev) => ({
+                              ...prev,
+                              [singleRow.id]: !prev[singleRow.id],
+                            }))
+                          }
+                        >
                           <SummaryTable rows={topProductsMock} />
-                        </div>
+                        </ImpactTopTableCollapsible>
                       </div>
                     )}
                   </section>
@@ -621,6 +757,7 @@ export function EditAllocationPanel({
               const isBelowMin = totalIaNum(state) < TOTAL_MIN_QUANTITY;
               const isAboveMax = totalIaNum(state) > totalWarehouseUnits;
               const isExpanded = rows.length === 1 || expandedRowId === r.id;
+              const recommendationFormulaOpen = recommendationFormulaExpanded[r.id] ?? false;
               const content = (
                 <>
                   {/* Allocation method per row */}
@@ -720,9 +857,38 @@ export function EditAllocationPanel({
                   </div>
 
                   {state.method === 'recommendation' && (
-                    <div className="mb-3">
-                      <h4 className="mb-2 text-xs font-semibold text-[#000000]">Recommendation formula</h4>
-                      <div className="space-y-2 text-sm leading-relaxed text-[#000000]">
+                    <div className="mb-3 rounded-lg border border-[#e9eaeb] bg-slate-50">
+                      <button
+                        type="button"
+                        id={`recommendation-formula-trigger-${r.id}`}
+                        aria-expanded={recommendationFormulaOpen}
+                        aria-controls={`recommendation-formula-panel-${r.id}`}
+                        onClick={() =>
+                          setRecommendationFormulaExpanded((prev) => ({
+                            ...prev,
+                            [r.id]: !prev[r.id],
+                          }))
+                        }
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors hover:bg-slate-100/90"
+                      >
+                        <span className="text-xs font-semibold text-[#000000]">Recommendation formula</span>
+                        <ChevronDown
+                          size={18}
+                          className={`shrink-0 text-slate-500 transition-transform duration-200 ${
+                            recommendationFormulaOpen ? 'rotate-180' : ''
+                          }`}
+                          aria-hidden
+                        />
+                      </button>
+                      <div
+                        id={`recommendation-formula-panel-${r.id}`}
+                        role="region"
+                        aria-labelledby={`recommendation-formula-trigger-${r.id}`}
+                        hidden={!recommendationFormulaOpen}
+                        className={`space-y-2 px-3 pb-3 pt-2 text-sm leading-relaxed text-[#000000] ${
+                          recommendationFormulaOpen ? 'border-t border-[#e9eaeb]' : ''
+                        }`}
+                      >
                         <p>
                           Recommendation ={' '}
                           <span className="font-medium">
@@ -745,28 +911,60 @@ export function EditAllocationPanel({
                     </div>
                   )}
 
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-semibold text-[#000000]">Impact Summary</h4>
-                    <button type="button" className="text-slate-400 hover:text-slate-600" aria-label="Info">
-                      <Info size={14} />
-                    </button>
-                  </div>
-                  <p className="mb-2 text-xs text-slate-600">
-                    Editing Allocation does not change the product or location
-                  </p>
-                  <SummaryTableMetricValue rows={buildAssortmentImpactMetricValueRows(r)} />
+                  <ImpactTopTableCollapsible
+                    sectionKey={`impact-summary-ia-${r.id}`}
+                    title="Impact Summary"
+                    expanded={impactSummaryExpanded[r.id] ?? true}
+                    onToggle={() =>
+                      setImpactSummaryExpanded((prev) => ({
+                        ...prev,
+                        [r.id]: !(prev[r.id] ?? true),
+                      }))
+                    }
+                    rootClassName="mt-0 pt-[10px]"
+                    titleAccessory={
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-slate-600"
+                        aria-label="Info"
+                      >
+                        <Info size={14} />
+                      </button>
+                    }
+                  >
+                    <p className="mb-2 text-xs text-slate-600">
+                      Editing Allocation does not change the product or location
+                    </p>
+                    <SummaryTableMetricValue rows={buildAssortmentImpactMetricValueRows(r)} />
+                  </ImpactTopTableCollapsible>
 
-                  {/* Top Locations */}
-                  <div className="mt-4">
-                    <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Locations</h4>
+                  <ImpactTopTableCollapsible
+                    sectionKey={`impact-loc-ia-${r.id}`}
+                    title="Top Locations"
+                    expanded={Boolean(impactTopLocationsExpanded[r.id])}
+                    onToggle={() =>
+                      setImpactTopLocationsExpanded((prev) => ({
+                        ...prev,
+                        [r.id]: !prev[r.id],
+                      }))
+                    }
+                  >
                     <SummaryTable rows={topLocationsMock} />
-                  </div>
+                  </ImpactTopTableCollapsible>
 
-                  {/* Top Products */}
-                  <div className="mt-4">
-                    <h4 className="mb-2 text-xs font-semibold text-[#000000]">Top Products</h4>
+                  <ImpactTopTableCollapsible
+                    sectionKey={`impact-prod-ia-${r.id}`}
+                    title="Top Products"
+                    expanded={Boolean(impactTopProductsExpanded[r.id])}
+                    onToggle={() =>
+                      setImpactTopProductsExpanded((prev) => ({
+                        ...prev,
+                        [r.id]: !prev[r.id],
+                      }))
+                    }
+                  >
                     <SummaryTable rows={topProductsMock} />
-                  </div>
+                  </ImpactTopTableCollapsible>
                 </>
               );
               if (rows.length === 1) {
