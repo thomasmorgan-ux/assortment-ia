@@ -10,6 +10,7 @@ import {
   Sparkles,
   Calendar,
   GripVertical,
+  Layers,
 } from 'lucide-react';
 import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
@@ -270,11 +271,11 @@ export function AssortmentTable({
           className={`w-full border-collapse ${
             productDrillDownActive
               ? showRecommendationColumns
-                ? 'min-w-[2160px]'
-                : 'min-w-[1800px]'
+                ? 'min-w-[2240px]'
+                : 'min-w-[1880px]'
               : showRecommendationColumns
-                ? 'min-w-[1666px]'
-                : 'min-w-[1320px]'
+                ? 'min-w-[1750px]'
+                : 'min-w-[1400px]'
           }`}
         >
           <thead>
@@ -450,8 +451,11 @@ export function AssortmentTable({
                   </span>
                 </th>
               )}
-              <th className="h-12 min-h-[48px] px-4 py-3 text-left text-xs font-medium text-[#00050a]">
-                <span className="inline-flex items-center gap-1">Action</span>
+              <th className="h-12 min-h-[48px] w-[88px] px-3 py-3 text-center text-xs font-medium text-[#00050a]">
+                Status
+              </th>
+              <th className="h-12 min-h-[48px] w-[72px] px-3 py-3 text-center text-xs font-medium text-[#00050a]">
+                Action
               </th>
               </tr>
           </thead>
@@ -856,45 +860,47 @@ export function AssortmentTable({
                     )}
                   </td>
                 )}
-                <td className="min-h-[72px] py-3 px-4 align-middle">
-                  <div className="flex flex-col items-center justify-center gap-1">
-                    <div className="flex flex-nowrap items-center justify-center gap-2">
+                <td className="min-h-[72px] w-[88px] px-3 py-3 align-middle">
+                  <div className="flex items-center justify-center">
+                    <span
+                      className={`inline-flex shrink-0 items-center justify-center rounded-[4px] border px-1.5 py-1 ${
+                        row.hasPendingChanges
+                          ? 'border-[#f29a35] bg-[#fff6e5]'
+                          : 'border-emerald-600 bg-emerald-50'
+                      }`}
+                      style={{ borderWidth: '0.5px' }}
+                      title={row.hasPendingChanges ? 'Draft' : 'Committed'}
+                      aria-label={row.hasPendingChanges ? 'Draft' : 'Committed'}
+                      data-node-id={row.hasPendingChanges ? '761:65167' : '761:65168'}
+                    >
                       {row.hasPendingChanges ? (
-                        <span
-                          className="inline-flex shrink-0 items-center justify-end rounded-[4px] border border-[#f29a35] bg-[#fff6e5] px-1 py-1 text-[10px] font-normal leading-normal text-[#00050a]"
-                          style={{ borderWidth: '0.5px' }}
-                          data-node-id="761:65167"
-                        >
-                          Draft
-                        </span>
+                        <Layers size={14} className="text-[#00050a]" strokeWidth={2} aria-hidden />
                       ) : (
-                        <span
-                          className="inline-flex shrink-0 items-center justify-end rounded-[4px] border border-emerald-600 bg-emerald-50 px-1 py-1 text-[10px] font-normal leading-normal text-[#00050a]"
-                          style={{ borderWidth: '0.5px' }}
-                          data-node-id="761:65168"
-                        >
-                          Committed
-                        </span>
+                        <Check size={14} className="text-emerald-700" strokeWidth={2} aria-hidden />
                       )}
-                      <button
-                        type="button"
-                        data-status-menu-trigger
-                        aria-label="Open row actions"
-                        aria-expanded={statusActionMenu?.rowId === row.id}
-                        aria-haspopup="menu"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setStatusActionMenu((prev) =>
-                            prev?.rowId === row.id ? null : { rowId: row.id, rect }
-                          );
-                        }}
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-slate-100"
-                        data-node-id="761:65174"
-                      >
-                        <EllipsisHollowIcon className="shrink-0" />
-                      </button>
-                    </div>
+                    </span>
+                  </div>
+                </td>
+                <td className="min-h-[72px] w-[72px] px-3 py-3 align-middle">
+                  <div className="flex items-center justify-center">
+                    <button
+                      type="button"
+                      data-status-menu-trigger
+                      aria-label="Open row actions"
+                      aria-expanded={statusActionMenu?.rowId === row.id}
+                      aria-haspopup="menu"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setStatusActionMenu((prev) =>
+                          prev?.rowId === row.id ? null : { rowId: row.id, rect }
+                        );
+                      }}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-slate-100"
+                      data-node-id="761:65174"
+                    >
+                      <EllipsisHollowIcon className="shrink-0" />
+                    </button>
                   </div>
                 </td>
               </tr>
