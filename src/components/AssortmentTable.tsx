@@ -44,25 +44,22 @@ function locationCellForGrouping(
   row: AssortmentRow,
   grouping: string,
   rowIndex: number
-): { primary: string; secondary: string; subtitleChevron: boolean } {
+): { primary: string; secondary: string } {
   if (grouping === 'Location Type') {
     return {
       primary: LOCATION_TYPE_COLUMN_SEQUENCE[rowIndex % LOCATION_TYPE_COLUMN_SEQUENCE.length],
       secondary: 'location_type',
-      subtitleChevron: false,
     };
   }
   if (grouping === 'Region') {
     return {
       primary: REGION_COLUMN_NAMES[rowIndex % REGION_COLUMN_NAMES.length],
       secondary: 'region',
-      subtitleChevron: false,
     };
   }
   return {
     primary: row.locationCluster.name,
     secondary: `${row.locationCluster.locationCount} locations`,
-    subtitleChevron: true,
   };
 }
 
@@ -520,9 +517,6 @@ export function AssortmentTable({
                     </div>
                     <div className="flex items-center gap-1 text-xs text-slate-500">
                       {productCell.secondary}
-                      {productGrouping !== 'Product' && (
-                        <ChevronDown size={12} className="text-slate-400 shrink-0" />
-                      )}
                     </div>
                   </div>
                 </td>
@@ -556,9 +550,6 @@ export function AssortmentTable({
                         >
                           {locationCell.secondary}
                         </span>
-                        {locationCell.subtitleChevron && (
-                          <ChevronDown size={12} className="text-slate-400 shrink-0" />
-                        )}
                       </div>
                     </div>
                   </div>
@@ -867,19 +858,14 @@ export function AssortmentTable({
                   <div className="flex items-center justify-center">
                     <div className="group/status relative inline-flex items-center justify-center">
                       <span
-                        className={`inline-flex shrink-0 items-center justify-center rounded-[4px] border px-1.5 py-1 ${
-                          row.hasPendingChanges
-                            ? 'border-[#f29a35] bg-[#fff6e5]'
-                            : 'border-emerald-600 bg-emerald-50'
-                        }`}
-                        style={{ borderWidth: '0.5px' }}
+                        className="inline-flex shrink-0 items-center justify-center p-0.5"
                         aria-label={row.hasPendingChanges ? 'Draft' : 'Committed'}
                         data-node-id={row.hasPendingChanges ? '761:65167' : '761:65168'}
                       >
                         {row.hasPendingChanges ? (
-                          <Layers size={14} className="text-[#00050a]" strokeWidth={2} aria-hidden />
+                          <Layers size={18} className="text-[#f29a35]" strokeWidth={2} aria-hidden />
                         ) : (
-                          <Check size={14} className="text-emerald-700" strokeWidth={2} aria-hidden />
+                          <Check size={18} className="text-emerald-700" strokeWidth={2} aria-hidden />
                         )}
                       </span>
                       <div
