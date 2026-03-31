@@ -12,6 +12,7 @@ import {
   Info,
   Layers,
 } from 'lucide-react';
+import { AutoneDrilldownIcon } from './AutoneDrilldownIcon';
 import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
 import { RowStatusActionsPopover, EllipsisHollowIcon } from './RowStatusActionsPopover';
@@ -99,7 +100,7 @@ function AssortedSkuLocsCell({
           <div className={`h-full rounded-full ${fillClass}`} style={{ width: `${pct}%` }} />
         </div>
         <span
-          className={`shrink-0 font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-none ${valueClass}`}
+          className={`shrink-0 font-['Inter',sans-serif] text-[14px] font-normal tabular-nums leading-none ${valueClass}`}
         >
           {count}/{total}
         </span>
@@ -108,7 +109,7 @@ function AssortedSkuLocsCell({
   };
   return (
     <div className="flex min-w-[188px] flex-col gap-2 py-0.5">
-      {barRow('Now', now.count, now.total, 'bg-[#475467]', 'text-[#101828]')}
+      {barRow('Now', now.count, now.total, 'bg-[#2EB8C2]', 'text-[#2EB8C2]')}
       {barRow('Rec', rec.count, rec.total, 'bg-[#a234da]', 'text-[#a234da]')}
     </div>
   );
@@ -652,12 +653,10 @@ export function AssortmentTable({
                         setProductDrillSourceRow(row);
                         setDrillDownAnchor(e.currentTarget.getBoundingClientRect());
                       }}
-                      className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600"
+                      className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded p-1 text-[#22272F] transition-all hover:bg-slate-100 hover:text-sky-600"
                       aria-label="Drill down product dimension"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-                        <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <AutoneDrilldownIcon className="shrink-0" size={18} />
                     </button>
                   )}
                   <div>
@@ -675,12 +674,10 @@ export function AssortmentTable({
                         setLocationDrillSource({ rowId: row.id, rowIndex });
                         setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect());
                       }}
-                      className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600"
+                      className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded p-1 text-[#22272F] transition-all hover:bg-slate-100 hover:text-sky-600"
                       aria-label="Drill down location dimension"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-                        <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <AutoneDrilldownIcon className="shrink-0" size={18} />
                     </button>
                   )}
                   <div className="flex items-start gap-2">

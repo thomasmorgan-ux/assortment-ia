@@ -22,6 +22,8 @@ import type { AssortmentRow } from '../types';
 type AdvancedFiltersAnchorState = {
   rect: DOMRect;
   source: 'button' | 'tag';
+  /** Set when `source === 'tag'` — which dimension’s value picker is open. */
+  tagDimensionId?: AdvancedFilterId;
 };
 
 type FocusView = 'all' | 'pre-season-ia' | 'in-season-ia';
@@ -169,7 +171,7 @@ export function MainContent() {
     Record<string, Partial<Record<AdvancedFilterId, string[]>>>
   >({});
   const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
-  const advancedFilterTagRef = useRef<HTMLDivElement>(null);
+  const advancedFiltersToolbarRef = useRef<HTMLDivElement>(null);
 
   const advancedFilterScopeKey = useMemo(() => {
     const pathIds = productDrillPath.map((c) => c.id).join('/');
@@ -191,16 +193,6 @@ export function MainContent() {
   const activeAdvancedFilterIds =
     advancedFiltersByScope[advancedFilterScopeKey] ?? [];
 
-  const activeAdvancedFilterIdsRef = useRef(activeAdvancedFilterIds);
-  activeAdvancedFilterIdsRef.current = activeAdvancedFilterIds;
-
-  const activeAdvancedFilterValueIds =
-    activeAdvancedFilterIds[0] != null
-      ? advancedFilterValuesByScope[advancedFilterScopeKey]?.[
-          activeAdvancedFilterIds[0]
-        ] ?? []
-      : [];
-
   const toggleAdvancedFilter = useCallback((id: AdvancedFilterId) => {
     const key = advancedFilterScopeKeyRef.current;
     setAdvancedFiltersByScope((prev) => {
@@ -212,30 +204,57 @@ export function MainContent() {
     });
   }, []);
 
-  const toggleAdvancedFilterValue = useCallback((valueId: string) => {
-    const key = advancedFilterScopeKeyRef.current;
-    const dim = activeAdvancedFilterIdsRef.current[0];
-    if (!dim) return;
-    setAdvancedFilterValuesByScope((prev) => {
-      const scopeVals = prev[key] ?? {};
-      const cur = scopeVals[dim] ?? [];
-      const nextVals = cur.includes(valueId)
-        ? cur.filter((x) => x !== valueId)
-        : [...cur, valueId];
-      return { ...prev, [key]: { ...scopeVals, [dim]: nextVals } };
-    });
-  }, []);
+  const toggleAdvancedFilterValue = useCallback(
+    (dimensionId: AdvancedFilterId, valueId: string) => {
+      const key = advancedFilterScopeKeyRef.current;
+      setAdvancedFilterValuesByScope((prev) => {
+        const scopeVals = prev[key] ?? {};
+        const cur = scopeVals[dimensionId] ?? [];
+        const nextVals = cur.includes(valueId)
+          ? cur.filter((x) => x !== valueId)
+          : [...cur, valueId];
+        return { ...prev, [key]: { ...scopeVals, [dimensionId]: nextVals } };
+      });
+    },
+    []
+  );
 
-  const selectAllFilteredAdvancedFilterValues = useCallback((filteredIds: string[]) => {
+  const selectAllFilteredAdvancedFilterValues = useCallback(
+    (dimensionId: AdvancedFilterId, filteredIds: string[]) => {
+      const key = advancedFilterScopeKeyRef.current;
+      if (filteredIds.length === 0) return;
+      setAdvancedFilterValuesByScope((prev) => {
+        const scopeVals = prev[key] ?? {};
+        const cur = new Set(scopeVals[dimensionId] ?? []);
+        filteredIds.forEach((id) => cur.add(id));
+        return { ...prev, [key]: { ...scopeVals, [dimensionId]: [...cur] } };
+      });
+    },
+    []
+  );
+
+  const clearAdvancedFilterDimension = useCallback((id: AdvancedFilterId) => {
     const key = advancedFilterScopeKeyRef.current;
-    const dim = activeAdvancedFilterIdsRef.current[0];
-    if (!dim || filteredIds.length === 0) return;
-    setAdvancedFilterValuesByScope((prev) => {
-      const scopeVals = prev[key] ?? {};
-      const cur = new Set(scopeVals[dim] ?? []);
-      filteredIds.forEach((id) => cur.add(id));
-      return { ...prev, [key]: { ...scopeVals, [dim]: [...cur] } };
+    setAdvancedFiltersByScope((prev) => {
+      const cur = prev[key] ?? [];
+      const next = cur.filter((x) => x !== id);
+      if (next.length === 0) {
+        const out = { ...prev };
+        delete out[key];
+        return out;
+      }
+      return { ...prev, [key]: next };
     });
+    setAdvancedFilterValuesByScope((prev) => {
+      const scopeVals = prev[key];
+      if (!scopeVals?.[id]) return prev;
+      const nextScope = { ...scopeVals };
+      delete nextScope[id];
+      return { ...prev, [key]: nextScope };
+    });
+    setAdvancedFiltersAnchor((a) =>
+      a?.source === 'tag' && a.tagDimensionId === id ? null : a
+    );
   }, []);
 
   const clearActiveAdvancedFilters = useCallback(() => {
@@ -600,7 +619,7 @@ export function MainContent() {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col min-h-0 px-6 py-4 gap-4">
+      <div className="flex flex-1 flex-col min-h-0 bg-white px-6 py-4 gap-4">
         {/* Focus tabs — outside bordered toolbar card */}
         <div
           className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2"
@@ -662,7 +681,10 @@ export function MainContent() {
         {/* Toolbar: filters | status + breadcrumbs */}
         <div className="flex flex-col gap-[18px] rounded-[5px] border border-[#e9eaeb] bg-white p-2">
           <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2">
+            <div
+              ref={advancedFiltersToolbarRef}
+              className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2"
+            >
                   <button
                     ref={advancedFiltersBtnRef}
                     type="button"
@@ -690,67 +712,83 @@ export function MainContent() {
                     />
                     Advanced filters
                   </button>
-                  {activeAdvancedFilterIds.length > 0 && (
-                    <div
-                      ref={advancedFilterTagRef}
-                      className="flex h-10 shrink-0 items-stretch overflow-hidden rounded-[4px] border-[0.5px] border-solid border-[#E3E8F0] bg-white"
-                      data-name="tokens"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAdvancedFiltersAnchor((prev) => {
-                            const r =
-                              advancedFilterTagRef.current?.getBoundingClientRect();
-                            if (!r) return null;
-                            if (prev?.source === 'tag') return null;
-                            return { rect: r, source: 'tag' as const };
-                          });
-                        }}
-                        aria-expanded={Boolean(
-                          advancedFiltersAnchor?.source === 'tag'
-                        )}
-                        aria-haspopup="menu"
-                        className="flex min-w-0 max-w-[min(220px,45vw)] items-center gap-2 border-0 bg-transparent px-3 py-0 text-left transition-colors hover:bg-[#F8FAFB]"
-                        aria-label="Open advanced filters"
+                  {activeAdvancedFilterIds.map((filterId) => {
+                    const valueCount =
+                      advancedFilterValuesByScope[advancedFilterScopeKey]?.[filterId]
+                        ?.length ?? 0;
+                    const label = getAdvancedFilterLabel(filterId);
+                    return (
+                      <div
+                        key={filterId}
+                        data-filter-chip
+                        data-name="tokens"
+                        className="flex h-10 shrink-0 items-stretch overflow-hidden rounded-[4px] border-[0.5px] border-solid border-[#E3E8F0] bg-white"
                       >
-                        <MapPin
-                          size={14}
-                          className="shrink-0 text-[#101828]"
-                          strokeWidth={2}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            const root = (e.currentTarget as HTMLElement).parentElement;
+                            if (!root) return;
+                            const r = root.getBoundingClientRect();
+                            setAdvancedFiltersAnchor((prev) => {
+                              if (
+                                prev?.source === 'tag' &&
+                                prev.tagDimensionId === filterId
+                              ) {
+                                return null;
+                              }
+                              return {
+                                rect: r,
+                                source: 'tag' as const,
+                                tagDimensionId: filterId,
+                              };
+                            });
+                          }}
+                          aria-expanded={Boolean(
+                            advancedFiltersAnchor?.source === 'tag' &&
+                              advancedFiltersAnchor.tagDimensionId === filterId
+                          )}
+                          aria-haspopup="menu"
+                          className="flex min-w-0 max-w-[min(220px,45vw)] items-center gap-2 border-0 bg-transparent px-3 py-0 text-left transition-colors hover:bg-[#F8FAFB]"
+                          aria-label={`Filter by ${label}`}
+                        >
+                          <MapPin
+                            size={14}
+                            className="shrink-0 text-[#101828]"
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                          <span className="truncate font-['Inter',sans-serif] text-[14px] font-normal leading-normal text-[#101828]">
+                            Filters: {label}
+                          </span>
+                        </button>
+                        <div
+                          className="w-px shrink-0 self-stretch bg-[#E3E8F0]"
                           aria-hidden
                         />
-                        <span className="truncate font-['Inter',sans-serif] text-[14px] font-normal leading-normal text-[#101828]">
-                          Filters:{' '}
-                          {getAdvancedFilterLabel(activeAdvancedFilterIds[0])}
-                        </span>
-                      </button>
-                      <div
-                        className="w-px shrink-0 self-stretch bg-[#E3E8F0]"
-                        aria-hidden
-                      />
-                      <div className="flex min-w-[36px] shrink-0 items-center justify-center px-2">
-                        <span className="font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-none text-[#101828]">
-                          {activeAdvancedFilterIds.length}
-                        </span>
+                        <div className="flex min-w-[36px] shrink-0 items-center justify-center px-2">
+                          <span className="font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-none text-[#101828]">
+                            {valueCount}
+                          </span>
+                        </div>
+                        <div
+                          className="w-px shrink-0 self-stretch bg-[#E3E8F0]"
+                          aria-hidden
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearAdvancedFilterDimension(filterId);
+                          }}
+                          className="flex shrink-0 items-center justify-center px-2.5 text-[#9AA4B2] transition-colors hover:bg-[#F8FAFB] hover:text-[#6A7282]"
+                          aria-label={`Clear ${label} filter`}
+                        >
+                          <X size={16} strokeWidth={2} aria-hidden />
+                        </button>
                       </div>
-                      <div
-                        className="w-px shrink-0 self-stretch bg-[#E3E8F0]"
-                        aria-hidden
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearActiveAdvancedFilters();
-                        }}
-                        className="flex shrink-0 items-center justify-center px-2.5 text-[#9AA4B2] transition-colors hover:bg-[#F8FAFB] hover:text-[#6A7282]"
-                        aria-label="Clear all filters"
-                      >
-                        <X size={16} strokeWidth={2} aria-hidden />
-                      </button>
-                    </div>
-                  )}
+                    );
+                  })}
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <div
@@ -1220,18 +1258,35 @@ export function MainContent() {
       {advancedFiltersAnchor && (
         <AdvancedFiltersPopover
           anchorRect={advancedFiltersAnchor.rect}
-          triggerRefs={[advancedFiltersBtnRef, advancedFilterTagRef]}
+          triggerRefs={[advancedFiltersBtnRef, advancedFiltersToolbarRef]}
           variant={advancedFiltersAnchor.source === 'tag' ? 'values' : 'dimensions'}
           valueDimensionId={
             advancedFiltersAnchor.source === 'tag'
-              ? activeAdvancedFilterIds[0] ?? null
+              ? advancedFiltersAnchor.tagDimensionId ?? null
               : null
           }
           selectedIds={activeAdvancedFilterIds}
-          selectedValueIds={activeAdvancedFilterValueIds}
+          selectedValueIds={
+            advancedFiltersAnchor.source === 'tag' &&
+            advancedFiltersAnchor.tagDimensionId != null
+              ? advancedFilterValuesByScope[advancedFilterScopeKey]?.[
+                  advancedFiltersAnchor.tagDimensionId
+                ] ?? []
+              : []
+          }
           onToggle={toggleAdvancedFilter}
-          onToggleValue={toggleAdvancedFilterValue}
-          onSelectAllFilteredValues={selectAllFilteredAdvancedFilterValues}
+          onToggleValue={(valueId) => {
+            const dim = advancedFiltersAnchor.tagDimensionId;
+            if (advancedFiltersAnchor.source === 'tag' && dim) {
+              toggleAdvancedFilterValue(dim, valueId);
+            }
+          }}
+          onSelectAllFilteredValues={(ids) => {
+            const dim = advancedFiltersAnchor.tagDimensionId;
+            if (advancedFiltersAnchor.source === 'tag' && dim) {
+              selectAllFilteredAdvancedFilterValues(dim, ids);
+            }
+          }}
           onClearAll={clearActiveAdvancedFilters}
           onClose={() => setAdvancedFiltersAnchor(null)}
         />
