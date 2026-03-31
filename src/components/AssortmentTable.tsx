@@ -765,10 +765,7 @@ export function AssortmentTable({
                           .join(' ')}
                       >
                         <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className={tableCellPrimary}>Item IA</span>
-                            <span className={tableCellPrimary}>{row.sumIa}</span>
-                          </div>
+                          <span className={tableCellPrimary}>{row.sumIa}</span>
                           {row.sumIaRecommendation != null && !showRecommendationColumns && (
                             <div className="group/reason relative inline-flex w-fit">
                               <div className="inline-flex w-fit items-center gap-[2px] rounded-[5px] bg-[#dbc7f4] p-1">
