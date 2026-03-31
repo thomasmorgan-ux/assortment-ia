@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { History, Sparkles, X, Home, ChevronRight, Filter } from 'lucide-react';
+import { Sparkles, X, Home, ChevronRight, Filter, MapPin } from 'lucide-react';
 import { AssortmentTable } from './AssortmentTable';
 import { getProductDimensionLabel } from './DrillDownProductModal';
 import { CommitSuccessBanner } from './CommitSuccessBanner';
 import { ConfirmCommitRevertModal, type ConfirmCommitRevertState } from './ConfirmCommitRevertModal';
 import { EditAllocationPanel } from './EditAllocationPanel';
-import { EditLogDrawer } from './EditLogDrawer';
 import {
   AdvancedFiltersPopover,
   getAdvancedFilterLabel,
@@ -110,7 +109,7 @@ const initRow = (r: AssortmentRow, isDraft = false): AssortmentRow => ({
 
 export function MainContent() {
   const [rows, setRows] = useState<AssortmentRow[]>(() =>
-    mockRows.map((r) => initRow(r, false))
+    mockRows.slice(0, 5).map((r) => initRow(r, false))
   );
   const [editAllocation, setEditAllocation] = useState<{
     rows: AssortmentRow[];
@@ -153,19 +152,21 @@ export function MainContent() {
     setLocationColumnGrouping(regionsTableSnapshot.locationGrouping);
     setRegionsTableSnapshot(null);
   };
-  const [isolateRowId, setIsolateRowId] = useState<string | null>(null);
   const [optimisingBannerVisible, setOptimisingBannerVisible] = useState(false);
   const [optimisingBannerDismissed, setOptimisingBannerDismissed] = useState(false);
   const [, setHasGeneratedRecommendations] = useState(false);
   const [recSuccessBanner, setRecSuccessBanner] = useState<{ groupsCount: number } | null>(null);
   const [commitSuccessBannerVisible, setCommitSuccessBannerVisible] = useState(false);
   const [generateRecModalOpen, setGenerateRecModalOpen] = useState(false);
-  const [editLogOpen, setEditLogOpen] = useState(false);
   const [advancedFiltersAnchor, setAdvancedFiltersAnchor] =
     useState<AdvancedFiltersAnchorState | null>(null);
   /** Advanced filter selections per breadcrumb level (button always visible). */
   const [advancedFiltersByScope, setAdvancedFiltersByScope] = useState<
     Record<string, AdvancedFilterId[]>
+  >({});
+  /** Per-dimension multi-select values (e.g. countries) keyed like advancedFiltersByScope. */
+  const [advancedFilterValuesByScope, setAdvancedFilterValuesByScope] = useState<
+    Record<string, Partial<Record<AdvancedFilterId, string[]>>>
   >({});
   const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
   const advancedFilterTagRef = useRef<HTMLDivElement>(null);
@@ -190,6 +191,16 @@ export function MainContent() {
   const activeAdvancedFilterIds =
     advancedFiltersByScope[advancedFilterScopeKey] ?? [];
 
+  const activeAdvancedFilterIdsRef = useRef(activeAdvancedFilterIds);
+  activeAdvancedFilterIdsRef.current = activeAdvancedFilterIds;
+
+  const activeAdvancedFilterValueIds =
+    activeAdvancedFilterIds[0] != null
+      ? advancedFilterValuesByScope[advancedFilterScopeKey]?.[
+          activeAdvancedFilterIds[0]
+        ] ?? []
+      : [];
+
   const toggleAdvancedFilter = useCallback((id: AdvancedFilterId) => {
     const key = advancedFilterScopeKeyRef.current;
     setAdvancedFiltersByScope((prev) => {
@@ -201,9 +212,40 @@ export function MainContent() {
     });
   }, []);
 
+  const toggleAdvancedFilterValue = useCallback((valueId: string) => {
+    const key = advancedFilterScopeKeyRef.current;
+    const dim = activeAdvancedFilterIdsRef.current[0];
+    if (!dim) return;
+    setAdvancedFilterValuesByScope((prev) => {
+      const scopeVals = prev[key] ?? {};
+      const cur = scopeVals[dim] ?? [];
+      const nextVals = cur.includes(valueId)
+        ? cur.filter((x) => x !== valueId)
+        : [...cur, valueId];
+      return { ...prev, [key]: { ...scopeVals, [dim]: nextVals } };
+    });
+  }, []);
+
+  const selectAllFilteredAdvancedFilterValues = useCallback((filteredIds: string[]) => {
+    const key = advancedFilterScopeKeyRef.current;
+    const dim = activeAdvancedFilterIdsRef.current[0];
+    if (!dim || filteredIds.length === 0) return;
+    setAdvancedFilterValuesByScope((prev) => {
+      const scopeVals = prev[key] ?? {};
+      const cur = new Set(scopeVals[dim] ?? []);
+      filteredIds.forEach((id) => cur.add(id));
+      return { ...prev, [key]: { ...scopeVals, [dim]: [...cur] } };
+    });
+  }, []);
+
   const clearActiveAdvancedFilters = useCallback(() => {
     const key = advancedFilterScopeKeyRef.current;
     setAdvancedFiltersByScope((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setAdvancedFilterValuesByScope((prev) => {
       const next = { ...prev };
       delete next[key];
       return next;
@@ -218,6 +260,24 @@ export function MainContent() {
   useEffect(() => {
     setAdvancedFiltersAnchor(null);
   }, [advancedFilterScopeKey]);
+
+  useEffect(() => {
+    const allowed = new Set(activeAdvancedFilterIds);
+    setAdvancedFilterValuesByScope((prev) => {
+      const scopeVals = prev[advancedFilterScopeKey];
+      if (!scopeVals) return prev;
+      let changed = false;
+      const nextScope: Partial<Record<AdvancedFilterId, string[]>> = { ...scopeVals };
+      for (const k of Object.keys(nextScope) as AdvancedFilterId[]) {
+        if (!allowed.has(k)) {
+          delete nextScope[k];
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      return { ...prev, [advancedFilterScopeKey]: nextScope };
+    });
+  }, [activeAdvancedFilterIds, advancedFilterScopeKey]);
   const optimisingToSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSuccessGroupsCountRef = useRef<number>(0);
 
@@ -312,9 +372,7 @@ export function MainContent() {
     else if (statusTableFilter === 'committed') f = f.filter((r) => !r.hasPendingChanges);
     return f;
   })();
-  const tableRows = isolateRowId
-    ? filteredRows.filter((r) => r.id === isolateRowId)
-    : filteredRows;
+  const tableRows = filteredRows;
 
   const updateRow = (id: string, patch: Partial<AssortmentRow>) => {
     setRows((prev) =>
@@ -601,55 +659,10 @@ export function MainContent() {
           </div>
         </div>
 
-        {/* Toolbar: filters | status + Edit Log + breadcrumbs */}
+        {/* Toolbar: filters | status + breadcrumbs */}
         <div className="flex flex-col gap-[18px] rounded-[5px] border border-[#e9eaeb] bg-white p-2">
           <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2">
-                  {activeAdvancedFilterIds.length > 0 && (
-                    <div
-                      ref={advancedFilterTagRef}
-                      className="flex shrink-0 items-center rounded-md bg-[#e9eaeb] py-1.5 pl-3 pr-1"
-                      data-name="tokens"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAdvancedFiltersAnchor((prev) => {
-                            const r =
-                              advancedFilterTagRef.current?.getBoundingClientRect();
-                            if (!r) return null;
-                            if (prev?.source === 'tag') return null;
-                            return { rect: r, source: 'tag' as const };
-                          });
-                        }}
-                        aria-expanded={Boolean(
-                          advancedFiltersAnchor?.source === 'tag'
-                        )}
-                        aria-haspopup="menu"
-                        className="flex min-w-0 max-w-[220px] items-center gap-1.5 border-0 bg-transparent py-0 pr-1 text-left text-xs font-semibold text-[#12171E] transition-opacity hover:opacity-80"
-                        aria-label="Open advanced filters"
-                      >
-                        <span className="truncate">
-                          Filters:{' '}
-                          {getAdvancedFilterLabel(activeAdvancedFilterIds[0])}
-                        </span>
-                        {activeAdvancedFilterIds.length > 1 && (
-                          <span className="shrink-0 font-semibold text-[#12171E]">{` +${activeAdvancedFilterIds.length - 1}`}</span>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearActiveAdvancedFilters();
-                        }}
-                        className="ml-1 flex size-7 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-black/5"
-                        aria-label="Clear all filters"
-                      >
-                        <X size={16} strokeWidth={2} aria-hidden />
-                      </button>
-                    </div>
-                  )}
                   <button
                     ref={advancedFiltersBtnRef}
                     type="button"
@@ -677,6 +690,67 @@ export function MainContent() {
                     />
                     Advanced filters
                   </button>
+                  {activeAdvancedFilterIds.length > 0 && (
+                    <div
+                      ref={advancedFilterTagRef}
+                      className="flex h-10 shrink-0 items-stretch overflow-hidden rounded-[4px] border-[0.5px] border-solid border-[#E3E8F0] bg-white"
+                      data-name="tokens"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdvancedFiltersAnchor((prev) => {
+                            const r =
+                              advancedFilterTagRef.current?.getBoundingClientRect();
+                            if (!r) return null;
+                            if (prev?.source === 'tag') return null;
+                            return { rect: r, source: 'tag' as const };
+                          });
+                        }}
+                        aria-expanded={Boolean(
+                          advancedFiltersAnchor?.source === 'tag'
+                        )}
+                        aria-haspopup="menu"
+                        className="flex min-w-0 max-w-[min(220px,45vw)] items-center gap-2 border-0 bg-transparent px-3 py-0 text-left transition-colors hover:bg-[#F8FAFB]"
+                        aria-label="Open advanced filters"
+                      >
+                        <MapPin
+                          size={14}
+                          className="shrink-0 text-[#101828]"
+                          strokeWidth={2}
+                          aria-hidden
+                        />
+                        <span className="truncate font-['Inter',sans-serif] text-[14px] font-normal leading-normal text-[#101828]">
+                          Filters:{' '}
+                          {getAdvancedFilterLabel(activeAdvancedFilterIds[0])}
+                        </span>
+                      </button>
+                      <div
+                        className="w-px shrink-0 self-stretch bg-[#E3E8F0]"
+                        aria-hidden
+                      />
+                      <div className="flex min-w-[36px] shrink-0 items-center justify-center px-2">
+                        <span className="font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-none text-[#101828]">
+                          {activeAdvancedFilterIds.length}
+                        </span>
+                      </div>
+                      <div
+                        className="w-px shrink-0 self-stretch bg-[#E3E8F0]"
+                        aria-hidden
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearActiveAdvancedFilters();
+                        }}
+                        className="flex shrink-0 items-center justify-center px-2.5 text-[#9AA4B2] transition-colors hover:bg-[#F8FAFB] hover:text-[#6A7282]"
+                        aria-label="Clear all filters"
+                      >
+                        <X size={16} strokeWidth={2} aria-hidden />
+                      </button>
+                    </div>
+                  )}
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <div
@@ -724,15 +798,6 @@ export function MainContent() {
                   </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setEditLogOpen(true)}
-                className="flex h-10 min-w-[113px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-[#f8f8f8] px-4 text-base font-medium text-[#00050a] whitespace-nowrap hover:bg-[#f0f0f0] transition-colors"
-                aria-label="Edit Log"
-              >
-                <History size={16} className="shrink-0" />
-                Edit Log
-              </button>
             </div>
           </div>
           <nav
@@ -751,6 +816,7 @@ export function MainContent() {
                   setProductColumnGrouping('Product Group');
                   setLocationColumnGrouping('Location Group');
                   setAdvancedFiltersByScope({});
+                  setAdvancedFilterValuesByScope({});
                   setAdvancedFiltersAnchor(null);
                 }}
                 className="inline-flex h-[26px] shrink-0 items-center gap-1.5 px-0 py-0.5 text-xs font-normal uppercase tracking-wide text-[#666666] transition-colors hover:text-[#00050a] focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#666666]/30"
@@ -1012,8 +1078,6 @@ export function MainContent() {
                     : [row];
                 setConfirmCommitRevert({ action: 'revert', rows: rowsToRevert });
               }}
-              isolateRowId={isolateRowId}
-              onIsolateRow={setIsolateRowId}
               onProductDrillDimensionSelect={(dimensionId, ctx) => {
                 setRegionsDrillBreadcrumb(null);
                 setRegionsTableSnapshot(null);
@@ -1076,8 +1140,6 @@ export function MainContent() {
           </div>
         </div>
       </div>
-
-      <EditLogDrawer open={editLogOpen} onClose={() => setEditLogOpen(false)} />
 
       {editAllocation && (
         <EditAllocationPanel
@@ -1159,8 +1221,17 @@ export function MainContent() {
         <AdvancedFiltersPopover
           anchorRect={advancedFiltersAnchor.rect}
           triggerRefs={[advancedFiltersBtnRef, advancedFilterTagRef]}
+          variant={advancedFiltersAnchor.source === 'tag' ? 'values' : 'dimensions'}
+          valueDimensionId={
+            advancedFiltersAnchor.source === 'tag'
+              ? activeAdvancedFilterIds[0] ?? null
+              : null
+          }
           selectedIds={activeAdvancedFilterIds}
+          selectedValueIds={activeAdvancedFilterValueIds}
           onToggle={toggleAdvancedFilter}
+          onToggleValue={toggleAdvancedFilterValue}
+          onSelectAllFilteredValues={selectAllFilteredAdvancedFilterValues}
           onClearAll={clearActiveAdvancedFilters}
           onClose={() => setAdvancedFiltersAnchor(null)}
         />
