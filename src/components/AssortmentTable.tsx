@@ -773,7 +773,9 @@ export function AssortmentTable({
                 </label>
               </th>
               <th
-                className="sticky left-14 z-20 h-[86px] min-h-[86px] w-[200px] min-w-[200px] max-w-[200px] box-border bg-white px-4 py-3 text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)]"
+                className={`sticky left-14 h-[86px] min-h-[86px] w-[200px] min-w-[200px] max-w-[200px] box-border bg-white px-4 py-3 text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] ${
+                  productGroupDropdownOpen ? 'z-[200]' : 'z-20'
+                }`}
                 scope="col"
               >
                 <div className="relative inline-block" ref={productGroupDropdownRef}>
@@ -788,7 +790,7 @@ export function AssortmentTable({
                     <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" />
                   </button>
                   {productGroupDropdownOpen && (
-                    <div className="absolute left-0 top-full z-[70] mt-1 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
+                    <div className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
                       {PRODUCT_GROUPING_OPTIONS.map((opt) => (
                         <button
                           key={opt}
@@ -810,7 +812,9 @@ export function AssortmentTable({
                 </div>
               </th>
               <th
-                className="sticky left-[calc(3.5rem+200px)] z-[15] h-[86px] min-h-[86px] min-w-[170px] bg-white px-4 py-3 text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)]"
+                className={`sticky left-[calc(3.5rem+200px)] h-[86px] min-h-[86px] min-w-[170px] bg-white px-4 py-3 text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] ${
+                  locationGroupDropdownOpen ? 'z-[200]' : 'z-[15]'
+                }`}
                 scope="col"
               >
                 <div className="relative inline-block" ref={locationGroupDropdownRef}>
@@ -825,7 +829,7 @@ export function AssortmentTable({
                     <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" />
                   </button>
                   {locationGroupDropdownOpen && (
-                    <div className="absolute left-0 top-full z-[70] mt-1 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
+                    <div className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
                       {LOCATION_DIMENSION_MENU.map(({ id, label }) => (
                         <button
                           key={id}
