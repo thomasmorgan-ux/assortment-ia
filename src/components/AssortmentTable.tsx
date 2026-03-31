@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, type DragEvent, type ReactNode } from 'react';
 import {
   MapPin,
   Pencil,
@@ -12,6 +12,7 @@ import {
   Info,
   Layers,
 } from 'lucide-react';
+import { AutoneDrilldownIcon } from './AutoneDrilldownIcon';
 import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
 import { RowStatusActionsPopover, EllipsisHollowIcon } from './RowStatusActionsPopover';
@@ -78,6 +79,33 @@ const LOCATION_DRILL_ID_TO_GROUPING: Record<string, string> = Object.fromEntries
   LOCATION_DIMENSION_MENU.map((m) => [m.id, m.label])
 ) as Record<string, string>;
 
+/** Columns with grip handles — reorderable (IA stays fixed after inventory). */
+const BASE_GRIP_COLUMN_IDS = [
+  'sales',
+  'assortedSkuLocs',
+  'scheduleStart',
+  'scheduleEnd',
+  'forecastPerWeek',
+  'targetCoverage',
+  'inventory',
+  'whStock',
+  'whStockPct',
+] as const;
+
+const DRILL_GRIP_COLUMN_IDS = [
+  'drillMinQty',
+  'drillInventory',
+  'drillTarget',
+  'drillForecast',
+  'drillSkuLocs',
+] as const;
+
+export type GripColumnId =
+  | (typeof BASE_GRIP_COLUMN_IDS)[number]
+  | (typeof DRILL_GRIP_COLUMN_IDS)[number];
+
+const DRILL_GRIP_ID_SET = new Set<string>(DRILL_GRIP_COLUMN_IDS);
+
 function AssortedSkuLocsCell({
   now,
   rec,
@@ -99,7 +127,7 @@ function AssortedSkuLocsCell({
           <div className={`h-full rounded-full ${fillClass}`} style={{ width: `${pct}%` }} />
         </div>
         <span
-          className={`shrink-0 font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-none ${valueClass}`}
+          className={`shrink-0 font-['Inter',sans-serif] text-[14px] font-normal tabular-nums leading-none ${valueClass}`}
         >
           {count}/{total}
         </span>
@@ -108,7 +136,7 @@ function AssortedSkuLocsCell({
   };
   return (
     <div className="flex min-w-[188px] flex-col gap-2 py-0.5">
-      {barRow('Now', now.count, now.total, 'bg-[#475467]', 'text-[#101828]')}
+      {barRow('Now', now.count, now.total, 'bg-[#2EB8C2]', 'text-[#2EB8C2]')}
       {barRow('Rec', rec.count, rec.total, 'bg-[#a234da]', 'text-[#a234da]')}
     </div>
   );
@@ -310,6 +338,405 @@ export function AssortmentTable({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [locationGroupDropdownOpen]);
 
+  const [gripColumnOrder, setGripColumnOrder] = useState<GripColumnId[]>(() => [
+    ...BASE_GRIP_COLUMN_IDS,
+  ]);
+
+  useEffect(() => {
+    if (productDrillDownActive) {
+      setGripColumnOrder((prev) => {
+        const base = prev.filter((id) => !DRILL_GRIP_ID_SET.has(id));
+        const missing = DRILL_GRIP_COLUMN_IDS.filter((id) => !base.includes(id as GripColumnId));
+        return [...base, ...missing];
+      });
+    } else {
+      setGripColumnOrder((prev) => prev.filter((id) => !DRILL_GRIP_ID_SET.has(id)));
+    }
+  }, [productDrillDownActive]);
+
+  const reorderGripColumns = useCallback((fromId: GripColumnId, toId: GripColumnId) => {
+    if (fromId === toId) return;
+    setGripColumnOrder((prev) => {
+      const next = [...prev];
+      const fromIdx = next.indexOf(fromId);
+      const toIdx = next.indexOf(toId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, fromId);
+      return next;
+    });
+  }, []);
+
+  const gripThDropProps = (columnId: GripColumnId) => ({
+    onDragOver: (e: DragEvent<HTMLTableCellElement>) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    },
+    onDrop: (e: DragEvent<HTMLTableCellElement>) => {
+      e.preventDefault();
+      const from = e.dataTransfer.getData('text/plain') as GripColumnId;
+      if (from && from !== columnId) reorderGripColumns(from, columnId);
+    },
+  });
+
+  const gripDragHandle = (columnId: GripColumnId, label: string) => (
+    <span
+      draggable
+      role="button"
+      tabIndex={0}
+      aria-label={`Drag to reorder ${label}`}
+      title="Drag to reorder column"
+      onDragStart={(e: DragEvent<HTMLSpanElement>) => {
+        e.dataTransfer.setData('text/plain', columnId);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+      className="inline-flex cursor-grab touch-none active:cursor-grabbing"
+    >
+      <GripVertical className="h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
+    </span>
+  );
+
+  const visibleGripColumnOrder = gripColumnOrder.filter(
+    (id) => !DRILL_GRIP_ID_SET.has(id) || productDrillDownActive
+  );
+
+  const renderGripColumnHeader = (columnId: GripColumnId): ReactNode => {
+    const d = gripThDropProps(columnId);
+    switch (columnId) {
+      case 'sales':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-2">
+              {gripDragHandle(columnId, 'Sales')}
+              Sales
+              <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+            </span>
+          </th>
+        );
+      case 'assortedSkuLocs':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[200px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-2">
+              {gripDragHandle(columnId, 'Assorted SKU Locs')}
+              <span>Assorted SKU Locs</span>
+            </span>
+          </th>
+        );
+      case 'scheduleStart':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-2">
+              {gripDragHandle(columnId, 'Schedule start date')}
+              <span>Schedule start date</span>
+            </span>
+          </th>
+        );
+      case 'scheduleEnd':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-2">
+              {gripDragHandle(columnId, 'Schedule end date')}
+              <span>Schedule end date</span>
+            </span>
+          </th>
+        );
+      case 'forecastPerWeek':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-1.5">
+              {gripDragHandle(columnId, 'Forecast per week')}
+              <span>Forecast /wk</span>
+              <Info size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+            </span>
+          </th>
+        );
+      case 'targetCoverage':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-1.5">
+              {gripDragHandle(columnId, 'Target coverage')}
+              <span>Target coverage</span>
+              <Info size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+            </span>
+          </th>
+        );
+      case 'inventory':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[104px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-2">
+              {gripDragHandle(columnId, 'Inventory')}
+              Inventory
+            </span>
+          </th>
+        );
+      case 'whStock':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[118px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-1.5">
+              {gripDragHandle(columnId, 'WH Stock')}
+              <span>WH Stock</span>
+              <Info size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+            </span>
+          </th>
+        );
+      case 'whStockPct':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[148px] px-4 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-1.5">
+              {gripDragHandle(columnId, '% WH Stock for IA')}
+              <span>% WH Stock for IA</span>
+              <Info size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+            </span>
+          </th>
+        );
+      case 'drillMinQty':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-1.5">
+              {gripDragHandle(columnId, 'Min Qty')}
+              Min Qty
+            </span>
+          </th>
+        );
+      case 'drillInventory':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-1.5">
+              {gripDragHandle(columnId, 'Inventory (drill)')}
+              Inventory
+            </span>
+          </th>
+        );
+      case 'drillTarget':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-1.5">
+              {gripDragHandle(columnId, 'Target coverage (drill)')}
+              <span>Target coverage</span>
+            </span>
+          </th>
+        );
+      case 'drillForecast':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-center" {...d}>
+            <span className="inline-flex items-center justify-center gap-1.5">
+              {gripDragHandle(columnId, 'Forecast sales')}
+              <span>Forecast sales</span>
+            </span>
+          </th>
+        );
+      case 'drillSkuLocs':
+        return (
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[108px] px-3 py-3 text-left" {...d}>
+            <span className="inline-flex items-center gap-1.5">
+              {gripDragHandle(columnId, 'SKU locations')}
+              <span># SKU locations</span>
+            </span>
+          </th>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderIAHeader = () => (
+    <th
+      key="initial-allocation"
+      className="h-[86px] min-h-[86px] px-4 py-3 text-left"
+      aria-label="Initial allocation"
+    >
+      <span className="inline-flex items-center gap-1">
+        IA{' '}
+        <button
+          type="button"
+          className="inline-flex rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600"
+          aria-label="Edit initial allocation column"
+        >
+          <Pencil size={14} className="shrink-0" />
+        </button>
+      </span>
+    </th>
+  );
+
+  const renderGripColumnBodyCell = (
+    columnId: GripColumnId,
+    row: AssortmentRow,
+    _rowIndex: number,
+    drillM: {
+      skuLocations: number;
+      minQty: number;
+      inventory: number;
+      targetCoverageWk: number;
+      forecastSalesPerWk: number;
+    } | null
+  ): ReactNode => {
+    switch (columnId) {
+      case 'sales':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
+            <div>
+              <div className={tableCellPrimary}>{row.sales.l7d.toLocaleString()} L7D</div>
+              <div className={tableCellSecondary}>{row.sales.l30d.toLocaleString()} L30D</div>
+            </div>
+          </td>
+        );
+      case 'assortedSkuLocs':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
+            <AssortedSkuLocsCell {...row.assortedSkuLocs} />
+          </td>
+        );
+      case 'scheduleStart':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {formatScheduleDateCell(row.scheduledAssortmentStart)}
+          </td>
+        );
+      case 'scheduleEnd':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {formatScheduleDateCell(row.scheduledAssortmentFinish)}
+          </td>
+        );
+      case 'forecastPerWeek':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {row.forecastPerWeek.toLocaleString()}
+          </td>
+        );
+      case 'targetCoverage':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {row.targetCoverageWeeks} wk
+          </td>
+        );
+      case 'inventory':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {row.inventoryCount.toLocaleString()}
+          </td>
+        );
+      case 'whStock':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
+            <div>
+              <div className={tableCellPrimary}>{row.whStock.value.toLocaleString()}</div>
+              <div className={tableCellSecondary}>{row.whStock.pfp.toLocaleString()} PFP</div>
+            </div>
+          </td>
+        );
+      case 'whStockPct':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {row.whStockPctForIa.toFixed(1)}%
+          </td>
+        );
+      case 'drillMinQty':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {drillM?.minQty ?? '—'}
+          </td>
+        );
+      case 'drillInventory':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {drillM?.inventory ?? '—'}
+          </td>
+        );
+      case 'drillTarget':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {drillM != null ? `${drillM.targetCoverageWk} wk` : '—'}
+          </td>
+        );
+      case 'drillForecast':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] px-3 py-3 align-middle text-center ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {drillM != null ? `${drillM.forecastSalesPerWk} /wk` : '—'}
+          </td>
+        );
+      case 'drillSkuLocs':
+        return (
+          <td key={columnId} className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
+            {drillM?.skuLocations ?? '—'}
+          </td>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderIABodyCell = (row: AssortmentRow) => (
+    <td key="ia" className={`h-[86px] min-h-[86px] py-3 px-4 align-middle group relative ${tableRowHoverTd}`}>
+      {row.assortment.assortedCount === row.assortment.totalCount && (
+        <button
+          type="button"
+          onClick={() => onEditRow?.(row, 'initial-allocation')}
+          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
+          aria-label="Edit allocation"
+        >
+          <Pencil size={14} />
+        </button>
+      )}
+      {row.hasPendingChanges &&
+        row.lastCommittedSnapshot &&
+        row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
+          <span
+            className="absolute left-3 top-1/2 z-10 h-2.5 w-2.5 -translate-y-1/2 shrink-0 rounded-full border border-[#f29a35]"
+            style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
+            title="Initial allocation edited"
+            aria-hidden
+          />
+        )}
+      <div
+        className={[
+          row.hasPendingChanges &&
+          row.lastCommittedSnapshot &&
+          row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa)
+            ? 'pl-[18px]'
+            : '',
+          row.assortment.assortedCount === row.assortment.totalCount ? 'pr-11' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <div className="flex flex-col gap-0.5">
+          <span className={tableCellPrimary}>{row.sumIa}</span>
+          {row.sumIaRecommendation != null && !showRecommendationColumns && (
+            <div className="group/reason relative inline-flex w-fit">
+              <div className="inline-flex w-fit items-center gap-[2px] rounded-[5px] bg-[#dbc7f4] p-1">
+                <Sparkles size={10} className="shrink-0 text-[#a234da]" />
+                <span className="text-[10px] font-normal leading-normal text-[#a234da]">
+                  {row.sumIaRecommendation}
+                </span>
+              </div>
+              <div
+                className="pointer-events-none absolute right-full top-1/2 z-10 mr-2 hidden min-w-[200px] -translate-y-1/2 rounded-[4px] bg-[#212121] px-4 py-3 text-white shadow-lg group-hover/reason:block"
+                role="tooltip"
+              >
+                <p className="mb-2 text-xs font-medium leading-normal">Recommendation Reasons</p>
+                <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>High past sales for similar products</span>
+                    <span>X35</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Low past sales for similar products</span>
+                    <span>X18</span>
+                  </div>
+                </div>
+                <span
+                  className="absolute -right-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-l-[#212121]"
+                  aria-hidden
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </td>
+  );
+
   return (
     <div
       className="rounded-lg overflow-hidden bg-white border-[0.5px] border-solid border-[#E3E8F0]"
@@ -321,17 +748,17 @@ export function AssortmentTable({
           className={`w-full border-collapse ${
             productDrillDownActive
               ? showRecommendationColumns
-                ? 'min-w-[3020px]'
+                ? 'min-w-[3154px]'
                 : 'min-w-[2660px]'
               : showRecommendationColumns
-                ? 'min-w-[2530px]'
+                ? 'min-w-[2664px]'
                 : 'min-w-[2180px]'
           }`}
         >
           <thead
             className="[&_th]:border-t-0 [&_th]:border-b-[0.5px] [&_th]:border-solid [&_th]:border-[#E3E8F0] [&_th]:font-['Inter',sans-serif]"
           >
-            <tr className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828]">
+            <tr className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] [&_th]:whitespace-nowrap">
               <th
                 className="sticky left-0 z-30 h-[86px] min-h-[86px] w-14 min-w-14 max-w-14 box-border bg-white px-4 py-3 text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)]"
                 scope="col"
@@ -421,164 +848,14 @@ export function AssortmentTable({
                   )}
                 </div>
               </th>
-              {!designOnly && (
-                <th className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-left">
-                  <span className="inline-flex items-center gap-2">
-                    <GripVertical className="h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                    Sales
-                    <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
-                  </span>
-                </th>
-              )}
-              {!designOnly && (
-                <th className="h-[86px] min-h-[86px] min-w-[200px] px-4 py-3 text-left">
-                  <span className="inline-flex items-start gap-2">
-                    <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                    <span className="max-w-[9.5rem] leading-tight">Assorted SKU Locs</span>
-                  </span>
-                </th>
-              )}
-              {!designOnly && (
-                <>
-                  <th className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-left">
-                    <span className="inline-flex items-start gap-2">
-                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      <span className="max-w-[10.5rem] leading-tight">
-                        Assortment schedule start date
-                      </span>
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-left">
-                    <span className="inline-flex items-start gap-2">
-                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      <span className="max-w-[10.5rem] leading-tight">
-                        Assortment schedule end date
-                      </span>
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-left">
-                    <span className="inline-flex items-start gap-1.5">
-                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      <span className="leading-tight">
-                        Forecast
-                        <br />
-                        /wk
-                      </span>
-                      <Info
-                        size={14}
-                        className="mt-0.5 shrink-0 text-[#A6AAAF]"
-                        aria-hidden
-                      />
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-left">
-                    <span className="inline-flex items-start gap-1.5">
-                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      <span className="leading-tight">
-                        Target
-                        <br />
-                        Coverage
-                      </span>
-                      <Info
-                        size={14}
-                        className="mt-0.5 shrink-0 text-[#A6AAAF]"
-                        aria-hidden
-                      />
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] min-w-[104px] px-4 py-3 text-left">
-                    <span className="inline-flex items-center gap-2">
-                      <GripVertical className="h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      Inventory
-                    </span>
-                  </th>
-                  <th
-                    className="h-[86px] min-h-[86px] px-4 py-3 text-left"
-                    aria-label="Initial allocation"
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      IA{' '}
-                      <button
-                        type="button"
-                        className="inline-flex rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600"
-                        aria-label="Edit initial allocation column"
-                      >
-                        <Pencil size={14} className="shrink-0" />
-                      </button>
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] min-w-[118px] px-4 py-3 text-left">
-                    <span className="inline-flex items-start gap-1.5">
-                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      <span className="leading-tight">WH Stock</span>
-                      <Info
-                        size={14}
-                        className="mt-0.5 shrink-0 text-[#A6AAAF]"
-                        aria-hidden
-                      />
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] min-w-[148px] px-4 py-3 text-left">
-                    <span className="inline-flex items-start gap-1.5">
-                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      <span className="max-w-[8rem] leading-tight">% WH Stock for IA</span>
-                      <Info
-                        size={14}
-                        className="mt-0.5 shrink-0 text-[#A6AAAF]"
-                        aria-hidden
-                      />
-                    </span>
-                  </th>
-                </>
-              )}
-              {productDrillDownActive && (
-                <>
-                  <th className="h-[86px] min-h-[86px] px-3 py-3 text-left">
-                    <span className="inline-flex items-center gap-1.5">
-                      <GripVertical className="h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      Min Qty
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] px-3 py-3 text-left">
-                    <span className="inline-flex items-center gap-1.5">
-                      <GripVertical className="h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      Inventory
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] px-3 py-3 text-left">
-                    <span className="inline-flex items-start gap-1.5">
-                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      <span className="leading-tight">
-                        Target
-                        <br />
-                        Coverage
-                      </span>
-                    </span>
-                  </th>
-                  <th className="h-[86px] min-h-[86px] px-3 py-3 text-center">
-                    <span className="inline-flex items-start justify-center gap-1.5">
-                      <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                      <span className="leading-tight text-left">
-                        Forecast
-                        <br />
-                        sales
-                      </span>
-                    </span>
-                  </th>
-                </>
-              )}
-              {productDrillDownActive && (
-                <th className="h-[86px] min-h-[86px] w-[108px] px-3 py-3 text-left">
-                  <span className="inline-flex items-start gap-1.5">
-                    <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
-                    <span className="leading-tight">
-                      # SKU
-                      <br />
-                      Locations
-                    </span>
-                  </span>
-                </th>
-              )}
+              {!designOnly &&
+                visibleGripColumnOrder.flatMap((columnId) => {
+                  const nodes: ReactNode[] = [renderGripColumnHeader(columnId)];
+                  if (columnId === 'inventory') {
+                    nodes.push(renderIAHeader());
+                  }
+                  return nodes;
+                })}
               <th className="h-[86px] min-h-[86px] px-4 py-3 text-left">
                 <span className="inline-flex items-center gap-1">
                   Assortment{' '}
@@ -595,16 +872,16 @@ export function AssortmentTable({
                 Assortment schedule
               </th>
               {showRecommendationColumns && (
-                <th className="h-[86px] min-h-[86px] min-w-[173px] px-4 py-3 text-left">
-                  <span className="inline-flex items-center gap-1 leading-tight">
+                <th className="h-[86px] min-h-[86px] min-w-[220px] px-4 py-3 text-left">
+                  <span className="inline-flex items-center gap-1">
                     <Sparkles size={14} className="shrink-0 text-[#a234da]" aria-hidden />
                     Assortment recommendations
                   </span>
                 </th>
               )}
               {showRecommendationColumns && (
-                <th className="h-[86px] min-h-[86px] min-w-[173px] px-4 py-3 text-left">
-                  <span className="inline-flex items-center gap-1 leading-tight">
+                <th className="h-[86px] min-h-[86px] min-w-[260px] px-4 py-3 text-left">
+                  <span className="inline-flex items-center gap-1">
                     <Sparkles size={14} className="shrink-0 text-[#a234da]" aria-hidden />
                     Initial allocation recommendations
                   </span>
@@ -652,12 +929,10 @@ export function AssortmentTable({
                         setProductDrillSourceRow(row);
                         setDrillDownAnchor(e.currentTarget.getBoundingClientRect());
                       }}
-                      className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600"
+                      className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded p-1 text-[#22272F] transition-all hover:bg-slate-100 hover:text-sky-600"
                       aria-label="Drill down product dimension"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-                        <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <AutoneDrilldownIcon className="shrink-0" size={18} />
                     </button>
                   )}
                   <div>
@@ -675,12 +950,10 @@ export function AssortmentTable({
                         setLocationDrillSource({ rowId: row.id, rowIndex });
                         setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect());
                       }}
-                      className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600"
+                      className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded p-1 text-[#22272F] transition-all hover:bg-slate-100 hover:text-sky-600"
                       aria-label="Drill down location dimension"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-                        <path d="M9 2.25L9 15.75M9 15.75L14.25 10.5M9 15.75L3.75 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <AutoneDrilldownIcon className="shrink-0" size={18} />
                     </button>
                   )}
                   <div className="flex items-start gap-2">
@@ -701,138 +974,15 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
-                {!designOnly && (
-                  <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
-                    <div>
-                      <div className={tableCellPrimary}>{row.sales.l7d.toLocaleString()} L7D</div>
-                      <div className={tableCellSecondary}>{row.sales.l30d.toLocaleString()} L30D</div>
-                    </div>
-                  </td>
-                )}
-                {!designOnly && (
-                  <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
-                    <AssortedSkuLocsCell {...row.assortedSkuLocs} />
-                  </td>
-                )}
-                {!designOnly && (
-                  <>
-                    <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {formatScheduleDateCell(row.scheduledAssortmentStart)}
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {formatScheduleDateCell(row.scheduledAssortmentFinish)}
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {row.forecastPerWeek.toLocaleString()}
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {row.targetCoverageWeeks} wk
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {row.inventoryCount.toLocaleString()}
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle group relative ${tableRowHoverTd}`}>
-                      {row.assortment.assortedCount === row.assortment.totalCount && (
-                        <button
-                          type="button"
-                          onClick={() => onEditRow?.(row, 'initial-allocation')}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
-                          aria-label="Edit allocation"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                      )}
-                      {row.hasPendingChanges &&
-                        row.lastCommittedSnapshot &&
-                        row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
-                          <span
-                            className="absolute left-3 top-1/2 z-10 h-2.5 w-2.5 -translate-y-1/2 shrink-0 rounded-full border border-[#f29a35]"
-                            style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
-                            title="Initial allocation edited"
-                            aria-hidden
-                          />
-                        )}
-                      <div
-                        className={[
-                          row.hasPendingChanges &&
-                          row.lastCommittedSnapshot &&
-                          row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa)
-                            ? 'pl-[18px]'
-                            : '',
-                          row.assortment.assortedCount === row.assortment.totalCount ? 'pr-11' : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                      >
-                        <div className="flex flex-col gap-0.5">
-                          <span className={tableCellPrimary}>{row.sumIa}</span>
-                          {row.sumIaRecommendation != null && !showRecommendationColumns && (
-                            <div className="group/reason relative inline-flex w-fit">
-                              <div className="inline-flex w-fit items-center gap-[2px] rounded-[5px] bg-[#dbc7f4] p-1">
-                                <Sparkles size={10} className="shrink-0 text-[#a234da]" />
-                                <span className="text-[10px] font-normal leading-normal text-[#a234da]">
-                                  {row.sumIaRecommendation}
-                                </span>
-                              </div>
-                              <div
-                                className="pointer-events-none absolute right-full top-1/2 z-10 mr-2 hidden min-w-[200px] -translate-y-1/2 rounded-[4px] bg-[#212121] px-4 py-3 text-white shadow-lg group-hover/reason:block"
-                                role="tooltip"
-                              >
-                                <p className="mb-2 text-xs font-medium leading-normal">
-                                  Recommendation Reasons
-                                </p>
-                                <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span>High past sales for similar products</span>
-                                    <span>X35</span>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span>Low past sales for similar products</span>
-                                    <span>X18</span>
-                                  </div>
-                                </div>
-                                <span
-                                  className="absolute -right-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-l-[#212121]"
-                                  aria-hidden
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
-                      <div>
-                        <div className={tableCellPrimary}>{row.whStock.value.toLocaleString()}</div>
-                        <div className={tableCellSecondary}>{row.whStock.pfp.toLocaleString()} PFP</div>
-                      </div>
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {row.whStockPctForIa.toFixed(1)}%
-                    </td>
-                  </>
-                )}
-                {drillM && (
-                  <>
-                    <td className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {drillM.minQty}
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {drillM.inventory}
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {drillM.targetCoverageWk} wk
-                    </td>
-                    <td className={`h-[86px] min-h-[86px] px-3 py-3 align-middle text-center ${tableCellPrimary} ${tableRowHoverTd}`}>
-                      {drillM.forecastSalesPerWk} /wk
-                    </td>
-                  </>
-                )}
-                {drillM && (
-                  <td className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-                    {drillM.skuLocations}
-                  </td>
-                )}
+                {!designOnly &&
+                  visibleGripColumnOrder.flatMap((columnId) => {
+                    const cell = renderGripColumnBodyCell(columnId, row, rowIndex, drillM);
+                    const nodes: ReactNode[] = cell != null ? [cell] : [];
+                    if (columnId === 'inventory') {
+                      nodes.push(renderIABodyCell(row));
+                    }
+                    return nodes;
+                  })}
                 <td className={`h-[86px] min-h-[86px] min-w-0 py-3 px-4 align-middle group relative ${tableRowHoverTd}`}>
                   <button
                     type="button"
