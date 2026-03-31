@@ -701,7 +701,7 @@ export function MainContent() {
                       advancedFiltersAnchor?.source === 'button'
                     )}
                     aria-haspopup="menu"
-                    className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 text-base font-medium text-[#00050a] whitespace-nowrap transition-colors hover:bg-slate-50"
+                    className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors hover:bg-slate-50"
                     aria-label="Advanced filters"
                   >
                     <Filter
@@ -710,7 +710,9 @@ export function MainContent() {
                       strokeWidth={2}
                       aria-hidden
                     />
-                    Advanced filters
+                    <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828]">
+                      Advanced filters
+                    </span>
                   </button>
                   {activeAdvancedFilterIds.map((filterId) => {
                     const valueCount =
@@ -792,17 +794,17 @@ export function MainContent() {
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <div
-                className="flex flex-wrap items-center gap-2 text-sm"
+                className="flex flex-wrap items-center gap-2 font-['Inter',sans-serif] text-sm"
                 role="group"
                 aria-label="Status"
               >
-                <span className="shrink-0 text-[#4b535c]">Status:</span>
+                <span className="shrink-0 font-['Inter',sans-serif] text-[#4b535c]">Status:</span>
                 <div className="inline-flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setStatusTableFilter('all')}
                     aria-pressed={statusTableFilter === 'all'}
-                    className={`rounded border px-3 py-1 text-sm transition-colors ${
+                    className={`rounded border px-3 py-1 font-['Inter',sans-serif] text-sm transition-colors ${
                       statusTableFilter === 'all'
                         ? 'border-oklch bg-[#f8f8f8] font-semibold text-[#00050a]'
                         : 'border-transparent font-normal text-[#4b535c] hover:text-[#00050a]'
@@ -814,7 +816,7 @@ export function MainContent() {
                     type="button"
                     onClick={() => setStatusTableFilter('draft')}
                     aria-pressed={statusTableFilter === 'draft'}
-                    className={`rounded border px-3 py-1 text-sm transition-colors ${
+                    className={`rounded border px-3 py-1 font-['Inter',sans-serif] text-sm transition-colors ${
                       statusTableFilter === 'draft'
                         ? 'border-oklch bg-[#f8f8f8] font-semibold text-[#00050a]'
                         : 'border-transparent font-normal text-[#4b535c] hover:text-[#00050a]'
@@ -826,7 +828,7 @@ export function MainContent() {
                     type="button"
                     onClick={() => setStatusTableFilter('committed')}
                     aria-pressed={statusTableFilter === 'committed'}
-                    className={`rounded border px-3 py-1 text-sm transition-colors ${
+                    className={`rounded border px-3 py-1 font-['Inter',sans-serif] text-sm transition-colors ${
                       statusTableFilter === 'committed'
                         ? 'border-oklch bg-[#f8f8f8] font-semibold text-[#00050a]'
                         : 'border-transparent font-normal text-[#4b535c] hover:text-[#00050a]'
