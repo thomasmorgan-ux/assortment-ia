@@ -4,9 +4,25 @@ export interface AssortmentRow {
   locationCluster: { name: string; locationCount: number };
   whUnits: { value: number; sub: string };
   storeOh: number;
-  sales: { value: number; sub: string };
+  /** Last 7 days / last 30 days sales counts (table shows with L7D / L30D labels). */
+  sales: { l7d: number; l30d: number };
+  /** Assorted SKU × location pairs: current vs recommended (dual progress in table). */
+  assortedSkuLocs: {
+    now: { count: number; total: number };
+    rec: { count: number; total: number };
+  };
   sellThru: { percent: number };
   forecast: { value: number; sub: string };
+  /** Weekly forecast total (“Forecast /wk” column, thousands separator in UI). */
+  forecastPerWeek: number;
+  /** Target coverage horizon in weeks (shown as “N wk”). */
+  targetCoverageWeeks: number;
+  /** Main-table inventory total (thousands separator in UI). */
+  inventoryCount: number;
+  /** WH stock: primary total + PFP sub-line. */
+  whStock: { value: number; pfp: number };
+  /** % WH stock for IA (one decimal in UI). */
+  whStockPctForIa: number;
   assortment: { assorted: string; assortedCount: number; totalCount: number };
   sumIa: number;
   avgIa: number;

@@ -71,7 +71,7 @@ export function DrillDownProductModal({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-[70] max-h-[min(320px,85vh)] overflow-y-auto rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
+      className="fixed z-[70] max-h-[min(320px,85vh)] overflow-y-auto rounded-[4px] border-[0.5px] border-solid border-[#E3E8F0] bg-white py-1 shadow-lg"
       style={{
         top: `${top}px`,
         left: `${left}px`,
@@ -91,7 +91,7 @@ export function DrillDownProductModal({
             onSelectDimension?.(id);
             onClose();
           }}
-          className="flex w-full items-center px-3 py-2 text-left text-sm text-[#00050a] transition-colors hover:bg-slate-100"
+          className="flex w-full items-center px-3 py-2 text-left font-['Inter',sans-serif] text-[14px] font-normal leading-normal text-[#101828] transition-colors hover:bg-[#F8FAFB]"
         >
           {label}
         </button>
