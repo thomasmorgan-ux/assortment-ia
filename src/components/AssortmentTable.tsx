@@ -18,7 +18,7 @@ import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLoca
 import { DrillDownProductModal } from './DrillDownProductModal';
 import { RowStatusActionsPopover, EllipsisHollowIcon } from './RowStatusActionsPopover';
 import type { AssortmentRow, ModalKind } from '../types';
-import { drillDropdownMenuItemHover, dropdownTriggerHoverBg } from '../lib/dropdownMenuClasses';
+import { drillDropdownMenuItemHover } from '../lib/dropdownMenuClasses';
 
 /** SKU-style titles when column is grouped by Product (vs Product Group name). */
 const PRODUCT_LEVEL_NAMES: Record<string, string[]> = {
@@ -53,6 +53,10 @@ const tableCellSecondary =
 
 /** Row hover fill (with `group` on `<tr>`) */
 const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
+
+/** Sticky Action column: left-edge shadow over scrolling cells. */
+const tableStickyRightShadow =
+  'shadow-[-4px_0_12px_-6px_rgba(15,23,42,0.12)]';
 
 function locationCellForGrouping(
   row: AssortmentRow,
@@ -404,7 +408,7 @@ export function AssortmentTable({
       }}
       className="inline-flex cursor-grab touch-none active:cursor-grabbing"
     >
-      <GripVertical className="h-4 w-4 shrink-0 text-[#A6AAAF]" aria-hidden />
+      <GripVertical className="h-4 w-4 shrink-0 text-[#6A7282]" aria-hidden />
     </span>
   );
 
@@ -421,7 +425,7 @@ export function AssortmentTable({
             <span className="inline-flex items-center gap-2">
               {gripDragHandle(columnId, 'Sales')}
               Sales
-              <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+              <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </span>
           </th>
         );
@@ -438,8 +442,8 @@ export function AssortmentTable({
         return (
           <th key={columnId} className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-right" {...d}>
             <span className="inline-flex w-full items-center justify-end gap-2">
-              {gripDragHandle(columnId, 'Schedule start date')}
-              <span>Schedule start date</span>
+              {gripDragHandle(columnId, 'Schedule start')}
+              <span>Schedule start</span>
             </span>
           </th>
         );
@@ -447,8 +451,8 @@ export function AssortmentTable({
         return (
           <th key={columnId} className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-right" {...d}>
             <span className="inline-flex w-full items-center justify-end gap-2">
-              {gripDragHandle(columnId, 'Schedule end date')}
-              <span>Schedule end date</span>
+              {gripDragHandle(columnId, 'Schedule end')}
+              <span>Schedule end</span>
             </span>
           </th>
         );
@@ -458,7 +462,7 @@ export function AssortmentTable({
             <span className="inline-flex w-full items-center justify-end gap-1.5">
               {gripDragHandle(columnId, 'Forecast per week')}
               <span>Forecast /wk</span>
-              <Info size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+              <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </span>
           </th>
         );
@@ -468,7 +472,7 @@ export function AssortmentTable({
             <span className="inline-flex items-center gap-1.5">
               {gripDragHandle(columnId, 'Target coverage')}
               <span>Target coverage</span>
-              <Info size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+              <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </span>
           </th>
         );
@@ -487,7 +491,7 @@ export function AssortmentTable({
             <span className="inline-flex w-full items-center justify-end gap-1.5">
               {gripDragHandle(columnId, 'WH Stock')}
               <span>WH Stock</span>
-              <Info size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+              <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </span>
           </th>
         );
@@ -497,7 +501,7 @@ export function AssortmentTable({
             <span className="inline-flex w-full items-center justify-end gap-1.5">
               {gripDragHandle(columnId, '% WH Stock for IA')}
               <span>% WH Stock for IA</span>
-              <Info size={14} className="shrink-0 text-[#A6AAAF]" aria-hidden />
+              <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </span>
           </th>
         );
@@ -561,7 +565,7 @@ export function AssortmentTable({
         IA{' '}
         <button
           type="button"
-          className="inline-flex rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600"
+          className="inline-flex rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
           aria-label="Edit initial allocation column"
         >
           <Pencil size={14} className="shrink-0" />
@@ -747,7 +751,7 @@ export function AssortmentTable({
         <button
           type="button"
           onClick={() => onEditRow?.(row, 'initial-allocation')}
-          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
+          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
           aria-label="Edit allocation"
         >
           <Pencil size={14} />
@@ -833,7 +837,7 @@ export function AssortmentTable({
                     <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
                       {productGrouping}
                     </span>
-                    <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" />
+                    <ChevronDown size={14} className="shrink-0 text-[#6A7282]" />
                   </button>
                   {productGroupDropdownOpen && (
                     <div className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
@@ -874,7 +878,7 @@ export function AssortmentTable({
                     <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
                       {locationGrouping}
                     </span>
-                    <ChevronDown size={14} className="shrink-0 text-[#A6AAAF]" />
+                    <ChevronDown size={14} className="shrink-0 text-[#6A7282]" />
                   </button>
                   {locationGroupDropdownOpen && (
                     <div className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
@@ -913,7 +917,7 @@ export function AssortmentTable({
                   Assortment{' '}
                   <button
                     type="button"
-                    className="inline-flex rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600"
+                    className="inline-flex rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
                     aria-label="Edit assortment column"
                   >
                     <Pencil size={14} className="shrink-0" />
@@ -931,10 +935,13 @@ export function AssortmentTable({
                   </span>
                 </th>
               )}
-              <th className="h-[86px] min-h-[86px] w-[88px] px-3 py-3 text-center">
+              <th className="h-[86px] min-h-[86px] w-[88px] px-3 py-3 text-center" scope="col">
                 Status
               </th>
-              <th className="h-[86px] min-h-[86px] w-[72px] px-3 py-3 text-center">
+              <th
+                className={`sticky right-0 z-20 h-[86px] min-h-[86px] w-[72px] min-w-[72px] box-border bg-white px-3 py-3 text-center ${tableStickyRightShadow}`}
+                scope="col"
+              >
                 Action
               </th>
               </tr>
@@ -973,7 +980,7 @@ export function AssortmentTable({
                         setProductDrillSourceRow(row);
                         setDrillDownAnchor(e.currentTarget.getBoundingClientRect());
                       }}
-                      className="absolute right-4 top-1/2 inline-flex items-center justify-center rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600 -translate-y-1/2"
+                      className="absolute right-4 top-1/2 inline-flex items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 -translate-y-1/2"
                       aria-label="Drill down product dimension"
                     >
                       <AutoneDrilldownIcon size={14} />
@@ -994,7 +1001,7 @@ export function AssortmentTable({
                         setLocationDrillSource({ rowId: row.id, rowIndex });
                         setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect());
                       }}
-                      className="absolute right-4 top-1/2 z-10 inline-flex items-center justify-center rounded p-1 text-slate-500 transition-all hover:bg-slate-100 hover:text-sky-600 -translate-y-1/2"
+                      className="absolute right-4 top-1/2 z-10 inline-flex items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 -translate-y-1/2"
                       aria-label="Drill down location dimension"
                     >
                       <AutoneDrilldownIcon size={14} />
@@ -1033,7 +1040,7 @@ export function AssortmentTable({
                   <button
                     type="button"
                     onClick={() => onEditRow?.(row, 'assortment')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
                     aria-label="Edit assortment"
                   >
                     <Pencil size={14} />
@@ -1180,7 +1187,9 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
-                <td className={`h-[86px] min-h-[86px] w-[72px] px-3 py-3 align-middle ${tableRowHoverTd}`}>
+                <td
+                  className={`sticky right-0 z-20 h-[86px] min-h-[86px] w-[72px] min-w-[72px] box-border bg-white px-3 py-3 align-middle ${tableStickyRightShadow} ${tableRowHoverTd}`}
+                >
                   <div className="flex items-center justify-center">
                     <button
                       type="button"
@@ -1195,10 +1204,10 @@ export function AssortmentTable({
                           prev?.rowId === row.id ? null : { rowId: row.id, rect }
                         );
                       }}
-                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors ${dropdownTriggerHoverBg}`}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
                       data-node-id="761:65174"
                     >
-                      <EllipsisHollowIcon className="shrink-0" />
+                      <EllipsisHollowIcon className="shrink-0 text-inherit" />
                     </button>
                   </div>
                 </td>

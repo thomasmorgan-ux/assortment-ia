@@ -1,5 +1,6 @@
 import { useId, useState, type ComponentType } from 'react';
-import { ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { SCRATCHPAD_852_24160_TOGGLE_PATH } from '../assets/sidebarEdgeToggle85224160';
 
 /** Autone logo mark — Monotone / Icon 24px (Figma 12210:36296 → 12207:7487) */
 const AUTONE_LOGO_MARK =
@@ -10,7 +11,13 @@ const AUTONE_LOGO_MARK_EXPANDED =
 const AUTONE_LOGO_WORDMARK =
   'https://www.figma.com/api/mcp/asset/8aef8dab-0f24-41a5-ad3c-1b0b8fbe7f1e';
 
-const SIDEBAR_EXPANDED_WIDTH = 252; /* 220px content + px-4 × 2 (Figma 12212:42693) */
+/** Content width ~240px + horizontal padding (px-4 × 2) so nav labels are not clipped. */
+const SIDEBAR_EXPANDED_WIDTH = 272;
+const SIDEBAR_COLLAPSED_WIDTH = 72;
+/** Matches `h-10 w-10` toggle. */
+const EDGE_TOGGLE_PX = 40;
+/** Collapsed rail: past centered `size-10` logo (≈16–56px) so the toggle does not overlap. */
+const EDGE_TOGGLE_LEFT_COLLAPSED = 56;
 const USER_AVATAR_SRC =
   'https://www.figma.com/api/mcp/asset/3c4254ce-40aa-4ed2-af75-f53137e845d4';
 const UK_FLAG_SRC =
@@ -610,13 +617,32 @@ type SidebarProps = {
   className?: string;
 };
 
+/** Filled vector from Figma Scratchpad 852:24160 (11×11); expand mirrors horizontally. */
+function SidebarEdgeToggleIcon({ direction }: { direction: 'collapse' | 'expand' }) {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 11 11"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="shrink-0"
+      aria-hidden
+    >
+      {direction === 'expand' ? (
+        <g transform="translate(11 0) scale(-1 1)">
+          <path d={SCRATCHPAD_852_24160_TOGGLE_PATH} fill="currentColor" />
+        </g>
+      ) : (
+        <path d={SCRATCHPAD_852_24160_TOGGLE_PATH} fill="currentColor" />
+      )}
+    </svg>
+  );
+}
+
 function navRowClasses(active: boolean, expanded: boolean, alignExpanded: boolean) {
-  const base = [
-    'flex h-10 w-full shrink-0 gap-3 rounded px-4 py-2 text-sm transition-colors',
-    active ? null : 'hover:bg-white/[0.08] hover:text-[#0267FF]',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const base =
+    'flex min-h-10 w-full shrink-0 gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF]';
   const layout = expanded && alignExpanded ? 'items-center justify-start text-left' : 'items-center justify-center';
   if (active) {
     return `${base} ${layout} bg-[#0D7580] text-white`;
@@ -629,8 +655,8 @@ export function Sidebar({ className = '' }: SidebarProps) {
 
   return (
     <aside
-      style={{ width: expanded ? SIDEBAR_EXPANDED_WIDTH : 72 }}
-      className={`relative flex h-full shrink-0 flex-col bg-[#12171e] px-4 py-8 transition-[width] duration-200 ease-out ${
+      style={{ width: expanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH }}
+      className={`relative flex h-full shrink-0 flex-col bg-[#12171e] px-4 py-6 transition-[width] duration-200 ease-out ${
         expanded ? 'items-stretch gap-[72px]' : 'items-center gap-[72px]'
       } ${className}`.trim()}
       data-name="Sidebar"
@@ -639,17 +665,14 @@ export function Sidebar({ className = '' }: SidebarProps) {
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className={`absolute top-[42px] z-10 flex size-5 items-center justify-center rounded ${SIDEBAR_INACTIVE_ICON} transition-colors hover:bg-white/[0.08] ${
-          expanded ? 'right-1' : 'left-[60px]'
-        }`}
+        style={{
+          left: expanded ? SIDEBAR_EXPANDED_WIDTH - EDGE_TOGGLE_PX : EDGE_TOGGLE_LEFT_COLLAPSED,
+        }}
+        className="absolute top-[28px] z-10 flex h-10 w-10 items-center justify-center rounded text-[#6A7282] transition-colors hover:bg-white/[0.08] hover:text-[#0267FF]"
         aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
         data-node-id="12203:5655"
       >
-        {expanded ? (
-          <ChevronsLeft size={20} strokeWidth={1.5} aria-hidden />
-        ) : (
-          <ChevronsRight size={20} strokeWidth={1.5} aria-hidden />
-        )}
+        <SidebarEdgeToggleIcon direction={expanded ? 'collapse' : 'expand'} />
       </button>
 
       <div
@@ -694,7 +717,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
         </div>
 
         <nav
-          className={`flex w-full shrink-0 flex-col gap-1.5 ${expanded ? 'max-w-[220px]' : ''}`}
+          className="flex w-full min-w-0 shrink-0 flex-col gap-1.5"
           data-name="Container"
           data-node-id="12210:36322"
         >
@@ -726,7 +749,9 @@ export function Sidebar({ className = '' }: SidebarProps) {
                 ) : null}
                 {expanded && (
                   <>
-                    <span className="min-w-0 flex-1 truncate font-medium leading-none">{item.label}</span>
+                    <span className="min-w-0 flex-1 text-left font-medium leading-snug break-words">
+                      {item.label}
+                    </span>
                     {item.submenu ? (
                       <ChevronDown size={20} strokeWidth={1.5} className="shrink-0 text-inherit opacity-80" aria-hidden />
                     ) : null}
@@ -758,7 +783,9 @@ export function Sidebar({ className = '' }: SidebarProps) {
                 ) : Icon ? (
                   <Icon size={24} strokeWidth={1.5} className="shrink-0 text-inherit" aria-hidden />
                 ) : null}
-                {expanded && <span className="min-w-0 flex-1 truncate font-medium leading-none">{item.label}</span>}
+                {expanded && (
+                  <span className="min-w-0 flex-1 text-left font-medium leading-snug break-words">{item.label}</span>
+                )}
               </button>
             );
           })}
@@ -766,7 +793,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
       </div>
 
       <div
-        className={`flex w-full shrink-0 flex-col gap-1.5 ${expanded ? 'max-w-[220px] items-stretch' : 'items-center'}`}
+        className={`flex w-full min-w-0 shrink-0 flex-col gap-1.5 ${expanded ? 'items-stretch' : 'items-center'}`}
         data-name="Container"
         data-node-id="12350:172771"
       >
@@ -774,25 +801,27 @@ export function Sidebar({ className = '' }: SidebarProps) {
           <>
             <button
               type="button"
-              className={`flex h-10 w-full items-center gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] ${SIDEBAR_INACTIVE_ICON}`}
+              className={`group flex min-h-10 w-full items-center gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF] ${SIDEBAR_INACTIVE_ICON}`}
               aria-label="Data age"
               data-node-id="13296:17707"
             >
-              <SidebarHistoryClockIcon />
-              <span className="min-w-0 flex-1 truncate font-normal leading-none text-white">Data age</span>
+              <SidebarHistoryClockIcon className="text-[#08A16A]" />
+              <span className="min-w-0 flex-1 text-left font-normal leading-snug break-words text-white group-hover:text-[#0267FF]">
+                Data age
+              </span>
               <span className="shrink-0 font-medium text-[#08A16A]">12h</span>
-              <ChevronRight size={20} strokeWidth={1.5} className="shrink-0" aria-hidden />
+              <ChevronRight size={20} strokeWidth={1.5} className="shrink-0 group-hover:text-[#0267FF]" aria-hidden />
             </button>
             <div className="h-px w-full shrink-0 bg-[#22272F]" aria-hidden />
           </>
         ) : (
           <button
             type="button"
-            className={`flex h-10 w-full items-center justify-center gap-3 rounded px-4 py-2 transition-colors hover:bg-white/[0.08] ${SIDEBAR_INACTIVE_ICON}`}
+            className={`flex h-10 w-full items-center justify-center gap-3 rounded px-4 py-2 transition-colors hover:bg-white/[0.08] hover:text-[#0267FF] ${SIDEBAR_INACTIVE_ICON}`}
             aria-label="History"
             data-node-id="13296:16152"
           >
-            <SidebarHistoryClockIcon />
+            <SidebarHistoryClockIcon className="text-[#08A16A]" />
           </button>
         )}
 
@@ -800,7 +829,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
 
         <button
           type="button"
-          className={`flex h-10 w-full shrink-0 items-center gap-3 rounded-[4px] px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] ${SIDEBAR_INACTIVE_ICON} ${
+          className={`group flex min-h-10 w-full shrink-0 items-center gap-3 rounded-[4px] px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF] ${SIDEBAR_INACTIVE_ICON} ${
             expanded ? 'justify-start text-left' : 'justify-center'
           }`}
           aria-label="Chat"
@@ -808,24 +837,32 @@ export function Sidebar({ className = '' }: SidebarProps) {
           data-node-id="12350:172509"
         >
           <SidebarChatIcon />
-          {expanded && <span className="truncate font-normal leading-none text-white">Chat with us</span>}
+          {expanded && (
+            <span className="min-w-0 flex-1 text-left font-normal leading-snug break-words text-white group-hover:text-[#0267FF]">
+              Chat with us
+            </span>
+          )}
         </button>
 
         <button
           type="button"
-          className={`flex h-10 w-full shrink-0 items-center gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] ${SIDEBAR_INACTIVE_ICON} ${
+          className={`group flex min-h-10 w-full shrink-0 items-center gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF] ${SIDEBAR_INACTIVE_ICON} ${
             expanded ? 'justify-start text-left' : 'justify-center'
           }`}
           aria-label="Currency"
           data-node-id="12718:7365"
         >
           <SidebarCurrencyIcon />
-          {expanded && <span className="truncate font-normal leading-none text-white">Currency</span>}
+          {expanded && (
+            <span className="min-w-0 flex-1 text-left font-normal leading-snug break-words text-white group-hover:text-[#0267FF]">
+              Currency
+            </span>
+          )}
         </button>
 
         <button
           type="button"
-          className={`flex h-10 w-full shrink-0 items-center gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] ${SIDEBAR_INACTIVE_ICON} ${
+          className={`group flex min-h-10 w-full shrink-0 items-center gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF] ${SIDEBAR_INACTIVE_ICON} ${
             expanded ? 'justify-start text-left' : 'justify-center'
           }`}
           aria-label="Language (UK)"
@@ -846,7 +883,11 @@ export function Sidebar({ className = '' }: SidebarProps) {
               </div>
             </div>
           </div>
-          {expanded && <span className="truncate font-normal leading-none text-white">English</span>}
+          {expanded && (
+            <span className="min-w-0 flex-1 text-left font-normal leading-snug break-words text-white group-hover:text-[#0267FF]">
+              English
+            </span>
+          )}
         </button>
 
         {expanded ? (
