@@ -58,10 +58,6 @@ const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 const tableStickyRightShadow =
   'shadow-[-4px_0_12px_-6px_rgba(15,23,42,0.12)]';
 
-function formatCoverageWeeks(n: number): string {
-  return `${n} ${n === 1 ? 'week' : 'weeks'}`;
-}
-
 function locationCellForGrouping(
   row: AssortmentRow,
   grouping: string,
@@ -637,9 +633,14 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] py-3 px-4 text-right align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] py-3 px-4 text-right align-middle ${tableRowHoverTd}`}
           >
-            {formatCoverageWeeks(row.targetCoverageWeeks)}
+            <div>
+              <div className={`tabular-nums ${tableCellPrimary}`}>{row.targetCoverageWeeks}</div>
+              <div className={tableCellSecondary}>
+                {row.targetCoverageWeeks === 1 ? 'week' : 'weeks'}
+              </div>
+            </div>
           </td>
         );
       case 'inventory':
@@ -691,9 +692,18 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] px-3 py-3 text-right align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] px-3 py-3 text-right align-middle ${tableRowHoverTd}`}
           >
-            {drillM != null ? formatCoverageWeeks(drillM.targetCoverageWk) : '—'}
+            {drillM != null ? (
+              <div>
+                <div className={`tabular-nums ${tableCellPrimary}`}>{drillM.targetCoverageWk}</div>
+                <div className={tableCellSecondary}>
+                  {drillM.targetCoverageWk === 1 ? 'week' : 'weeks'}
+                </div>
+              </div>
+            ) : (
+              '—'
+            )}
           </td>
         );
       case 'drillForecast':
