@@ -106,20 +106,20 @@ export function RowStatusActionsPopover({
   );
 }
 
-/** Three hollow circles (outline only), matching design ellipsis trigger. */
+/** Three hollow circles (outline only), stacked vertically (row-actions trigger). */
 export function EllipsisHollowIcon({ className }: { className?: string }) {
   return (
     <svg
-      width="18"
-      height="4"
-      viewBox="0 0 18 4"
+      width="4"
+      height="18"
+      viewBox="0 0 4 18"
       fill="none"
-      className={className}
+      className={['block shrink-0', className].filter(Boolean).join(' ')}
       aria-hidden
     >
       <circle cx="2" cy="2" r="1.25" stroke="currentColor" strokeWidth="1.25" fill="none" />
-      <circle cx="9" cy="2" r="1.25" stroke="currentColor" strokeWidth="1.25" fill="none" />
-      <circle cx="16" cy="2" r="1.25" stroke="currentColor" strokeWidth="1.25" fill="none" />
+      <circle cx="2" cy="9" r="1.25" stroke="currentColor" strokeWidth="1.25" fill="none" />
+      <circle cx="2" cy="16" r="1.25" stroke="currentColor" strokeWidth="1.25" fill="none" />
     </svg>
   );
 }

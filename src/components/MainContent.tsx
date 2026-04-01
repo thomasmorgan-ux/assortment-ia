@@ -702,7 +702,7 @@ export function MainContent() {
                       advancedFiltersAnchor?.source === 'button'
                     )}
                     aria-haspopup="menu"
-                    className={`flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors ${dropdownTriggerHoverBg}`}
+                    className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828]"
                     aria-label="Advanced filters"
                   >
                     <Filter
@@ -862,7 +862,7 @@ export function MainContent() {
                 }}
                 className="inline-flex h-[26px] shrink-0 items-center gap-1.5 px-0 py-0.5 text-xs font-normal uppercase tracking-wide text-[#666666] transition-colors hover:text-[#00050a] focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#666666]/30"
               >
-                <Home size={14} className="shrink-0" strokeWidth={2} aria-hidden />
+                <Home size={14} className="shrink-0 text-[#6A7282]" strokeWidth={2} aria-hidden />
                 Home
               </button>
               {productDrillPath.length > 0 && (
