@@ -1,5 +1,39 @@
 @import "tailwindcss";
 
+/**
+ * Dropdown triggers / icon targets: light blue wash only (label colour unchanged).
+ */
+@layer utilities {
+  .dropdown-row-hover-bg:hover {
+    background-color: rgb(59 130 246 / 0.5);
+  }
+}
+
+/**
+ * Menu list row hover — matches design: `rgb(59 130 246 / 0.5)` fill + solid blue semibold label.
+ * Use `.dropdown-menu-hover-label` on nested text when children set their own `color`.
+ */
+@layer utilities {
+  .dropdown-menu-item-hover:hover:not(:disabled) {
+    background-color: rgb(59 130 246 / 0.5);
+    color: rgb(59 130 246);
+    font-weight: 600;
+  }
+  .dropdown-menu-item-hover:hover:not(:disabled) .dropdown-menu-hover-label {
+    color: rgb(59 130 246);
+    font-weight: 600;
+  }
+  .dropdown-menu-item-hover:disabled:hover {
+    background-color: transparent;
+    color: rgb(106 114 130);
+    font-weight: 400;
+  }
+  .dropdown-menu-item-hover:disabled:hover .dropdown-menu-hover-label {
+    color: rgb(106 114 130);
+    font-weight: 400;
+  }
+}
+
 :root {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, sans-serif;

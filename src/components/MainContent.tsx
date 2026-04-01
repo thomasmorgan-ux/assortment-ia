@@ -17,6 +17,7 @@ import {
   type RecommendationMode,
 } from './GenerateRecommendationsModal';
 import { mockRows } from '../data/mockAssortment';
+import { dropdownTriggerHoverBg } from '../lib/dropdownMenuClasses';
 import type { AssortmentRow } from '../types';
 
 type AdvancedFiltersAnchorState = {
@@ -594,12 +595,12 @@ export function MainContent() {
 
       {recSuccessBanner && (
         <div
-          className="fixed left-1/2 top-[116px] z-[60] w-full max-w-2xl -translate-x-1/2 flex items-center gap-3 rounded-[6px] border border-[#a234da] p-4"
+          className="fixed left-1/2 top-[116px] z-[60] w-full max-w-2xl -translate-x-1/2 flex items-center gap-3 rounded-[6px] border border-[#6864E6] p-4"
           style={{ borderWidth: '0.5px', backgroundColor: '#fbf4ff' }}
           role="status"
           aria-live="polite"
         >
-          <Sparkles size={24} className="shrink-0 text-[#a234da]" />
+          <Sparkles size={24} className="shrink-0 text-[#6864E6]" />
           <div className="min-w-0 flex-1 flex flex-col gap-2">
             <p className="text-lg font-medium leading-normal text-[#00050a]">
               Recommendations generated successfully
@@ -611,7 +612,7 @@ export function MainContent() {
           <button
             type="button"
             onClick={() => setRecSuccessBanner(null)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-[#a234da]/10"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-[#6864E6]/10"
             aria-label="Dismiss"
           >
             <X size={16} />
@@ -701,7 +702,7 @@ export function MainContent() {
                       advancedFiltersAnchor?.source === 'button'
                     )}
                     aria-haspopup="menu"
-                    className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors hover:bg-slate-50"
+                    className={`flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors ${dropdownTriggerHoverBg}`}
                     aria-label="Advanced filters"
                   >
                     <Filter
@@ -751,12 +752,12 @@ export function MainContent() {
                               advancedFiltersAnchor.tagDimensionId === filterId
                           )}
                           aria-haspopup="menu"
-                          className="flex min-w-0 max-w-[min(220px,45vw)] items-center gap-2 border-0 bg-transparent px-3 py-0 text-left transition-colors hover:bg-[#F8FAFB]"
+                          className={`flex min-w-0 max-w-[min(220px,45vw)] items-center gap-2 border-0 bg-transparent px-3 py-0 text-left transition-colors ${dropdownTriggerHoverBg}`}
                           aria-label={`Filter by ${label}`}
                         >
                           <MapPin
                             size={14}
-                            className="shrink-0 text-[#101828]"
+                            className="shrink-0 text-[#2EB8C2]"
                             strokeWidth={2}
                             aria-hidden
                           />
@@ -783,7 +784,7 @@ export function MainContent() {
                             e.stopPropagation();
                             clearAdvancedFilterDimension(filterId);
                           }}
-                          className="flex shrink-0 items-center justify-center px-2.5 text-[#9AA4B2] transition-colors hover:bg-[#F8FAFB] hover:text-[#6A7282]"
+                          className={`flex shrink-0 items-center justify-center px-2.5 text-[#9AA4B2] transition-colors ${dropdownTriggerHoverBg} hover:text-[#6A7282]`}
                           aria-label={`Clear ${label} filter`}
                         >
                           <X size={16} strokeWidth={2} aria-hidden />

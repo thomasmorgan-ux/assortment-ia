@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { X, Clock, Info, ChevronLeft, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { DraftStatusDot } from './DraftStatusDot';
 import type { AssortmentRow } from '../types';
+import { dropdownMenuItemHover } from '../lib/dropdownMenuClasses';
 
 type PanelView = 'allocation' | 'edit-log';
 
@@ -322,13 +324,13 @@ export function EditAllocationPanel({
                       <button
                         type="button"
                         onClick={() => setHeaderAccordionExpanded((e) => !e)}
-                        className="group/row flex w-full items-center gap-2 rounded py-0.5 text-left text-sm text-[#00050a] hover:bg-slate-50"
+                        className={`group/row flex w-full items-center gap-2 rounded-md py-0.5 text-left text-sm text-[#00050a] transition-colors ${dropdownMenuItemHover}`}
                         aria-expanded={headerAccordionExpanded}
                       >
-                        <span className="flex shrink-0 items-center justify-center text-slate-500 transition-transform group-hover/row:text-sky-600">
+                        <span className="flex shrink-0 items-center justify-center text-slate-500 transition-transform group-hover/row:text-[rgb(59_130_246)]">
                           {headerAccordionExpanded ? <ChevronDown size={14} className="rotate-180" /> : <ChevronDown size={14} />}
                         </span>
-                        <span className="min-w-0 flex-1 font-medium">
+                        <span className="dropdown-menu-hover-label min-w-0 flex-1 font-medium">
                           +{rows.length - 3} more
                         </span>
                       </button>
@@ -452,12 +454,7 @@ export function EditAllocationPanel({
                         >
                           <div className="flex min-w-0 flex-1 items-center gap-2">
                             {r.hasPendingChanges && (
-                              <span
-                                className="h-2.5 w-2.5 shrink-0 rounded-full border border-[#f29a35]"
-                                style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
-                                title="Pending changes"
-                                aria-hidden
-                              />
+                              <DraftStatusDot title="Pending changes" aria-hidden />
                             )}
                             <span className="min-w-0 text-sm font-semibold text-[#000000]">
                               {r.productGroup.name} – {r.locationCluster.name} · {r.productGroup.productCount}{' '}
@@ -977,12 +974,7 @@ export function EditAllocationPanel({
                     <section className="rounded-lg border border-[#e9eaeb] p-4">
                       <div className="mb-3 flex items-center gap-2">
                         {r.hasPendingChanges && (
-                          <span
-                            className="h-2.5 w-2.5 shrink-0 rounded-full border border-[#f29a35]"
-                            style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
-                            title="Initial allocation edited"
-                            aria-hidden
-                          />
+                          <DraftStatusDot title="Initial allocation edited" aria-hidden />
                         )}
                         <h3 className="text-sm font-semibold text-[#000000]">
                           {r.productGroup.name} – {r.locationCluster.name}
@@ -1007,12 +999,7 @@ export function EditAllocationPanel({
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         {r.hasPendingChanges && (
-                          <span
-                            className="h-2.5 w-2.5 shrink-0 rounded-full border border-[#f29a35]"
-                            style={{ background: '#fff6e5', minWidth: 10, minHeight: 10, borderWidth: 1 }}
-                            title="Initial allocation edited"
-                            aria-hidden
-                          />
+                          <DraftStatusDot title="Initial allocation edited" aria-hidden />
                         )}
                         <h3 className="text-sm font-semibold text-[#000000]">
                           {r.productGroup.name} – {r.locationCluster.name}

@@ -132,7 +132,7 @@ export function GenerateRecommendationsPanel({
           <button
             type="button"
             onClick={handleGenerate}
-            className="flex w-full items-center justify-center gap-1 rounded bg-[#a234da] px-4 py-3 text-base font-medium leading-normal text-white transition-colors hover:opacity-90"
+            className="flex w-full items-center justify-center gap-1 rounded bg-[#6864E6] px-4 py-3 text-base font-medium leading-normal text-white transition-colors hover:opacity-90"
           >
             <Sparkles size={16} className="shrink-0" />
             Generate Recommendations
