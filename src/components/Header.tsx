@@ -9,7 +9,7 @@ export function Header() {
       <div className="flex flex-1 gap-3 items-center min-w-0">
         <button
           type="button"
-          className="flex items-center justify-center w-10 h-10 rounded shrink-0 text-[#a6aaaf] hover:bg-white/10 hover:text-white transition-colors"
+          className="flex items-center justify-center w-10 h-10 rounded shrink-0 text-[#6A7282] transition-colors hover:bg-white/[0.08] hover:text-[#0267FF]"
           aria-label="Back"
         >
           <ArrowLeft size={20} />

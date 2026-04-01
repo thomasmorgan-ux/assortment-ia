@@ -58,6 +58,10 @@ const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 const tableStickyRightShadow =
   'shadow-[-4px_0_12px_-6px_rgba(15,23,42,0.12)]';
 
+function formatCoverageWeeks(n: number): string {
+  return `${n} ${n === 1 ? 'week' : 'weeks'}`;
+}
+
 function locationCellForGrouping(
   row: AssortmentRow,
   grouping: string,
@@ -461,15 +465,15 @@ export function AssortmentTable({
           <th key={columnId} className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-right" {...d}>
             <span className="inline-flex w-full items-center justify-end gap-1.5">
               {gripDragHandle(columnId, 'Forecast per week')}
-              <span>Forecast /wk</span>
+              <span>Forecast per week</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </span>
           </th>
         );
       case 'targetCoverage':
         return (
-          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-left" {...d}>
-            <span className="inline-flex items-center gap-1.5">
+          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-right" {...d}>
+            <span className="inline-flex w-full items-center justify-end gap-1.5">
               {gripDragHandle(columnId, 'Target coverage')}
               <span>Target coverage</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
@@ -525,8 +529,8 @@ export function AssortmentTable({
         );
       case 'drillTarget':
         return (
-          <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-left" {...d}>
-            <span className="inline-flex items-center gap-1.5">
+          <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-right" {...d}>
+            <span className="inline-flex w-full items-center justify-end gap-1.5">
               {gripDragHandle(columnId, 'Target coverage (drill)')}
               <span>Target coverage</span>
             </span>
@@ -534,10 +538,10 @@ export function AssortmentTable({
         );
       case 'drillForecast':
         return (
-          <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-center" {...d}>
-            <span className="inline-flex items-center justify-center gap-1.5">
-              {gripDragHandle(columnId, 'Forecast sales')}
-              <span>Forecast sales</span>
+          <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-right" {...d}>
+            <span className="inline-flex w-full items-center justify-end gap-1.5">
+              {gripDragHandle(columnId, 'Forecast sales per week')}
+              <span>Forecast per week</span>
             </span>
           </th>
         );
@@ -631,8 +635,11 @@ export function AssortmentTable({
         );
       case 'targetCoverage':
         return (
-          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-            {row.targetCoverageWeeks} wk
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] py-3 px-4 text-right align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+          >
+            {formatCoverageWeeks(row.targetCoverageWeeks)}
           </td>
         );
       case 'inventory':
@@ -682,14 +689,20 @@ export function AssortmentTable({
         );
       case 'drillTarget':
         return (
-          <td key={columnId} className={`h-[86px] min-h-[86px] px-3 py-3 align-middle ${tableCellPrimary} ${tableRowHoverTd}`}>
-            {drillM != null ? `${drillM.targetCoverageWk} wk` : '—'}
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] px-3 py-3 text-right align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+          >
+            {drillM != null ? formatCoverageWeeks(drillM.targetCoverageWk) : '—'}
           </td>
         );
       case 'drillForecast':
         return (
-          <td key={columnId} className={`h-[86px] min-h-[86px] px-3 py-3 align-middle text-center ${tableCellPrimary} ${tableRowHoverTd}`}>
-            {drillM != null ? `${drillM.forecastSalesPerWk} /wk` : '—'}
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] px-3 py-3 text-right align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+          >
+            {drillM != null ? `${drillM.forecastSalesPerWk.toLocaleString()} per week` : '—'}
           </td>
         );
       case 'drillSkuLocs':

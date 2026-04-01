@@ -13,9 +13,9 @@ export interface AssortmentRow {
   };
   sellThru: { percent: number };
   forecast: { value: number; sub: string };
-  /** Weekly forecast total (“Forecast /wk” column, thousands separator in UI). */
+  /** Weekly forecast total (“Forecast per week” column, thousands separator in UI). */
   forecastPerWeek: number;
-  /** Target coverage horizon in weeks (shown as “N wk”). */
+  /** Target coverage horizon (shown as “N week(s)”, right-aligned in table). */
   targetCoverageWeeks: number;
   /** Main-table inventory total (thousands separator in UI). */
   inventoryCount: number;
