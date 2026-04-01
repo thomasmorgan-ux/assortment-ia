@@ -32,6 +32,9 @@ const SIDEBAR_CURRENCY_ICON_ELLIPSE =
   'https://www.figma.com/api/mcp/asset/bfcc53c8-3349-47f2-984c-eb2ad1d268ac';
 
 const SIDEBAR_INACTIVE_ICON = 'text-[#9AA4B2]';
+/** Chat/Currency imgs: default white glyph; `group-hover` → ~#0267FF like `text-inherit` nav icons. */
+const SIDEBAR_RASTER_ICON_HOVER =
+  'brightness-0 invert transition-[filter] duration-200 ease-out group-hover:[filter:brightness(0)_saturate(100%)_invert(27%)_sepia(100%)_saturate(7499%)_hue-rotate(208deg)_brightness(101%)_contrast(101%)]';
 
 type NavIconProps = { size?: number; strokeWidth?: number; className?: string };
 type LucideLike = ComponentType<NavIconProps>;
@@ -555,7 +558,7 @@ function SidebarChatIcon() {
         <img
           src={SIDEBAR_CHAT_ICON_SRC}
           alt=""
-          className="absolute block size-full max-w-none object-contain brightness-0 invert"
+          className={`absolute block size-full max-w-none object-contain ${SIDEBAR_RASTER_ICON_HOVER}`}
         />
       </div>
     </div>
@@ -570,7 +573,7 @@ function SidebarCurrencyIcon() {
           <img
             src={SIDEBAR_CURRENCY_ICON_VECTOR}
             alt=""
-            className="block size-full max-w-none object-contain brightness-0 invert"
+            className={`block size-full max-w-none object-contain ${SIDEBAR_RASTER_ICON_HOVER}`}
           />
         </div>
       </div>
@@ -579,7 +582,7 @@ function SidebarCurrencyIcon() {
           <img
             src={SIDEBAR_CURRENCY_ICON_ELLIPSE}
             alt=""
-            className="block size-full max-w-none object-contain brightness-0 invert"
+            className={`block size-full max-w-none object-contain ${SIDEBAR_RASTER_ICON_HOVER}`}
           />
         </div>
       </div>
