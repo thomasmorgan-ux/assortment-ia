@@ -639,7 +639,7 @@ export function MainContent() {
               }}
               className={`flex items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
                 focusView === 'all' && statusTableFilter === 'all'
-                  ? 'border-[#0267ff] text-[#00050a]'
+                  ? 'border-[#2EB8C2] text-[#00050a]'
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
               data-name="tabs"
@@ -654,7 +654,7 @@ export function MainContent() {
               }}
               className={`flex items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
                 focusView === 'pre-season-ia' && statusTableFilter === 'all'
-                  ? 'border-[#0267ff] text-[#00050a]'
+                  ? 'border-[#2EB8C2] text-[#00050a]'
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
               data-name="tabs"
@@ -669,7 +669,7 @@ export function MainContent() {
               }}
               className={`flex items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
                 focusView === 'in-season-ia' && statusTableFilter === 'all'
-                  ? 'border-[#0267ff] text-[#00050a]'
+                  ? 'border-[#2EB8C2] text-[#00050a]'
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
               data-name="tabs"
