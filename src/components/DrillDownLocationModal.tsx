@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { drillDropdownMenuItemHover } from '../lib/dropdownMenuClasses';
 
 /** Same order as design: Location → Country → Location Type → Region → Location Group → Location Cluster */
 export const LOCATION_DIMENSION_MENU = [
@@ -81,10 +82,12 @@ export function DrillDownLocationModal({
   const maxH = viewportH - top - 16;
   const maxHeight = maxH > 120 ? maxH : 280;
 
+  const menuAriaLabel = useLocationTypeUi ? 'Show locations by scope' : 'Location';
+
   return (
     <div
       ref={popoverRef}
-      className="fixed z-[70] max-h-[min(360px,85vh)] overflow-y-auto rounded-[2px] border border-[#e9eaeb] bg-white shadow-lg"
+      className="fixed z-[200] flex max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
       style={{
         top: `${top}px`,
         left: `${left}px`,
@@ -92,34 +95,16 @@ export function DrillDownLocationModal({
         maxHeight: `${maxHeight}px`,
       }}
       role="menu"
-      aria-label={useLocationTypeUi ? 'Show locations by scope' : 'Location'}
+      aria-label={menuAriaLabel}
     >
+      <span className="sr-only">{menuAriaLabel}</span>
       {useLocationTypeUi ? (
         <>
-          <div className="border-b border-[#e9eaeb] px-3 py-2.5 text-sm leading-snug text-[#00050a]">
+          <div className="shrink-0 border-b border-[#e9eaeb] px-1 py-2 text-sm leading-snug text-[#00050a]">
             For <span className="font-medium">{productColumnTitle}</span> and{' '}
             <span className="font-medium">{locationTypeName}</span> show all:
           </div>
-          <div className="py-1">
-            {LOCATION_TYPE_DRILL_OPTIONS.map(({ id, label }) => (
-              <button
-                key={id}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onSelectDimension?.(id);
-                  onClose();
-                }}
-                className="flex w-full cursor-pointer items-center px-3 py-2.5 text-left text-sm font-normal lowercase leading-normal text-[#00050a] transition-colors hover:bg-slate-100"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="py-1">
-          {LOCATION_DIMENSION_MENU.map(({ id, label }) => (
+          {LOCATION_TYPE_DRILL_OPTIONS.map(({ id, label }) => (
             <button
               key={id}
               type="button"
@@ -128,12 +113,27 @@ export function DrillDownLocationModal({
                 onSelectDimension?.(id);
                 onClose();
               }}
-              className="flex w-full cursor-pointer items-center px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors hover:bg-slate-100"
+              className={`flex h-9 w-full shrink-0 cursor-pointer items-center rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium capitalize leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`}
             >
               {label}
             </button>
           ))}
-        </div>
+        </>
+      ) : (
+        LOCATION_DIMENSION_MENU.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onSelectDimension?.(id);
+              onClose();
+            }}
+            className={`flex h-9 w-full shrink-0 cursor-pointer items-center rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`}
+          >
+            {label}
+          </button>
+        ))
       )}
     </div>
   );

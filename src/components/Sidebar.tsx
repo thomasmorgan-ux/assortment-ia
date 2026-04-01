@@ -580,52 +580,6 @@ function SidebarCurrencyIcon() {
   );
 }
 
-function SidebarUsersIcon({ className }: Pick<NavIconProps, 'className'>) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={24}
-      height={24}
-      viewBox="0 0 20 20"
-      fill="none"
-      className={['shrink-0', className ?? 'text-white'].join(' ')}
-      aria-hidden
-    >
-      <path
-        d="M12.5 8.33341C14.3409 8.33341 15.8333 6.84103 15.8333 5.00008C15.8333 3.15913 14.3409 1.66675 12.5 1.66675"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle
-        cx="6.66665"
-        cy="5.00008"
-        r="3.33333"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M0.833313 15.0001C0.833313 13.1591 2.3257 11.6667 4.16665 11.6667H9.16664C11.0076 11.6667 12.5 13.1591 12.5 15.0001V15.0001C12.5 16.841 11.0076 18.3334 9.16665 18.3334H4.16665C2.3257 18.3334 0.833313 16.841 0.833313 15.0001V15.0001Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M14.1667 18.3334H16.5C17.9728 18.3334 19.1667 17.1395 19.1667 15.6667C19.1667 13.4576 17.3758 11.6667 15.1667 11.6667H14.1667"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 const MAIN_NAV: {
   id: string;
   label: string;
@@ -650,7 +604,6 @@ const SECOND_NAV: {
   { id: 'assortment', label: 'Assortment', icon: null, active: true },
   { id: 'calendar', label: 'Events', icon: null },
   { id: 'settings', label: 'Parameters', icon: null },
-  { id: 'users', label: 'Team', icon: null },
 ];
 
 type SidebarProps = {
@@ -660,18 +613,15 @@ type SidebarProps = {
 function navRowClasses(active: boolean, expanded: boolean, alignExpanded: boolean) {
   const base = [
     'flex h-10 w-full shrink-0 gap-3 rounded px-4 py-2 text-sm transition-colors',
-    active ? null : 'hover:bg-white/[0.08]',
+    active ? null : 'hover:bg-white/[0.08] hover:text-[#0267FF]',
   ]
     .filter(Boolean)
     .join(' ');
   const layout = expanded && alignExpanded ? 'items-center justify-start text-left' : 'items-center justify-center';
   if (active) {
-    return `${base} ${layout} bg-[#2EB8C2] text-white`;
+    return `${base} ${layout} bg-[#0D7580] text-white`;
   }
-  if (expanded) {
-    return `${base} ${layout} text-white`;
-  }
-  return `${base} ${layout} ${SIDEBAR_INACTIVE_ICON}`;
+  return `${base} ${layout} text-white`;
 }
 
 export function Sidebar({ className = '' }: SidebarProps) {
@@ -760,25 +710,25 @@ export function Sidebar({ className = '' }: SidebarProps) {
                 aria-current={active ? 'page' : undefined}
               >
                 {item.id === 'elements' ? (
-                  <ElementsGridIcon className="text-white" />
+                  <ElementsGridIcon className="text-inherit" />
                 ) : item.id === 'home' ? (
-                  <HomeAssortIcon className="text-white" />
+                  <HomeAssortIcon className="text-inherit" />
                 ) : item.id === 'reorder' ? (
-                  <ReorderCubeIcon className="text-white" />
+                  <ReorderCubeIcon className="text-inherit" />
                 ) : item.id === 'refresh' ? (
-                  <RefreshSyncIcon className="text-white" />
+                  <RefreshSyncIcon className="text-inherit" />
                 ) : item.id === 'buy' ? (
-                  <BuyBagIcon className="text-white" />
+                  <BuyBagIcon className="text-inherit" />
                 ) : item.id === 'bulb' ? (
-                  <IdeaBulbIcon className="text-white" />
+                  <IdeaBulbIcon className="text-inherit" />
                 ) : Icon ? (
-                  <Icon size={24} strokeWidth={1.5} className="shrink-0 text-white" aria-hidden />
+                  <Icon size={24} strokeWidth={1.5} className="shrink-0 text-inherit" aria-hidden />
                 ) : null}
                 {expanded && (
                   <>
                     <span className="min-w-0 flex-1 truncate font-medium leading-none">{item.label}</span>
                     {item.submenu ? (
-                      <ChevronDown size={20} strokeWidth={1.5} className="shrink-0 opacity-80" aria-hidden />
+                      <ChevronDown size={20} strokeWidth={1.5} className="shrink-0 text-inherit opacity-80" aria-hidden />
                     ) : null}
                   </>
                 )}
@@ -800,15 +750,13 @@ export function Sidebar({ className = '' }: SidebarProps) {
                 aria-current={active ? 'page' : undefined}
               >
                 {item.id === 'assortment' ? (
-                  <AssortmentDotsIcon className="text-white" />
+                  <AssortmentDotsIcon className="text-inherit" />
                 ) : item.id === 'calendar' ? (
-                  <SidebarCalendarIcon className="text-white" />
+                  <SidebarCalendarIcon className="text-inherit" />
                 ) : item.id === 'settings' ? (
-                  <SidebarHistoryIcon className="text-white" />
-                ) : item.id === 'users' ? (
-                  <SidebarUsersIcon className="text-white" />
+                  <SidebarHistoryIcon className="text-inherit" />
                 ) : Icon ? (
-                  <Icon size={24} strokeWidth={1.5} className="shrink-0 text-white" aria-hidden />
+                  <Icon size={24} strokeWidth={1.5} className="shrink-0 text-inherit" aria-hidden />
                 ) : null}
                 {expanded && <span className="min-w-0 flex-1 truncate font-medium leading-none">{item.label}</span>}
               </button>

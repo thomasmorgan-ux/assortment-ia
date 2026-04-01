@@ -63,7 +63,7 @@ export function RowStatusActionsPopover({
     <div
       ref={popoverRef}
       data-status-menu-popover
-      className="fixed z-[70] max-h-[min(320px,85vh)] overflow-y-auto rounded-[4px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
+      className="fixed z-[70] flex max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 shadow-[0_8px_25px_0_rgba(0,0,0,0.12)]"
       style={{
         top: `${top}px`,
         left: `${left}px`,
@@ -84,7 +84,7 @@ export function RowStatusActionsPopover({
           onCommit();
           onClose();
         }}
-        className="flex w-full items-center px-3 py-2 text-left font-['Inter',sans-serif] text-[14px] font-normal leading-normal text-[#6A7282] transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+        className="flex w-full items-center rounded-[3px] px-3 py-3 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors hover:bg-[#f8f8f8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(59_130_246/0.45)] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
       >
         Commit
       </button>
@@ -98,7 +98,7 @@ export function RowStatusActionsPopover({
           onRevert();
           onClose();
         }}
-        className="flex w-full items-center px-3 py-2 text-left font-['Inter',sans-serif] text-[14px] font-normal leading-normal text-[#6A7282] transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+        className="flex w-full items-center rounded-[3px] px-3 py-3 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors hover:bg-[#f8f8f8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(59_130_246/0.45)] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
       >
         Revert
       </button>

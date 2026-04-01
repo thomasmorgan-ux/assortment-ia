@@ -416,7 +416,7 @@ export function EditRowModal({
                 <button
                   type="button"
                   onClick={() => onOpenGenerateRecommendations?.()}
-                  className="inline-flex h-10 items-center gap-2 rounded bg-[#a234da] px-4 py-2 text-base font-medium text-white transition-colors hover:opacity-90"
+                  className="inline-flex h-10 items-center gap-2 rounded bg-[#6864E6] px-4 py-2 text-base font-medium text-white transition-colors hover:opacity-90"
                   data-node-id="201:20163"
                 >
                   <Zap size={16} />

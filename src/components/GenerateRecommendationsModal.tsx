@@ -3,8 +3,8 @@ import { X, Sparkles } from 'lucide-react';
 
 export type RecommendationMode = 'assortment-and-ia' | 'ia-only';
 
-/** Purple accent aligned with recommendation banners in the app */
-const ACCENT = '#a234da';
+/** Recommendation accent (aligned with table / banners). */
+const ACCENT = '#6864E6';
 
 interface GenerateRecommendationsModalProps {
   open: boolean;
