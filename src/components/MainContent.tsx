@@ -26,7 +26,10 @@ import {
   type RecommendationMode,
 } from './GenerateRecommendationsModal';
 import { mockRows } from '../data/mockAssortment';
-import { dropdownTriggerHoverBg } from '../lib/dropdownMenuClasses';
+import {
+  drillDropdownMenuItemHover,
+  dropdownTriggerHoverBg,
+} from '../lib/dropdownMenuClasses';
 import type { AssortmentRow } from '../types';
 
 type AdvancedFiltersAnchorState = {
@@ -38,7 +41,48 @@ type AdvancedFiltersAnchorState = {
 
 type FocusView = 'all' | 'pre-season-ia' | 'in-season-ia' | 'service-level';
 
-type StatusTableFilter = 'all' | 'draft' | 'committed';
+/** Product grouping values allowed when the Service level focus tab is active. */
+const SERVICE_LEVEL_PRODUCT_GROUPING_SET = new Set<string>([
+  'Product',
+  'Department',
+  'Sub-department',
+  'Season',
+]);
+
+/** Options in the toolbar metric split-dropdown (matches design). */
+type ToolbarMetricOptionId =
+  | 'product'
+  | 'location'
+  | 'sales-l7d'
+  | 'sales-l30d'
+  | 'inventory'
+  | 'forecast-wk'
+  | 'target-coverage'
+  | 'wh-units'
+  | 'wh-pfp'
+  | 'ia'
+  | 'recommended-ia'
+  | 'wh-stock-pct-ia';
+
+const TOOLBAR_METRIC_OPTIONS: readonly { id: ToolbarMetricOptionId; label: string }[] = [
+  { id: 'product', label: 'Product' },
+  { id: 'location', label: 'Location' },
+  { id: 'sales-l7d', label: 'Sales L7D' },
+  { id: 'sales-l30d', label: 'Sales L30D' },
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'forecast-wk', label: 'Forecast /wk' },
+  { id: 'target-coverage', label: 'Target Coverage' },
+  { id: 'wh-units', label: 'WH Units' },
+  { id: 'wh-pfp', label: 'WH PFP' },
+  { id: 'ia', label: 'IA' },
+  { id: 'recommended-ia', label: 'Recommended IA' },
+  { id: 'wh-stock-pct-ia', label: '% WH Stock for IA' },
+];
+
+function toolbarMetricLabel(id: ToolbarMetricOptionId): string {
+  const row = TOOLBAR_METRIC_OPTIONS.find((o) => o.id === id);
+  return row?.label ?? 'Sales L7D';
+}
 
 function filterRowsByFocusView(rows: AssortmentRow[], view: FocusView): AssortmentRow[] {
   switch (view) {
@@ -88,7 +132,6 @@ export function MainContent() {
   } | null>(null);
   const [confirmCommitRevert, setConfirmCommitRevert] = useState<ConfirmCommitRevertState | null>(null);
   const [focusView, setFocusView] = useState<FocusView>('all');
-  const [statusTableFilter, setStatusTableFilter] = useState<StatusTableFilter>('all');
   const [productDrillPath, setProductDrillPath] = useState<{ id: string; label: string }[]>([]);
   const [regionsDrillBreadcrumb, setRegionsDrillBreadcrumb] = useState<{
     productHeaderLabel: string;
@@ -121,9 +164,17 @@ export function MainContent() {
   >({});
   const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
   const advancedFiltersToolbarRef = useRef<HTMLDivElement>(null);
-  const [salesMetricOpen, setSalesMetricOpen] = useState(false);
-  const [salesMetric, setSalesMetric] = useState<'l7d' | 'l30d'>('l7d');
-  const salesMetricDropdownRef = useRef<HTMLDivElement>(null);
+  const [toolbarMetricOpen, setToolbarMetricOpen] = useState(false);
+  const [toolbarMetric, setToolbarMetric] = useState<ToolbarMetricOptionId>('sales-l7d');
+  const toolbarMetricDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (focusView !== 'service-level') return;
+    setProductColumnGrouping((prev) =>
+      SERVICE_LEVEL_PRODUCT_GROUPING_SET.has(prev) ? prev : 'Product'
+    );
+    setLocationColumnGrouping('Location');
+  }, [focusView]);
 
   const advancedFilterScopeKey = useMemo(() => {
     const pathIds = productDrillPath.map((c) => c.id).join('/');
@@ -259,14 +310,14 @@ export function MainContent() {
   }, []);
 
   useEffect(() => {
-    if (!salesMetricOpen) return;
+    if (!toolbarMetricOpen) return;
     const handle = (e: MouseEvent) => {
-      if (salesMetricDropdownRef.current?.contains(e.target as Node)) return;
-      setSalesMetricOpen(false);
+      if (toolbarMetricDropdownRef.current?.contains(e.target as Node)) return;
+      setToolbarMetricOpen(false);
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [salesMetricOpen]);
+  }, [toolbarMetricOpen]);
 
   const generateModalStats = useMemo(() => {
     const selected = rows.filter((r) => r.selected);
@@ -347,12 +398,7 @@ export function MainContent() {
     return () => clearTimeout(id);
   }, [commitSuccessBannerVisible]);
 
-  const filteredRows = (() => {
-    let f = filterRowsByFocusView(rows, focusView);
-    if (statusTableFilter === 'draft') f = f.filter((r) => r.hasPendingChanges);
-    else if (statusTableFilter === 'committed') f = f.filter((r) => !r.hasPendingChanges);
-    return f;
-  })();
+  const filteredRows = filterRowsByFocusView(rows, focusView);
   const tableRows = filteredRows;
 
   const updateRow = (id: string, patch: Partial<AssortmentRow>) => {
@@ -591,7 +637,7 @@ export function MainContent() {
       <div className="flex flex-1 flex-col min-h-0 bg-white px-6 py-4 gap-4">
         {/* Focus tabs — outside bordered toolbar card */}
         <div className="flex w-full min-w-0 flex-col gap-3">
-          {!newRecsAvailableBannerDismissed && (
+          {focusView !== 'service-level' && !newRecsAvailableBannerDismissed && (
             <div
               className="flex w-full min-w-0 flex-wrap items-center gap-4 rounded-[5px] border border-solid border-[#e9eaeb] bg-white px-4 py-3"
               style={{ borderWidth: '0.5px' }}
@@ -655,12 +701,9 @@ export function MainContent() {
             <button
               type="button"
               id="tab-focus-all"
-              onClick={() => {
-                setFocusView('all');
-                setStatusTableFilter('all');
-              }}
+              onClick={() => setFocusView('all')}
               className={`flex items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-                focusView === 'all' && statusTableFilter === 'all'
+                focusView === 'all'
                   ? 'border-[#2EB8C2] text-[#00050a]'
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
@@ -673,28 +716,26 @@ export function MainContent() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setFocusView('pre-season-ia');
-                setStatusTableFilter('all');
-              }}
+              id="tab-focus-pre-season-ia"
+              onClick={() => setFocusView('pre-season-ia')}
               className={`flex items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-                focusView === 'pre-season-ia' && statusTableFilter === 'all'
+                focusView === 'pre-season-ia'
                   ? 'border-[#2EB8C2] text-[#00050a]'
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
               data-name="tabs"
+              role="tab"
+              aria-selected={focusView === 'pre-season-ia'}
+              aria-controls="assortment-focus-panel"
             >
               Pre-season
             </button>
             <button
               type="button"
               id="tab-focus-in-season-ia"
-              onClick={() => {
-                setFocusView('in-season-ia');
-                setStatusTableFilter('all');
-              }}
+              onClick={() => setFocusView('in-season-ia')}
               className={`flex items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-                focusView === 'in-season-ia' && statusTableFilter === 'all'
+                focusView === 'in-season-ia'
                   ? 'border-[#2EB8C2] text-[#00050a]'
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
@@ -708,12 +749,9 @@ export function MainContent() {
             <button
               type="button"
               id="tab-focus-service-level"
-              onClick={() => {
-                setFocusView('service-level');
-                setStatusTableFilter('all');
-              }}
+              onClick={() => setFocusView('service-level')}
               className={`flex items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-                focusView === 'service-level' && statusTableFilter === 'all'
+                focusView === 'service-level'
                   ? 'border-[#2EB8C2] text-[#00050a]'
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
@@ -728,60 +766,62 @@ export function MainContent() {
           </div>
         </div>
 
-        {/* Toolbar: filters | status */}
+        {/* IA toolbar — omitted on Service level; main content is only the assortment table panel */}
+        {focusView !== 'service-level' && (
         <div className="flex flex-col gap-[18px] bg-white">
-          <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
             <div
               ref={advancedFiltersToolbarRef}
-              className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2"
+              className="flex min-w-0 max-w-full flex-1 flex-wrap items-center justify-start gap-2"
             >
               <div
-                ref={salesMetricDropdownRef}
-                className="relative flex h-10 shrink-0 overflow-hidden rounded-[2px] border border-solid border-[#e9eaeb] bg-white"
+                ref={toolbarMetricDropdownRef}
+                className="relative flex h-10 shrink-0 overflow-visible rounded-[2px] border border-solid border-[#e9eaeb] bg-white"
                 style={{ borderWidth: '0.5px' }}
               >
                 <button
                   type="button"
-                  onClick={() => setSalesMetricOpen((o) => !o)}
-                  aria-expanded={salesMetricOpen}
+                  onClick={() => setToolbarMetricOpen((o) => !o)}
+                  aria-expanded={toolbarMetricOpen}
                   aria-haspopup="listbox"
+                  aria-controls="toolbar-metric-listbox"
                   className="flex min-w-[148px] max-w-[min(220px,50vw)] items-center justify-between gap-2 border-0 bg-transparent px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] transition-colors hover:bg-slate-50"
                 >
-                  <span className="truncate">
-                    {salesMetric === 'l7d' ? 'Sales L7D' : 'Sales L30D'}
-                  </span>
+                  <span className="truncate">{toolbarMetricLabel(toolbarMetric)}</span>
                   <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
                 </button>
                 <div className="w-px shrink-0 self-stretch bg-[#e9eaeb]" aria-hidden />
                 <button
                   type="button"
                   className="flex w-10 shrink-0 items-center justify-center border-0 bg-transparent text-[#101828] transition-colors hover:bg-slate-50"
-                  aria-label="Sort sales"
+                  aria-label={`Sort by ${toolbarMetricLabel(toolbarMetric)}`}
                 >
                   <ArrowDown size={16} strokeWidth={2} aria-hidden />
                 </button>
-                {salesMetricOpen && (
-                  <div className="absolute left-0 top-[42px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-solid border-[#e9eaeb] bg-white py-1 shadow-lg">
-                    {(
-                      [
-                        { id: 'l7d' as const, label: 'Sales L7D' },
-                        { id: 'l30d' as const, label: 'Sales L30D' },
-                      ] as const
-                    ).map((opt) => (
+                {toolbarMetricOpen && (
+                  <div
+                    id="toolbar-metric-listbox"
+                    role="listbox"
+                    aria-label="Table metric"
+                    className="absolute left-0 top-[42px] z-[210] mt-0.5 min-w-full w-max max-w-[min(280px,calc(100vw-2rem))] max-h-[min(320px,50vh)] overflow-y-auto rounded-[2px] border border-solid border-[#e9eaeb] bg-white py-1 shadow-lg"
+                  >
+                    {TOOLBAR_METRIC_OPTIONS.map((opt) => (
                       <button
                         key={opt.id}
                         type="button"
+                        role="option"
+                        aria-selected={toolbarMetric === opt.id}
                         onClick={() => {
-                          setSalesMetric(opt.id);
-                          setSalesMetricOpen(false);
+                          setToolbarMetric(opt.id);
+                          setToolbarMetricOpen(false);
                         }}
-                        className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${dropdownTriggerHoverBg} ${
-                          salesMetric === opt.id ? 'bg-slate-100' : ''
+                        className={`flex w-full cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left font-['Inter',sans-serif] text-sm font-normal leading-normal text-[#101828] transition-colors ${drillDropdownMenuItemHover} ${
+                          toolbarMetric === opt.id ? 'bg-slate-100' : ''
                         }`}
                       >
                         {opt.label}
-                        {salesMetric === opt.id && (
-                          <Check size={14} className="shrink-0 text-[#00050a]" />
+                        {toolbarMetric === opt.id && (
+                          <Check size={14} className="shrink-0 text-[#101828]" strokeWidth={2} aria-hidden />
                         )}
                       </button>
                     ))}
@@ -888,57 +928,11 @@ export function MainContent() {
                     );
                   })}
             </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <div
-                className="flex flex-wrap items-center gap-2 font-['Inter',sans-serif] text-sm"
-                role="group"
-                aria-label="Status"
-              >
-                <span className="shrink-0 font-['Inter',sans-serif] text-[#4b535c]">Status:</span>
-                <div className="inline-flex flex-wrap items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setStatusTableFilter('all')}
-                    aria-pressed={statusTableFilter === 'all'}
-                    className={`rounded border px-3 py-1 font-['Inter',sans-serif] text-sm transition-colors ${
-                      statusTableFilter === 'all'
-                        ? 'border-oklch bg-[#f8f8f8] font-semibold text-[#00050a]'
-                        : 'border-transparent font-normal text-[#4b535c] hover:text-[#00050a]'
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatusTableFilter('draft')}
-                    aria-pressed={statusTableFilter === 'draft'}
-                    className={`rounded border px-3 py-1 font-['Inter',sans-serif] text-sm transition-colors ${
-                      statusTableFilter === 'draft'
-                        ? 'border-oklch bg-[#f8f8f8] font-semibold text-[#00050a]'
-                        : 'border-transparent font-normal text-[#4b535c] hover:text-[#00050a]'
-                    }`}
-                  >
-                    Draft
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatusTableFilter('committed')}
-                    aria-pressed={statusTableFilter === 'committed'}
-                    className={`rounded border px-3 py-1 font-['Inter',sans-serif] text-sm transition-colors ${
-                      statusTableFilter === 'committed'
-                        ? 'border-oklch bg-[#f8f8f8] font-semibold text-[#00050a]'
-                        : 'border-transparent font-normal text-[#4b535c] hover:text-[#00050a]'
-                    }`}
-                  >
-                    Committed
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
+        )}
 
-        <div className="flex min-h-0 flex-1 gap-0 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden">
           <div
             id="assortment-focus-panel"
             role="tabpanel"
@@ -951,10 +945,11 @@ export function MainContent() {
                     ? 'tab-focus-in-season-ia'
                     : 'tab-focus-service-level'
             }
-            className="min-w-0 flex-1"
+            className="flex min-h-0 min-w-0 flex-1 flex-col"
           >
             <AssortmentTable
               rows={tableRows}
+              serviceLevelView={focusView === 'service-level'}
               showAssortmentRecommendationsColumn={hasGeneratedRecommendations}
               showAssortmentScheduleColumn={assortmentScheduleColumnVisible}
               productGrouping={productColumnGrouping}
