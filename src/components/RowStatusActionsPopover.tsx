@@ -1,15 +1,13 @@
 import { useEffect, useRef } from 'react';
 
 const GAP = 4;
-const MIN_WIDTH = 200;
+const MIN_WIDTH = 168;
 
 interface RowStatusActionsPopoverProps {
   anchorRect: DOMRect | null;
   onClose: () => void;
-  onCommit: () => void;
-  onRevert: () => void;
-  /** When true (e.g. row is committed), Commit/Revert are shown but not actionable. */
-  actionsDisabled?: boolean;
+  onEditAssortment: () => void;
+  onEditIa: () => void;
 }
 
 /**
@@ -18,9 +16,8 @@ interface RowStatusActionsPopoverProps {
 export function RowStatusActionsPopover({
   anchorRect,
   onClose,
-  onCommit,
-  onRevert,
-  actionsDisabled = false,
+  onEditAssortment,
+  onEditIa,
 }: RowStatusActionsPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -59,11 +56,14 @@ export function RowStatusActionsPopover({
   const maxH = viewportH - top - 16;
   const maxHeight = maxH > 120 ? maxH : 280;
 
+  const menuItemClass =
+    "flex w-full items-center rounded-[4px] px-3 py-2.5 text-left font-['Inter',sans-serif] text-sm font-normal leading-normal text-[#101828] transition-colors hover:bg-[#f8f8f8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(59_130_246/0.45)] focus-visible:ring-offset-1";
+
   return (
     <div
       ref={popoverRef}
       data-status-menu-popover
-      className="fixed z-[70] flex max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 shadow-[0_8px_25px_0_rgba(0,0,0,0.12)]"
+      className="fixed z-[70] flex max-h-[min(320px,85vh)] flex-col overflow-y-auto rounded-[6px] border-[0.5px] border-solid border-[#E3E8F0] bg-white p-1 shadow-[0_8px_25px_0_rgba(0,0,0,0.12)]"
       style={{
         top: `${top}px`,
         left: `${left}px`,
@@ -77,30 +77,24 @@ export function RowStatusActionsPopover({
       <button
         type="button"
         role="menuitem"
-        disabled={actionsDisabled}
-        title={actionsDisabled ? 'No draft changes to commit' : undefined}
         onClick={() => {
-          if (actionsDisabled) return;
-          onCommit();
+          onEditAssortment();
           onClose();
         }}
-        className="flex w-full items-center rounded-[3px] px-3 py-3 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors hover:bg-[#f8f8f8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(59_130_246/0.45)] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+        className={menuItemClass}
       >
-        Commit
+        Edit assortment
       </button>
       <button
         type="button"
         role="menuitem"
-        disabled={actionsDisabled}
-        title={actionsDisabled ? 'No draft changes to revert' : undefined}
         onClick={() => {
-          if (actionsDisabled) return;
-          onRevert();
+          onEditIa();
           onClose();
         }}
-        className="flex w-full items-center rounded-[3px] px-3 py-3 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors hover:bg-[#f8f8f8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(59_130_246/0.45)] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+        className={menuItemClass}
       >
-        Revert
+        Edit IA
       </button>
     </div>
   );

@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Sparkles, X, Filter, MapPin } from 'lucide-react';
+import {
+  Sparkles,
+  X,
+  Filter,
+  MapPin,
+  Info,
+  ChevronDown,
+  ArrowDown,
+  Check,
+} from 'lucide-react';
 import { AssortmentTable } from './AssortmentTable';
 import { getProductDimensionLabel } from './DrillDownProductModal';
 import { CommitSuccessBanner } from './CommitSuccessBanner';
@@ -94,7 +103,9 @@ export function MainContent() {
   const [locationColumnGrouping, setLocationColumnGrouping] = useState('Location Group');
   const [optimisingBannerVisible, setOptimisingBannerVisible] = useState(false);
   const [optimisingBannerDismissed, setOptimisingBannerDismissed] = useState(false);
-  const [, setHasGeneratedRecommendations] = useState(false);
+  const [hasGeneratedRecommendations, setHasGeneratedRecommendations] = useState(false);
+  const [assortmentScheduleColumnVisible, setAssortmentScheduleColumnVisible] = useState(false);
+  const [newRecsAvailableBannerDismissed, setNewRecsAvailableBannerDismissed] = useState(false);
   const [recSuccessBanner, setRecSuccessBanner] = useState<{ groupsCount: number } | null>(null);
   const [commitSuccessBannerVisible, setCommitSuccessBannerVisible] = useState(false);
   const [generateRecModalOpen, setGenerateRecModalOpen] = useState(false);
@@ -110,6 +121,9 @@ export function MainContent() {
   >({});
   const advancedFiltersBtnRef = useRef<HTMLButtonElement>(null);
   const advancedFiltersToolbarRef = useRef<HTMLDivElement>(null);
+  const [salesMetricOpen, setSalesMetricOpen] = useState(false);
+  const [salesMetric, setSalesMetric] = useState<'l7d' | 'l30d'>('l7d');
+  const salesMetricDropdownRef = useRef<HTMLDivElement>(null);
 
   const advancedFilterScopeKey = useMemo(() => {
     const pathIds = productDrillPath.map((c) => c.id).join('/');
@@ -243,6 +257,16 @@ export function MainContent() {
       if (optimisingToSuccessTimeoutRef.current) clearTimeout(optimisingToSuccessTimeoutRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!salesMetricOpen) return;
+    const handle = (e: MouseEvent) => {
+      if (salesMetricDropdownRef.current?.contains(e.target as Node)) return;
+      setSalesMetricOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [salesMetricOpen]);
 
   const generateModalStats = useMemo(() => {
     const selected = rows.filter((r) => r.selected);
@@ -566,17 +590,71 @@ export function MainContent() {
 
       <div className="flex flex-1 flex-col min-h-0 bg-white px-6 py-4 gap-4">
         {/* Focus tabs — outside bordered toolbar card */}
-        <div
-          className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2"
-          data-node-id="14764:268954"
-        >
+        <div className="flex w-full min-w-0 flex-col gap-3">
+          {!newRecsAvailableBannerDismissed && (
+            <div
+              className="flex w-full min-w-0 flex-wrap items-center gap-4 rounded-[5px] border border-solid border-[#e9eaeb] bg-white px-4 py-3"
+              style={{ borderWidth: '0.5px' }}
+              role="region"
+              aria-label="New recommendations available"
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-solid border-[#e9eaeb] bg-white"
+                  style={{ borderWidth: '0.5px' }}
+                  aria-hidden
+                >
+                  <Info className="h-5 w-5 text-[#6A7282]" strokeWidth={2} />
+                </div>
+                <p className="min-w-0 flex-1 font-['Inter',sans-serif] text-sm font-normal leading-normal text-[#344054]">
+                  New recommendations are available for{' '}
+                  <span className="font-semibold tabular-nums text-[#101828]">
+                    {tableRows
+                      .reduce(
+                        (sum, r) =>
+                          sum + r.productGroup.productCount * r.locationCluster.locationCount,
+                        0
+                      )
+                      .toLocaleString()}
+                  </span>{' '}
+                  sku-locations in your current view. Would you like to accept them?
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewRecsAvailableBannerDismissed(true);
+                    setGenerateRecModalOpen(true);
+                  }}
+                  className="rounded border border-solid border-[#e9eaeb] bg-white px-4 py-2 font-['Inter',sans-serif] text-sm font-semibold leading-normal text-[#101828] transition-colors hover:bg-slate-50"
+                  style={{ borderWidth: '0.5px' }}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewRecsAvailableBannerDismissed(true)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-[#6A7282] transition-colors hover:bg-slate-100 hover:text-[#101828]"
+                  aria-label="Dismiss"
+                >
+                  <X size={18} strokeWidth={2} aria-hidden />
+                </button>
+              </div>
+            </div>
+          )}
+          <div
+            className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2"
+            data-node-id="14764:268954"
+          >
           <div
             className="flex min-w-0 flex-wrap items-center gap-2"
-            role="group"
+            role="tablist"
             aria-label="Table focus"
           >
             <button
               type="button"
+              id="tab-focus-all"
               onClick={() => {
                 setFocusView('all');
                 setStatusTableFilter('all');
@@ -587,6 +665,9 @@ export function MainContent() {
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
               data-name="tabs"
+              role="tab"
+              aria-selected={focusView === 'all'}
+              aria-controls="assortment-focus-panel"
             >
               All
             </button>
@@ -607,6 +688,7 @@ export function MainContent() {
             </button>
             <button
               type="button"
+              id="tab-focus-in-season-ia"
               onClick={() => {
                 setFocusView('in-season-ia');
                 setStatusTableFilter('all');
@@ -617,11 +699,15 @@ export function MainContent() {
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
               data-name="tabs"
+              role="tab"
+              aria-selected={focusView === 'in-season-ia'}
+              aria-controls="assortment-focus-panel"
             >
               In-season
             </button>
             <button
               type="button"
+              id="tab-focus-service-level"
               onClick={() => {
                 setFocusView('service-level');
                 setStatusTableFilter('all');
@@ -632,9 +718,13 @@ export function MainContent() {
                   : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
               }`}
               data-name="tabs"
+              role="tab"
+              aria-selected={focusView === 'service-level'}
+              aria-controls="assortment-focus-panel"
             >
               Service level
             </button>
+          </div>
           </div>
         </div>
 
@@ -645,35 +735,81 @@ export function MainContent() {
               ref={advancedFiltersToolbarRef}
               className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2"
             >
-                  <button
-                    ref={advancedFiltersBtnRef}
-                    type="button"
-                    onClick={() => {
-                      setAdvancedFiltersAnchor((prev) => {
-                        const r =
-                          advancedFiltersBtnRef.current?.getBoundingClientRect();
-                        if (!r) return null;
-                        if (prev?.source === 'button') return null;
-                        return { rect: r, source: 'button' as const };
-                      });
-                    }}
-                    aria-expanded={Boolean(
-                      advancedFiltersAnchor?.source === 'button'
-                    )}
-                    aria-haspopup="menu"
-                    className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828]"
-                    aria-label="Filters"
-                  >
-                    <Filter
-                      size={16}
-                      className="shrink-0"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828]">
-                      Filters
-                    </span>
-                  </button>
+              <div
+                ref={salesMetricDropdownRef}
+                className="relative flex h-10 shrink-0 overflow-hidden rounded-[2px] border border-solid border-[#e9eaeb] bg-white"
+                style={{ borderWidth: '0.5px' }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSalesMetricOpen((o) => !o)}
+                  aria-expanded={salesMetricOpen}
+                  aria-haspopup="listbox"
+                  className="flex min-w-[148px] max-w-[min(220px,50vw)] items-center justify-between gap-2 border-0 bg-transparent px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] transition-colors hover:bg-slate-50"
+                >
+                  <span className="truncate">
+                    {salesMetric === 'l7d' ? 'Sales L7D' : 'Sales L30D'}
+                  </span>
+                  <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
+                </button>
+                <div className="w-px shrink-0 self-stretch bg-[#e9eaeb]" aria-hidden />
+                <button
+                  type="button"
+                  className="flex w-10 shrink-0 items-center justify-center border-0 bg-transparent text-[#101828] transition-colors hover:bg-slate-50"
+                  aria-label="Sort sales"
+                >
+                  <ArrowDown size={16} strokeWidth={2} aria-hidden />
+                </button>
+                {salesMetricOpen && (
+                  <div className="absolute left-0 top-[42px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-solid border-[#e9eaeb] bg-white py-1 shadow-lg">
+                    {(
+                      [
+                        { id: 'l7d' as const, label: 'Sales L7D' },
+                        { id: 'l30d' as const, label: 'Sales L30D' },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setSalesMetric(opt.id);
+                          setSalesMetricOpen(false);
+                        }}
+                        className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${dropdownTriggerHoverBg} ${
+                          salesMetric === opt.id ? 'bg-slate-100' : ''
+                        }`}
+                      >
+                        {opt.label}
+                        {salesMetric === opt.id && (
+                          <Check size={14} className="shrink-0 text-[#00050a]" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                ref={advancedFiltersBtnRef}
+                type="button"
+                onClick={() => {
+                  setAdvancedFiltersAnchor((prev) => {
+                    const r = advancedFiltersBtnRef.current?.getBoundingClientRect();
+                    if (!r) return null;
+                    if (prev?.source === 'button') return null;
+                    return { rect: r, source: 'button' as const };
+                  });
+                }}
+                aria-expanded={Boolean(advancedFiltersAnchor?.source === 'button')}
+                aria-haspopup="menu"
+                className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-[2px] border border-solid border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors hover:border-[#d1d5db]"
+                style={{ borderWidth: '0.5px' }}
+                aria-label="Filters"
+              >
+                <Filter size={16} className="shrink-0" strokeWidth={2} aria-hidden />
+                <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828]">
+                  Filters
+                </span>
+              </button>
                   {activeAdvancedFilterIds.map((filterId) => {
                     const valueCount =
                       advancedFilterValuesByScope[advancedFilterScopeKey]?.[filterId]
@@ -803,9 +939,24 @@ export function MainContent() {
         </div>
 
         <div className="flex min-h-0 flex-1 gap-0 overflow-hidden">
-          <div className="min-w-0 flex-1">
+          <div
+            id="assortment-focus-panel"
+            role="tabpanel"
+            aria-labelledby={
+              focusView === 'all'
+                ? 'tab-focus-all'
+                : focusView === 'pre-season-ia'
+                  ? 'tab-focus-pre-season-ia'
+                  : focusView === 'in-season-ia'
+                    ? 'tab-focus-in-season-ia'
+                    : 'tab-focus-service-level'
+            }
+            className="min-w-0 flex-1"
+          >
             <AssortmentTable
               rows={tableRows}
+              showAssortmentRecommendationsColumn={hasGeneratedRecommendations}
+              showAssortmentScheduleColumn={assortmentScheduleColumnVisible}
               productGrouping={productColumnGrouping}
               onProductGroupingChange={setProductColumnGrouping}
               locationGrouping={locationColumnGrouping}
@@ -895,7 +1046,10 @@ export function MainContent() {
           onUnassort={onUnassort}
           onAssortToMax={(row) => onAssortSelection([row])}
           onUnassortToZero={(row) => onUnassortSelection([row])}
-          onScheduledAssortmentScheduleChange={(rowId, field, value) =>
+          onScheduledAssortmentScheduleChange={(rowId, field, value) => {
+            if (String(value ?? '').trim() !== '') {
+              setAssortmentScheduleColumnVisible(true);
+            }
             setRows((prev) =>
               prev.map((r) =>
                 r.id === rowId
@@ -907,8 +1061,8 @@ export function MainContent() {
                     }
                   : r
               )
-            )
-          }
+            );
+          }}
           onAssortmentCancelDraft={() => {
             if (!editAllocation || editAllocation.openFrom !== 'assortment') return;
             editAllocation.rows.forEach((r) => onRevert(r.id));
