@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Sparkles, X, Home, ChevronRight, Filter, MapPin } from 'lucide-react';
+import { Sparkles, X, Filter, MapPin } from 'lucide-react';
 import { AssortmentTable } from './AssortmentTable';
 import { getProductDimensionLabel } from './DrillDownProductModal';
 import { CommitSuccessBanner } from './CommitSuccessBanner';
@@ -27,53 +27,9 @@ type AdvancedFiltersAnchorState = {
   tagDimensionId?: AdvancedFilterId;
 };
 
-type FocusView = 'all' | 'pre-season-ia' | 'in-season-ia';
+type FocusView = 'all' | 'pre-season-ia' | 'in-season-ia' | 'service-level';
 
 type StatusTableFilter = 'all' | 'draft' | 'committed';
-
-/** Split "A | B" breadcrumb labels for hierarchy row (parent → current). */
-function splitPipePair(label: string): [string, string] | null {
-  const sep = ' | ';
-  const idx = label.indexOf(sep);
-  if (idx === -1) return null;
-  return [label.slice(0, idx), label.slice(idx + sep.length)];
-}
-
-/** Reference: gray uppercase truncated parent, | separator, bold dark current page. */
-function BreadcrumbHierarchyPair({
-  left,
-  right,
-  className = '',
-}: {
-  left: string;
-  right: string;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`flex min-w-0 max-w-full items-center gap-3 ${className}`}
-    >
-      <span
-        className="min-w-0 flex-1 truncate text-xs font-normal uppercase tracking-wide text-[#666666]"
-        title={left}
-      >
-        {left}
-      </span>
-      <span
-        className="shrink-0 select-none text-xs font-normal text-[#666666]"
-        aria-hidden
-      >
-        |
-      </span>
-      <span
-        className="line-clamp-2 min-w-0 max-w-[min(14rem,42vw)] shrink-0 text-left text-sm font-semibold leading-snug text-[#00050a] sm:max-w-[20rem]"
-        title={right}
-      >
-        {right}
-      </span>
-    </span>
-  );
-}
 
 function filterRowsByFocusView(rows: AssortmentRow[], view: FocusView): AssortmentRow[] {
   switch (view) {
@@ -91,6 +47,9 @@ function filterRowsByFocusView(rows: AssortmentRow[], view: FocusView): Assortme
         return Boolean(r.hasPendingChanges && snap != null && snap > 0);
       });
     }
+    case 'service-level':
+      /** Placeholder until rows expose service-level fields to filter on. */
+      return rows;
     default:
       return rows;
   }
@@ -128,33 +87,11 @@ export function MainContent() {
     locationHeaderLabel: string;
     locationValue: string;
   } | null>(null);
-  /** Table column groupings before opening regions drill (restored when user backs out via breadcrumb). */
-  const [regionsTableSnapshot, setRegionsTableSnapshot] = useState<{
-    productGrouping: string;
-    locationGrouping: string;
-  } | null>(null);
-  /** Breadcrumb after picking countries/locations from Location Type contextual drill */
+  /** Contextual drill after picking countries/locations from Location Type. */
   const [locationTypeSubDrillBreadcrumb, setLocationTypeSubDrillBreadcrumb] =
     useState<{ label: string } | null>(null);
-  /** Table headers when gray crumb applies (Product + Location Group). */
-  const [grayBreadcrumbHeaders, setGrayBreadcrumbHeaders] = useState<{
-    productGrouping: string;
-    locationGrouping: string;
-  } | null>(null);
-  /** Table headers in regions view (Product + Region). */
-  const [regionsBreadcrumbHeaders, setRegionsBreadcrumbHeaders] = useState<{
-    productGrouping: string;
-    locationGrouping: string;
-  } | null>(null);
   const [productColumnGrouping, setProductColumnGrouping] = useState('Product Group');
   const [locationColumnGrouping, setLocationColumnGrouping] = useState('Location Group');
-
-  const restoreRegionsSnapshot = () => {
-    if (!regionsTableSnapshot) return;
-    setProductColumnGrouping(regionsTableSnapshot.productGrouping);
-    setLocationColumnGrouping(regionsTableSnapshot.locationGrouping);
-    setRegionsTableSnapshot(null);
-  };
   const [optimisingBannerVisible, setOptimisingBannerVisible] = useState(false);
   const [optimisingBannerDismissed, setOptimisingBannerDismissed] = useState(false);
   const [, setHasGeneratedRecommendations] = useState(false);
@@ -163,7 +100,7 @@ export function MainContent() {
   const [generateRecModalOpen, setGenerateRecModalOpen] = useState(false);
   const [advancedFiltersAnchor, setAdvancedFiltersAnchor] =
     useState<AdvancedFiltersAnchorState | null>(null);
-  /** Advanced filter selections per breadcrumb level (button always visible). */
+  /** Advanced filter selections per drill scope (button always visible). */
   const [advancedFiltersByScope, setAdvancedFiltersByScope] = useState<
     Record<string, AdvancedFilterId[]>
   >({});
@@ -409,7 +346,14 @@ export function MainContent() {
   };
 
   const onSumIaChange = (id: string, value: number) => {
-    updateRow(id, { sumIa: value, hasPendingChanges: true });
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        const lc = r.locationCluster.locationCount;
+        const nextAvg = lc > 0 ? value / lc : r.avgIa;
+        return { ...r, sumIa: value, avgIa: nextAvg, hasPendingChanges: true };
+      })
+    );
   };
 
   const onAvgIaChange = (id: string, value: number) => {
@@ -659,7 +603,7 @@ export function MainContent() {
               }`}
               data-name="tabs"
             >
-              Pre-Season IA
+              Pre-season
             </button>
             <button
               type="button"
@@ -674,13 +618,28 @@ export function MainContent() {
               }`}
               data-name="tabs"
             >
-              In Season IA
+              In-season
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFocusView('service-level');
+                setStatusTableFilter('all');
+              }}
+              className={`flex items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+                focusView === 'service-level' && statusTableFilter === 'all'
+                  ? 'border-[#2EB8C2] text-[#00050a]'
+                  : 'border-transparent text-[#4b535c] hover:text-[#00050a]'
+              }`}
+              data-name="tabs"
+            >
+              Service level
             </button>
           </div>
         </div>
 
-        {/* Toolbar: filters | status + breadcrumbs */}
-        <div className="flex flex-col gap-[18px] rounded-[5px] border border-[#e9eaeb] bg-white p-2">
+        {/* Toolbar: filters | status */}
+        <div className="flex flex-col gap-[18px] bg-white">
           <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div
               ref={advancedFiltersToolbarRef}
@@ -703,7 +662,7 @@ export function MainContent() {
                     )}
                     aria-haspopup="menu"
                     className="flex h-10 min-w-[158px] shrink-0 items-center justify-center gap-2 rounded border border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828]"
-                    aria-label="Advanced filters"
+                    aria-label="Filters"
                   >
                     <Filter
                       size={16}
@@ -712,7 +671,7 @@ export function MainContent() {
                       aria-hidden
                     />
                     <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828]">
-                      Advanced filters
+                      Filters
                     </span>
                   </button>
                   {activeAdvancedFilterIds.map((filterId) => {
@@ -841,244 +800,6 @@ export function MainContent() {
               </div>
             </div>
           </div>
-          <nav
-            className="flex flex-wrap items-center gap-2 border-t border-[#e9eaeb] pt-2 text-xs font-normal leading-normal text-[#00050a]"
-            aria-label="Product drill-down"
-          >
-              <button
-                type="button"
-                onClick={() => {
-                  setProductDrillPath([]);
-                  setRegionsDrillBreadcrumb(null);
-                  setRegionsTableSnapshot(null);
-                  setLocationTypeSubDrillBreadcrumb(null);
-                  setGrayBreadcrumbHeaders(null);
-                  setRegionsBreadcrumbHeaders(null);
-                  setProductColumnGrouping('Product Group');
-                  setLocationColumnGrouping('Location Group');
-                  setAdvancedFiltersByScope({});
-                  setAdvancedFilterValuesByScope({});
-                  setAdvancedFiltersAnchor(null);
-                }}
-                className="inline-flex h-[26px] shrink-0 items-center gap-1.5 px-0 py-0.5 text-xs font-normal uppercase tracking-wide text-[#666666] transition-colors hover:text-[#00050a] focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#666666]/30"
-              >
-                <Home size={14} className="shrink-0 text-[#6A7282]" strokeWidth={2} aria-hidden />
-                Home
-              </button>
-              {productDrillPath.length > 0 && (
-                <>
-              {(() => {
-                const hasRegionsTail = Boolean(regionsDrillBreadcrumb);
-                const hasLocationTypeSubTail =
-                  Boolean(locationTypeSubDrillBreadcrumb) && productDrillPath.length > 0;
-                const crumbCompact =
-                  'inline-flex h-[26px] shrink-0 max-w-[min(100vw-4rem,20rem)] min-w-0 items-center justify-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 text-xs font-normal leading-normal text-[#00050a] whitespace-nowrap transition-colors hover:bg-slate-50';
-                /** Flat clickable hierarchy (no pill) — same as region drill segment. */
-                const crumbHierarchyFlat =
-                  'inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-100';
-                /** Current region / page segment — matches Status filter pressed (All / Draft / Committed). */
-                const crumbHierarchyFlatCurrent =
-                  'inline-flex min-h-[30px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded border border-oklch bg-[#f8f8f8] px-3 py-1 text-left text-sm font-semibold text-[#00050a] transition-colors hover:bg-slate-100';
-                const crumbActive =
-                  'inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-left text-xs font-normal leading-normal text-[#00050a]';
-                return productDrillPath.map((crumb, i) => {
-                  const isLastCrumb = i === productDrillPath.length - 1;
-                  const lastCrumbAsRegionsPair = isLastCrumb && hasRegionsTail;
-                  return (
-                    <span
-                      key={`${crumb.id}-${i}`}
-                      className={`flex items-center gap-2 ${lastCrumbAsRegionsPair ? 'min-w-0 flex-wrap' : ''}`}
-                    >
-                      <ChevronRight size={14} className="shrink-0 text-slate-400" aria-hidden />
-                      {i < productDrillPath.length - 1 ? (
-                        (() => {
-                          const navPair = splitPipePair(crumb.label);
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setProductDrillPath(productDrillPath.slice(0, i + 1));
-                                setRegionsDrillBreadcrumb(null);
-                                setLocationTypeSubDrillBreadcrumb(null);
-                                setRegionsBreadcrumbHeaders(null);
-                                restoreRegionsSnapshot();
-                              }}
-                              className={navPair ? crumbHierarchyFlat : crumbCompact}
-                            >
-                              {navPair ? (
-                                <BreadcrumbHierarchyPair
-                                  left={navPair[0]}
-                                  right={navPair[1]}
-                                />
-                              ) : (
-                                <span className="truncate">{crumb.label}</span>
-                              )}
-                            </button>
-                          );
-                        })()
-                      ) : lastCrumbAsRegionsPair && regionsDrillBreadcrumb ? (
-                        <>
-                          {(() => {
-                            const grayPair = splitPipePair(crumb.label);
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (grayBreadcrumbHeaders) {
-                                    setProductColumnGrouping(
-                                      grayBreadcrumbHeaders.productGrouping
-                                    );
-                                    setLocationColumnGrouping(
-                                      grayBreadcrumbHeaders.locationGrouping
-                                    );
-                                  }
-                                  setRegionsDrillBreadcrumb(null);
-                                  setRegionsTableSnapshot(null);
-                                  setRegionsBreadcrumbHeaders(null);
-                                }}
-                                className={grayPair ? crumbHierarchyFlat : crumbCompact}
-                                title={
-                                  grayBreadcrumbHeaders
-                                    ? `Stored headers: ${grayBreadcrumbHeaders.productGrouping}, ${grayBreadcrumbHeaders.locationGrouping}. Click to leave Region view.`
-                                    : undefined
-                                }
-                                data-stored-product-header={grayBreadcrumbHeaders?.productGrouping}
-                                data-stored-location-header={grayBreadcrumbHeaders?.locationGrouping}
-                              >
-                                {grayPair ? (
-                                  <BreadcrumbHierarchyPair
-                                    left={grayPair[0]}
-                                    right={grayPair[1]}
-                                  />
-                                ) : (
-                                  <span className="truncate">{crumb.label}</span>
-                                )}
-                              </button>
-                            );
-                          })()}
-                          <ChevronRight
-                            size={14}
-                            className="shrink-0 text-slate-400"
-                            aria-hidden
-                          />
-                          {(() => {
-                            const regionLabel = `${regionsDrillBreadcrumb.productHeaderLabel}: ${regionsDrillBreadcrumb.productValue} | ${regionsDrillBreadcrumb.locationHeaderLabel}: ${regionsDrillBreadcrumb.locationValue}`;
-                            const regionPair = splitPipePair(regionLabel);
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRegionsDrillBreadcrumb(null);
-                                  setLocationTypeSubDrillBreadcrumb(null);
-                                  setRegionsBreadcrumbHeaders(null);
-                                  restoreRegionsSnapshot();
-                                }}
-                                className={
-                                  regionPair
-                                    ? crumbHierarchyFlatCurrent
-                                    : `${crumbActive} transition-colors hover:bg-slate-100`
-                                }
-                                title={
-                                  regionsTableSnapshot && regionsBreadcrumbHeaders
-                                    ? `Stored: ${regionsBreadcrumbHeaders.productGrouping} + ${regionsBreadcrumbHeaders.locationGrouping}. Back to ${regionsTableSnapshot.productGrouping} + ${regionsTableSnapshot.locationGrouping}.`
-                                    : regionsTableSnapshot
-                                      ? `Back to ${regionsTableSnapshot.productGrouping} + ${regionsTableSnapshot.locationGrouping}`
-                                      : 'Back — restore column headers before Region'
-                                }
-                                data-stored-product-header={regionsBreadcrumbHeaders?.productGrouping}
-                                data-stored-location-header={regionsBreadcrumbHeaders?.locationGrouping}
-                                aria-current="page"
-                              >
-                                {regionPair ? (
-                                  <BreadcrumbHierarchyPair
-                                    left={regionPair[0]}
-                                    right={regionPair[1]}
-                                  />
-                                ) : (
-                                  <span className="line-clamp-2 leading-snug">{regionLabel}</span>
-                                )}
-                              </button>
-                            );
-                          })()}
-                        </>
-                      ) : hasLocationTypeSubTail ? (
-                        (() => {
-                          const tailPair = splitPipePair(crumb.label);
-                          if (tailPair) {
-                            return (
-                              <span className="flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center py-0.5">
-                                <BreadcrumbHierarchyPair
-                                  left={tailPair[0]}
-                                  right={tailPair[1]}
-                                />
-                              </span>
-                            );
-                          }
-                          return (
-                            <span className="inline-flex min-h-[26px] max-w-[min(100vw-4rem,20rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-white px-4 py-1 text-xs font-normal text-[#00050a]">
-                              <span className="truncate">{crumb.label}</span>
-                            </span>
-                          );
-                        })()
-                      ) : (() => {
-                          const pair = splitPipePair(crumb.label);
-                          if (pair) {
-                            return (
-                              <span
-                                className="flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center py-0.5"
-                                aria-current="page"
-                              >
-                                <BreadcrumbHierarchyPair left={pair[0]} right={pair[1]} />
-                              </span>
-                            );
-                          }
-                          return (
-                            <span className={`${crumbActive}`} aria-current="page">
-                              <span className="line-clamp-2 text-left leading-snug">
-                                {crumb.label}
-                              </span>
-                            </span>
-                          );
-                        })()}
-                    </span>
-                  );
-                });
-              })()}
-              {locationTypeSubDrillBreadcrumb && productDrillPath.length > 0 && (
-                <span className="flex items-center gap-2">
-                  <ChevronRight size={14} className="shrink-0 text-slate-400" aria-hidden />
-                  {(() => {
-                    const subPair = splitPipePair(locationTypeSubDrillBreadcrumb.label);
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLocationColumnGrouping('Location Type');
-                          setLocationTypeSubDrillBreadcrumb(null);
-                        }}
-                        className={
-                          subPair
-                            ? 'inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-100'
-                            : 'inline-flex min-h-[26px] max-w-[min(100vw-4rem,36rem)] min-w-0 items-center rounded-[1000px] border border-[#e9eaeb] bg-[#f8f8f8] px-4 py-2 text-left text-xs font-normal leading-normal text-[#00050a] transition-colors hover:bg-slate-100'
-                        }
-                        title="Back to Location Type grouping"
-                        aria-current="page"
-                      >
-                        {subPair ? (
-                          <BreadcrumbHierarchyPair left={subPair[0]} right={subPair[1]} />
-                        ) : (
-                          <span className="line-clamp-2 leading-snug">
-                            {locationTypeSubDrillBreadcrumb.label}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })()}
-                </span>
-              )}
-                </>
-              )}
-          </nav>
         </div>
 
         <div className="flex min-h-0 flex-1 gap-0 overflow-hidden">
@@ -1121,16 +842,8 @@ export function MainContent() {
               }}
               onProductDrillDimensionSelect={(dimensionId, ctx) => {
                 setRegionsDrillBreadcrumb(null);
-                setRegionsTableSnapshot(null);
-                setRegionsBreadcrumbHeaders(null);
                 setLocationTypeSubDrillBreadcrumb(null);
                 const nextProduct = getProductDimensionLabel(dimensionId);
-                if (ctx) {
-                  setGrayBreadcrumbHeaders({
-                    productGrouping: nextProduct,
-                    locationGrouping: locationColumnGrouping,
-                  });
-                }
                 setProductColumnGrouping(nextProduct);
                 setProductDrillPath((prev) => [
                   ...prev,
@@ -1143,22 +856,12 @@ export function MainContent() {
                 ]);
               }}
               onLocationRegionsDrill={({
-                productGroupingBefore,
-                locationGroupingBefore,
                 productHeaderLabel,
                 productValue,
                 locationHeaderLabel,
                 locationValue,
               }) => {
                 setLocationTypeSubDrillBreadcrumb(null);
-                setRegionsTableSnapshot({
-                  productGrouping: productGroupingBefore,
-                  locationGrouping: locationGroupingBefore,
-                });
-                setRegionsBreadcrumbHeaders({
-                  productGrouping: productGroupingBefore,
-                  locationGrouping: 'Region',
-                });
                 setRegionsDrillBreadcrumb({
                   productHeaderLabel,
                   productValue,
@@ -1172,7 +875,6 @@ export function MainContent() {
                 locationTypeValue,
               }) => {
                 setRegionsDrillBreadcrumb(null);
-                setRegionsTableSnapshot(null);
                 setLocationTypeSubDrillBreadcrumb({
                   label: `product: ${productValue} | location type: ${locationTypeValue} → ${choiceLabel}`,
                 });

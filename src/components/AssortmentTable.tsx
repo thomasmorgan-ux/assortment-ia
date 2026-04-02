@@ -54,6 +54,58 @@ const tableCellSecondary =
 /** Row hover fill (with `group` on `<tr>`) */
 const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 
+/** Design system text input (Figma Input text / stroke #e9eaeb, 40px height, 2px radius) */
+const tableCellNumericInputClass =
+  "box-border h-10 w-full min-w-[56px] max-w-full rounded-[2px] border border-solid border-[#e9eaeb] bg-white px-3 py-0 " +
+  "font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] " +
+  "placeholder:font-normal placeholder:text-[#4b535c] " +
+  "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25";
+
+function TableCellNumericInput({
+  value,
+  onCommit,
+  ariaLabel,
+  disabled,
+}: {
+  value: number;
+  onCommit: (next: number) => void;
+  ariaLabel: string;
+  disabled?: boolean;
+}) {
+  const [text, setText] = useState(() => String(value));
+
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  const parseCommitted = (raw: string): number => {
+    const t = raw.trim().replace(/,/g, '');
+    if (t === '' || t === '-') return 0;
+    const n = Number(t);
+    return Number.isFinite(n) ? Math.trunc(n) : 0;
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      aria-label={ariaLabel}
+      disabled={disabled}
+      className={tableCellNumericInputClass}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const n = parseCommitted(text);
+        setText(String(n));
+        if (n !== value) onCommit(n);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      }}
+    />
+  );
+}
+
 /** Sticky Action column: left-edge shadow over scrolling cells. */
 const tableStickyRightShadow =
   'shadow-[-4px_0_12px_-6px_rgba(15,23,42,0.12)]';
@@ -442,8 +494,8 @@ export function AssortmentTable({
         return (
           <th key={columnId} className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-right" {...d}>
             <span className="inline-flex w-full items-center justify-end gap-2">
-              {gripDragHandle(columnId, 'Schedule start')}
-              <span>Schedule start</span>
+              {gripDragHandle(columnId, 'Start')}
+              <span>Start</span>
             </span>
           </th>
         );
@@ -451,8 +503,8 @@ export function AssortmentTable({
         return (
           <th key={columnId} className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-right" {...d}>
             <span className="inline-flex w-full items-center justify-end gap-2">
-              {gripDragHandle(columnId, 'Schedule end')}
-              <span>Schedule end</span>
+              {gripDragHandle(columnId, 'End')}
+              <span>End</span>
             </span>
           </th>
         );
@@ -460,8 +512,8 @@ export function AssortmentTable({
         return (
           <th key={columnId} className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-right" {...d}>
             <span className="inline-flex w-full items-center justify-end gap-1.5">
-              {gripDragHandle(columnId, 'Forecast per week')}
-              <span>Forecast per week</span>
+              {gripDragHandle(columnId, 'Forecast /wk')}
+              <span>Forecast /wk</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </span>
           </th>
@@ -536,8 +588,8 @@ export function AssortmentTable({
         return (
           <th key={columnId} className="h-[86px] min-h-[86px] px-3 py-3 text-right" {...d}>
             <span className="inline-flex w-full items-center justify-end gap-1.5">
-              {gripDragHandle(columnId, 'Forecast sales per week')}
-              <span>Forecast per week</span>
+              {gripDragHandle(columnId, 'Forecast /wk')}
+              <span>Forecast /wk</span>
             </span>
           </th>
         );
@@ -727,8 +779,8 @@ export function AssortmentTable({
   };
 
   const renderSumIaRecommendationPill = (row: AssortmentRow) =>
-    row.sumIaRecommendation != null ? (
-      <div className="group/reason relative mt-1 inline-flex w-fit max-w-full">
+    row.sumIaRecommendation != null && row.sumIaRecommendation > 0 ? (
+      <div className="group/reason relative inline-flex w-fit max-w-full">
         <div
           className={`inline-flex w-fit items-center gap-[2px] rounded-[5px] p-1.5 ${RECOMMENDATION_PILL_BG}`}
         >
@@ -763,18 +815,92 @@ export function AssortmentTable({
       </div>
     ) : null;
 
+  const iaNumberBadgeClass = `${tableCellSecondary} w-4 shrink-0 text-right tabular-nums`;
+
+  const formatAvgIaDisplay = (v: number) =>
+    Number.isInteger(v) || Math.abs(v - Math.round(v)) < 1e-6 ? String(Math.round(v)) : v.toFixed(1);
+
+  /** Sequential 1., 2., … only for IA metrics with value &gt; 0; Sum IA input always shown. */
+  const renderIaColumnBody = (row: AssortmentRow) => {
+    let n = 0;
+    const lines: ReactNode[] = [];
+
+    const sumLineNum = row.sumIa > 0 ? ++n : null;
+    lines.push(
+      <div key="sum-ia" className="flex min-w-0 items-center gap-2">
+        {sumLineNum != null ? <span className={iaNumberBadgeClass}>{sumLineNum}.</span> : null}
+        <div className="min-w-0 flex-1">
+          <TableCellNumericInput
+            value={row.sumIa}
+            ariaLabel={`Initial allocation sum IA for ${row.productGroup.name}`}
+            onCommit={(next) => _onSumIaChange(row.id, next)}
+          />
+        </div>
+      </div>
+    );
+
+    if (row.avgIa > 0) {
+      const lineNum = ++n;
+      lines.push(
+        <div key="avg-ia" className="flex items-center gap-2">
+          <span className={iaNumberBadgeClass}>{lineNum}.</span>
+          <span className={`${tableCellPrimary} tabular-nums`}>
+            Avg IA {formatAvgIaDisplay(row.avgIa)}
+          </span>
+        </div>
+      );
+    }
+
+    if (row.sumIaRecommendation != null && row.sumIaRecommendation > 0) {
+      const lineNum = ++n;
+      lines.push(
+        <div key="sum-ia-rec" className="flex min-w-0 items-start gap-2">
+          <span className={`${iaNumberBadgeClass} pt-1.5`}>{lineNum}.</span>
+          <div className="min-w-0 flex-1">{renderSumIaRecommendationPill(row)}</div>
+        </div>
+      );
+    }
+
+    if (row.avgIaRecommendation != null && row.avgIaRecommendation > 0) {
+      const lineNum = ++n;
+      lines.push(
+        <div key="avg-ia-rec" className="flex items-center gap-2">
+          <span className={iaNumberBadgeClass}>{lineNum}.</span>
+          <div
+            className={`inline-flex w-fit items-center gap-1 rounded-[5px] px-2 py-1 ${RECOMMENDATION_PILL_BG_SOFT}`}
+          >
+            <Sparkles size={10} className="shrink-0 text-[#6864E6]" aria-hidden />
+            <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#6864E6] tabular-nums">
+              {formatAvgIaDisplay(row.avgIaRecommendation)} Avg rec
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    return lines;
+  };
+
+  const iaColumnNeedsTopAlign = (row: AssortmentRow) =>
+    (row.avgIa > 0 ? 1 : 0) +
+      (row.sumIaRecommendation != null && row.sumIaRecommendation > 0 ? 1 : 0) +
+      (row.avgIaRecommendation != null && row.avgIaRecommendation > 0 ? 1 : 0) >
+    0;
+
   const renderIABodyCell = (row: AssortmentRow) => (
     <td
       key="ia"
       className={`h-[86px] min-h-[86px] py-3 px-4 group relative ${tableRowHoverTd} ${
-        row.sumIaRecommendation != null ? 'align-top' : 'align-middle'
+        iaColumnNeedsTopAlign(row) ? 'align-top' : 'align-middle'
       }`}
     >
       {row.assortment.assortedCount === row.assortment.totalCount && (
         <button
           type="button"
           onClick={() => onEditRow?.(row, 'initial-allocation')}
-          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100"
+          className={`absolute right-4 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100 ${
+            iaColumnNeedsTopAlign(row) ? 'top-3' : 'top-1/2 -translate-y-1/2'
+          }`}
           aria-label="Edit allocation"
         >
           <Pencil size={14} />
@@ -785,7 +911,9 @@ export function AssortmentTable({
         row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
           <DraftStatusDot
             padded={false}
-            className="absolute left-3 top-1/2 z-10 -translate-y-1/2"
+            className={`absolute left-3 z-10 ${
+              iaColumnNeedsTopAlign(row) ? 'top-4' : 'top-1/2 -translate-y-1/2'
+            }`}
             title="Initial allocation edited"
             aria-hidden
           />
@@ -802,10 +930,7 @@ export function AssortmentTable({
           .filter(Boolean)
           .join(' ')}
       >
-        <div className="flex flex-col gap-0.5">
-          <span className={tableCellPrimary}>{row.sumIa}</span>
-          {renderSumIaRecommendationPill(row)}
-        </div>
+        <div className="flex flex-col gap-1.5">{renderIaColumnBody(row)}</div>
       </div>
     </td>
   );
@@ -964,9 +1089,8 @@ export function AssortmentTable({
               <th
                 className={`sticky right-0 z-20 h-[86px] min-h-[86px] w-[72px] min-w-[72px] box-border bg-white px-3 py-3 text-center ${tableStickyRightShadow}`}
                 scope="col"
-              >
-                Action
-              </th>
+                aria-label="Row actions"
+              />
               </tr>
           </thead>
           <tbody className="[&_td]:border-t-0 [&_td]:border-b-[0.5px] [&_td]:border-solid [&_td]:border-[#E3E8F0]">
