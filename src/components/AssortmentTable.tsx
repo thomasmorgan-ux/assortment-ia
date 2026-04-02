@@ -1,4 +1,12 @@
-import { useState, useRef, useEffect, useCallback, type DragEvent, type ReactNode } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  type DragEvent,
+  type ReactNode,
+} from 'react';
 import {
   MapPin,
   Pencil,
@@ -10,7 +18,6 @@ import {
   Calendar,
   GripVertical,
   Info,
-  Layers,
 } from 'lucide-react';
 import { AutoneDrilldownIcon } from './AutoneDrilldownIcon';
 import { DraftStatusDot } from './DraftStatusDot';
@@ -170,9 +177,9 @@ const ASSORTED_SKU_LOCS_NOW_TEXT = 'text-[#2EB8C2]';
 const ASSORTED_SKU_LOCS_REC_BG = 'bg-[#6864E6]';
 const ASSORTED_SKU_LOCS_REC_TEXT = 'text-[#6864E6]';
 
-/** Recommendation pills / sparkles in table (align with app recommendation colour). */
-const RECOMMENDATION_PILL_BG = 'bg-[#6864E6]/12';
-const RECOMMENDATION_PILL_BG_SOFT = 'bg-[#6864E6]/15';
+/** Inter 14 / regular / tabular / tight — same as Assorted SKU Locs “Rec” value + IA / assortment recommendation metrics. */
+const skuLocsMetricTypography = "font-['Inter',sans-serif] text-[14px] font-normal tabular-nums leading-none";
+const recommendationMetricTextClass = `${skuLocsMetricTypography} ${ASSORTED_SKU_LOCS_REC_TEXT}`;
 
 function AssortedSkuLocsCell({
   now,
@@ -194,9 +201,7 @@ function AssortedSkuLocsCell({
         <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[#f2f4f7]">
           <div className={`h-full rounded-full ${fillClass}`} style={{ width: `${pct}%` }} />
         </div>
-        <span
-          className={`shrink-0 font-['Inter',sans-serif] text-[14px] font-normal tabular-nums leading-none ${valueClass}`}
-        >
+        <span className={`shrink-0 ${skuLocsMetricTypography} ${valueClass}`}>
           {count}/{total}
         </span>
       </div>
@@ -278,7 +283,7 @@ interface AssortmentTableProps {
   onCommit?: (id: string) => void;
   onRevert?: (id: string) => void;
   onEditRow?: (row: AssortmentRow, openFrom: 'assortment' | 'initial-allocation') => void;
-  /** When set, Commit/Revert in Status column open this modal instead of committing/reverting immediately */
+  /** When set, commit/revert flows open this modal instead of applying immediately */
   onRequestCommit?: (row: AssortmentRow) => void;
   onRequestRevert?: (row: AssortmentRow) => void;
   /** When user picks a dimension in the product drill-down modal */
@@ -310,6 +315,10 @@ interface AssortmentTableProps {
   }) => void;
   locationGrouping?: string;
   onLocationGroupingChange?: (label: string) => void;
+  /** Show Assortment recommendations column only after user runs Generate recommendations. */
+  showAssortmentRecommendationsColumn?: boolean;
+  /** Show Assortment schedule column only after user sets dates in the allocation editor. */
+  showAssortmentScheduleColumn?: boolean;
 }
 
 export function AssortmentTable({
@@ -322,11 +331,11 @@ export function AssortmentTable({
   onSumIaChange: _onSumIaChange,
   onAvgIaChange: _onAvgIaChange,
   onOpenModal: _onOpenModal,
-  onCommit,
-  onRevert,
+  onCommit: _onCommit,
+  onRevert: _onRevert,
   onEditRow,
-  onRequestCommit,
-  onRequestRevert,
+  onRequestCommit: _onRequestCommit,
+  onRequestRevert: _onRequestRevert,
   onProductDrillDimensionSelect,
   productGrouping: productGroupingProp,
   onProductGroupingChange,
@@ -335,6 +344,8 @@ export function AssortmentTable({
   onLocationTypeSubDrill,
   locationGrouping: locationGroupingProp,
   onLocationGroupingChange,
+  showAssortmentRecommendationsColumn = false,
+  showAssortmentScheduleColumn = false,
 }: AssortmentTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => r.selected);
   const [drillDownAnchor, setDrillDownAnchor] = useState<DOMRect | null>(null);
@@ -366,11 +377,29 @@ export function AssortmentTable({
     if (locationGroupingProp === undefined) setLocationGroupingLocal(label);
   };
 
-  /** Extra columns once any row has generated recommendations (data set on generate). */
-  const showRecommendationColumns = rows.some(
-    (r) =>
-      r.sumIaRecommendation != null || r.assortmentRecommendationLabel != null
-  );
+  const showRecommendationColumns = showAssortmentRecommendationsColumn;
+  /** Matches combined schedule column min width (~128px cell + horizontal padding). */
+  const scheduleColumnMinWidthPx = 200;
+  /** Status column removed — subtract former `w-[88px]` + padding from legacy min-width bases. */
+  const statusColumnMinWidthPx = 88;
+  const tableMinWidthPx = useMemo(() => {
+    const base = productDrillDownActive
+      ? showRecommendationColumns
+        ? 2890
+        : 2660
+      : showRecommendationColumns
+        ? 2400
+        : 2180;
+    return (
+      base -
+      statusColumnMinWidthPx -
+      (showAssortmentScheduleColumn ? 0 : scheduleColumnMinWidthPx)
+    );
+  }, [
+    productDrillDownActive,
+    showRecommendationColumns,
+    showAssortmentScheduleColumn,
+  ]);
   const locationGroupDropdownRef = useRef<HTMLDivElement>(null);
 
   const PRODUCT_GROUPING_OPTIONS = [
@@ -473,8 +502,12 @@ export function AssortmentTable({
     switch (columnId) {
       case 'sales':
         return (
-          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[128px] px-4 py-3 text-left" {...d}>
-            <span className="inline-flex items-center gap-2">
+          <th
+            key={columnId}
+            className="h-[86px] min-h-[86px] min-w-[128px] bg-[#F2F4F7] px-4 py-3 text-center"
+            {...d}
+          >
+            <span className="inline-flex w-full items-center justify-center gap-2">
               {gripDragHandle(columnId, 'Sales')}
               Sales
               <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
@@ -492,20 +525,28 @@ export function AssortmentTable({
         );
       case 'scheduleStart':
         return (
-          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-right" {...d}>
-            <span className="inline-flex w-full items-center justify-end gap-2">
+          <th
+            key={columnId}
+            className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-left align-middle"
+            {...d}
+          >
+            <div className="flex w-full items-center justify-start gap-2">
               {gripDragHandle(columnId, 'Start')}
               <span>Start</span>
-            </span>
+            </div>
           </th>
         );
       case 'scheduleEnd':
         return (
-          <th key={columnId} className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-right" {...d}>
-            <span className="inline-flex w-full items-center justify-end gap-2">
+          <th
+            key={columnId}
+            className="h-[86px] min-h-[86px] min-w-[168px] px-4 py-3 text-left align-middle"
+            {...d}
+          >
+            <div className="flex w-full items-center justify-start gap-2">
               {gripDragHandle(columnId, 'End')}
               <span>End</span>
-            </span>
+            </div>
           </th>
         );
       case 'forecastPerWeek':
@@ -641,10 +682,17 @@ export function AssortmentTable({
     switch (columnId) {
       case 'sales':
         return (
-          <td key={columnId} className={`h-[86px] min-h-[86px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
-            <div>
-              <div className={tableCellPrimary}>{row.sales.l7d.toLocaleString()} L7D</div>
-              <div className={tableCellSecondary}>{row.sales.l30d.toLocaleString()} L30D</div>
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] py-3 px-4 text-center align-middle ${tableRowHoverTd}`}
+          >
+            <div className="flex flex-col items-center gap-0.5">
+              <div className={`tabular-nums ${tableCellPrimary}`}>
+                {row.sales.l7d.toLocaleString()} L7D
+              </div>
+              <div className="font-['Inter',sans-serif] text-[12px] font-normal leading-normal text-[#475467] tabular-nums">
+                {row.sales.l30d.toLocaleString()} L30D
+              </div>
             </div>
           </td>
         );
@@ -781,15 +829,10 @@ export function AssortmentTable({
   const renderSumIaRecommendationPill = (row: AssortmentRow) =>
     row.sumIaRecommendation != null && row.sumIaRecommendation > 0 ? (
       <div className="group/reason relative inline-flex w-fit max-w-full">
-        <div
-          className={`inline-flex w-fit items-center gap-[2px] rounded-[5px] p-1.5 ${RECOMMENDATION_PILL_BG}`}
-        >
-          <Sparkles size={10} className="shrink-0 text-[#6864E6]" aria-hidden />
-          <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#6864E6]">
-            {row.sumIaRecommendation}
-          </span>
-          <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#6864E6]">
-            Units
+        <div className="inline-flex w-fit items-center gap-[2px] rounded-[5px] p-1.5">
+          <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
+          <span className={`shrink-0 ${recommendationMetricTextClass}`}>
+            {row.sumIaRecommendation} Units
           </span>
         </div>
         <div
@@ -815,65 +858,22 @@ export function AssortmentTable({
       </div>
     ) : null;
 
-  const iaNumberBadgeClass = `${tableCellSecondary} w-4 shrink-0 text-right tabular-nums`;
-
-  const formatAvgIaDisplay = (v: number) =>
-    Number.isInteger(v) || Math.abs(v - Math.round(v)) < 1e-6 ? String(Math.round(v)) : v.toFixed(1);
-
-  /** Sequential 1., 2., … only for IA metrics with value &gt; 0; Sum IA input always shown. */
+  /** Sum IA input and optional sum IA recommendation pill only. */
   const renderIaColumnBody = (row: AssortmentRow) => {
-    let n = 0;
-    const lines: ReactNode[] = [];
-
-    const sumLineNum = row.sumIa > 0 ? ++n : null;
-    lines.push(
-      <div key="sum-ia" className="flex min-w-0 items-center gap-2">
-        {sumLineNum != null ? <span className={iaNumberBadgeClass}>{sumLineNum}.</span> : null}
-        <div className="min-w-0 flex-1">
-          <TableCellNumericInput
-            value={row.sumIa}
-            ariaLabel={`Initial allocation sum IA for ${row.productGroup.name}`}
-            onCommit={(next) => _onSumIaChange(row.id, next)}
-          />
-        </div>
-      </div>
-    );
-
-    if (row.avgIa > 0) {
-      const lineNum = ++n;
-      lines.push(
-        <div key="avg-ia" className="flex items-center gap-2">
-          <span className={iaNumberBadgeClass}>{lineNum}.</span>
-          <span className={`${tableCellPrimary} tabular-nums`}>
-            Avg IA {formatAvgIaDisplay(row.avgIa)}
-          </span>
-        </div>
-      );
-    }
+    const lines: ReactNode[] = [
+      <div key="sum-ia" className="min-w-0">
+        <TableCellNumericInput
+          value={row.sumIa}
+          ariaLabel={`Initial allocation sum IA for ${row.productGroup.name}`}
+          onCommit={(next) => _onSumIaChange(row.id, next)}
+        />
+      </div>,
+    ];
 
     if (row.sumIaRecommendation != null && row.sumIaRecommendation > 0) {
-      const lineNum = ++n;
       lines.push(
-        <div key="sum-ia-rec" className="flex min-w-0 items-start gap-2">
-          <span className={`${iaNumberBadgeClass} pt-1.5`}>{lineNum}.</span>
-          <div className="min-w-0 flex-1">{renderSumIaRecommendationPill(row)}</div>
-        </div>
-      );
-    }
-
-    if (row.avgIaRecommendation != null && row.avgIaRecommendation > 0) {
-      const lineNum = ++n;
-      lines.push(
-        <div key="avg-ia-rec" className="flex items-center gap-2">
-          <span className={iaNumberBadgeClass}>{lineNum}.</span>
-          <div
-            className={`inline-flex w-fit items-center gap-1 rounded-[5px] px-2 py-1 ${RECOMMENDATION_PILL_BG_SOFT}`}
-          >
-            <Sparkles size={10} className="shrink-0 text-[#6864E6]" aria-hidden />
-            <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#6864E6] tabular-nums">
-              {formatAvgIaDisplay(row.avgIaRecommendation)} Avg rec
-            </span>
-          </div>
+        <div key="sum-ia-rec" className="min-w-0">
+          {renderSumIaRecommendationPill(row)}
         </div>
       );
     }
@@ -882,10 +882,7 @@ export function AssortmentTable({
   };
 
   const iaColumnNeedsTopAlign = (row: AssortmentRow) =>
-    (row.avgIa > 0 ? 1 : 0) +
-      (row.sumIaRecommendation != null && row.sumIaRecommendation > 0 ? 1 : 0) +
-      (row.avgIaRecommendation != null && row.avgIaRecommendation > 0 ? 1 : 0) >
-    0;
+    row.sumIaRecommendation != null && row.sumIaRecommendation > 0;
 
   const renderIABodyCell = (row: AssortmentRow) => (
     <td
@@ -942,17 +939,7 @@ export function AssortmentTable({
       data-node-id="14764:268974"
     >
       <div className="overflow-x-auto">
-        <table
-          className={`w-full border-collapse ${
-            productDrillDownActive
-              ? showRecommendationColumns
-                ? 'min-w-[2890px]'
-                : 'min-w-[2660px]'
-              : showRecommendationColumns
-                ? 'min-w-[2400px]'
-                : 'min-w-[2180px]'
-          }`}
-        >
+        <table className="w-full border-collapse" style={{ minWidth: tableMinWidthPx }}>
           <thead
             className="[&_th]:border-t-0 [&_th]:border-b-[0.5px] [&_th]:border-solid [&_th]:border-[#E3E8F0] [&_th]:font-['Inter',sans-serif]"
           >
@@ -1072,20 +1059,19 @@ export function AssortmentTable({
                   </button>
                 </span>
               </th>
-              <th className="h-[86px] min-h-[86px] min-w-[128px] max-w-[200px] px-4 py-3 text-left">
-                Assortment schedule
-              </th>
+              {showAssortmentScheduleColumn && (
+                <th className="h-[86px] min-h-[86px] min-w-[128px] max-w-[200px] px-4 py-3 text-left">
+                  Assortment schedule
+                </th>
+              )}
               {showRecommendationColumns && (
                 <th className="h-[86px] min-h-[86px] min-w-[220px] px-4 py-3 text-left">
                   <span className="inline-flex items-center gap-1">
-                    <Sparkles size={14} className="shrink-0 text-[#6864E6]" aria-hidden />
+                    <Sparkles size={14} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
                     Assortment recommendations
                   </span>
                 </th>
               )}
-              <th className="h-[86px] min-h-[86px] w-[88px] px-3 py-3 text-center" scope="col">
-                Status
-              </th>
               <th
                 className={`sticky right-0 z-20 h-[86px] min-h-[86px] w-[72px] min-w-[72px] box-border bg-white px-3 py-3 text-center ${tableStickyRightShadow}`}
                 scope="col"
@@ -1106,7 +1092,9 @@ export function AssortmentTable({
                 : null;
               const productCell = productTitleForGrouping(row, productGrouping);
               const locationCell = locationCellForGrouping(row, locationGrouping, rowIndex);
-              const scheduleLabel = formatAssortmentScheduleLabel(row);
+              const scheduleLabel = showAssortmentScheduleColumn
+                ? formatAssortmentScheduleLabel(row)
+                : null;
               return (
               <tr key={row.id} className="group bg-white" data-name="table-cell">
                 <td className={`sticky left-0 z-30 h-[86px] min-h-[86px] w-14 min-w-14 max-w-14 box-border bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] ${tableRowHoverTd}`}>
@@ -1226,20 +1214,24 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
-                <td className={`h-[86px] min-h-[86px] min-w-[128px] max-w-[220px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
-                  {scheduleLabel ? (
-                    <div className="flex items-start gap-1.5">
-                      <Calendar size={12} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
-                      <span className={`min-w-0 leading-snug ${tableCellPrimary}`} title={scheduleLabel}>
-                        {scheduleLabel}
+                {showAssortmentScheduleColumn && (
+                  <td
+                    className={`h-[86px] min-h-[86px] min-w-[128px] max-w-[220px] py-3 px-4 align-middle ${tableRowHoverTd}`}
+                  >
+                    {scheduleLabel ? (
+                      <div className="flex items-start gap-1.5">
+                        <Calendar size={12} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
+                        <span className={`min-w-0 leading-snug ${tableCellPrimary}`} title={scheduleLabel}>
+                          {scheduleLabel}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-slate-400">
+                        —
                       </span>
-                    </div>
-                  ) : (
-                    <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-slate-400">
-                      —
-                    </span>
-                  )}
-                </td>
+                    )}
+                  </td>
+                )}
                 {showRecommendationColumns && (
                   <td className={`h-[86px] min-h-[86px] min-w-[173px] py-3 px-4 align-middle ${tableRowHoverTd}`}>
                     {row.assortmentRecommendationLabel ? (
@@ -1250,21 +1242,17 @@ export function AssortmentTable({
                         return (
                           <div className="group/reason relative inline-flex w-fit max-w-full">
                             <div
-                              className={`inline-flex w-fit max-w-full items-start gap-1.5 rounded-[5px] px-2 py-1.5 ${RECOMMENDATION_PILL_BG_SOFT}`}
+                              className="inline-flex w-fit max-w-full items-start gap-1.5 rounded-[5px] px-2 py-1.5"
                             >
                               <Sparkles
                                 size={12}
-                                className="mt-0.5 shrink-0 text-[#6864E6]"
+                                className={`mt-0.5 shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`}
                                 aria-hidden
                               />
-                              <div className="flex min-w-0 flex-col items-center text-center leading-tight">
-                                <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#6864E6]">
-                                  {line1}
-                                </span>
+                              <div className="flex min-w-0 flex-col items-center text-center leading-none">
+                                <span className={`min-w-0 ${recommendationMetricTextClass}`}>{line1}</span>
                                 {line2 ? (
-                                  <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#6864E6]">
-                                    {line2}
-                                  </span>
+                                  <span className={`min-w-0 ${recommendationMetricTextClass}`}>{line2}</span>
                                 ) : null}
                               </div>
                             </div>
@@ -1307,33 +1295,6 @@ export function AssortmentTable({
                     )}
                   </td>
                 )}
-                <td className={`h-[86px] min-h-[86px] w-[88px] px-3 py-3 align-middle ${tableRowHoverTd}`}>
-                  <div className="flex items-center justify-center">
-                    <div className="group/status relative inline-flex items-center justify-center">
-                      <span
-                        className="inline-flex shrink-0 items-center justify-center p-0.5"
-                        aria-label={row.hasPendingChanges ? 'Draft' : 'Committed'}
-                        data-node-id={row.hasPendingChanges ? '761:65167' : '761:65168'}
-                      >
-                        {row.hasPendingChanges ? (
-                          <Layers size={18} className="text-[#f29a35]" strokeWidth={2} aria-hidden />
-                        ) : (
-                          <Check size={18} className="text-[#0AB95C]" strokeWidth={2} aria-hidden />
-                        )}
-                      </span>
-                      <div
-                        className="pointer-events-none absolute right-full top-1/2 z-30 mr-2 hidden min-w-[5.5rem] -translate-y-1/2 rounded-[4px] bg-[#212121] px-3 py-2 text-center text-xs font-medium text-white shadow-lg group-hover/status:block"
-                        role="tooltip"
-                      >
-                        {row.hasPendingChanges ? 'Draft' : 'Committed'}
-                        <span
-                          className="absolute -right-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-l-[#212121]"
-                          aria-hidden
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </td>
                 <td
                   className={`sticky right-0 z-20 h-[86px] min-h-[86px] w-[72px] min-w-[72px] box-border bg-white px-3 py-3 align-middle ${tableStickyRightShadow} ${tableRowHoverTd}`}
                 >
@@ -1379,25 +1340,13 @@ export function AssortmentTable({
       <RowStatusActionsPopover
         anchorRect={statusActionMenu?.rect ?? null}
         onClose={() => setStatusActionMenu(null)}
-        actionsDisabled={
-          !(
-            statusActionMenu &&
-            rows.find((x) => x.id === statusActionMenu.rowId)?.hasPendingChanges
-          )
-        }
-        onCommit={() => {
+        onEditAssortment={() => {
           const r = statusActionMenu && rows.find((x) => x.id === statusActionMenu.rowId);
-          if (r) {
-            if (onRequestCommit) onRequestCommit(r);
-            else onCommit?.(r.id);
-          }
+          if (r) onEditRow?.(r, 'assortment');
         }}
-        onRevert={() => {
+        onEditIa={() => {
           const r = statusActionMenu && rows.find((x) => x.id === statusActionMenu.rowId);
-          if (r) {
-            if (onRequestRevert) onRequestRevert(r);
-            else onRevert?.(r.id);
-          }
+          if (r) onEditRow?.(r, 'initial-allocation');
         }}
       />
       <DrillDownProductModal
