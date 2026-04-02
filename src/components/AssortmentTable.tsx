@@ -61,8 +61,8 @@ const tableCellSecondary =
 /** Row hover fill (with `group` on `<tr>`) */
 const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 
-/** Sticky IA column sits immediately after Location (checkbox 3.5rem + product 200px + location 170px). */
-const stickyIaLeft =
+/** Sticky Assorted SKU Locs column immediately after Location (checkbox 3.5rem + product 200px + location 170px). */
+const stickyAssortedSkuLocsLeft =
   'sticky left-[calc(3.5rem+200px+170px)] z-[14] box-border bg-white shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)]';
 
 /** Design system text input (Figma Input text / stroke #e9eaeb, 40px height, 2px radius) */
@@ -144,10 +144,10 @@ const LOCATION_DRILL_ID_TO_GROUPING: Record<string, string> = Object.fromEntries
   LOCATION_DIMENSION_MENU.map((m) => [m.id, m.label])
 ) as Record<string, string>;
 
-/** Columns with grip handles — reorderable (IA column is sticky after Location, not in this list). */
+/** Columns with grip handles — reorderable (`ia` follows sticky Assorted SKU Locs). */
 const BASE_GRIP_COLUMN_IDS = [
+  'ia',
   'sales',
-  'scheduleStart',
   'scheduleEnd',
   'forecastPerWeek',
   'targetCoverage',
@@ -171,6 +171,9 @@ export type GripColumnId =
   | (typeof BASE_GRIP_COLUMN_IDS)[number]
   | 'assortment'
   | (typeof DRILL_GRIP_COLUMN_IDS)[number];
+
+const IA_COLUMN_MIN_WIDTH_PX = 104;
+const ASSORTED_SKU_LOCS_STICKY_MIN_WIDTH_PX = 248;
 
 const DRILL_GRIP_ID_SET = new Set<string>(DRILL_GRIP_COLUMN_IDS);
 
@@ -443,7 +446,8 @@ export function AssortmentTable({
       whStockWhColumnMinWidthPx +
       whStockPctIaColumnMinWidthPx +
       rowActionColumnMinWidthPx +
-      assortmentColumnMinWidthPx -
+      assortmentColumnMinWidthPx +
+      (ASSORTED_SKU_LOCS_STICKY_MIN_WIDTH_PX - IA_COLUMN_MIN_WIDTH_PX) -
       (showAssortmentScheduleColumn ? 0 : scheduleColumnMinWidthPx)
     );
   }, [
@@ -471,6 +475,8 @@ export function AssortmentTable({
     'Sub-department',
     'Season',
   ] as const;
+  /** Service level tab: location column is fixed to a single grouping label (dropdown matches Product control). */
+  const SERVICE_LEVEL_LOCATION_GROUPING_OPTIONS = ['Location'] as const;
   useEffect(() => {
     if (!productGroupDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -511,9 +517,14 @@ export function AssortmentTable({
   ]);
 
   useEffect(() => {
-    setGripColumnOrder((prev) =>
-      prev.filter((id) => (id as string) !== 'rowAction' && id !== 'assortment')
-    );
+    setGripColumnOrder((prev) => {
+      const next = prev.filter((id) => {
+        const s = id as string;
+        return s !== 'rowAction' && s !== 'assortment' && s !== 'scheduleStart';
+      });
+      if (next.includes('ia')) return next;
+      return ['ia' as GripColumnId, ...next];
+    });
   }, []);
 
   useEffect(() => {
@@ -577,6 +588,31 @@ export function AssortmentTable({
   const renderGripColumnHeader = (columnId: GripColumnId): ReactNode => {
     const d = gripThDropProps(columnId);
     switch (columnId) {
+      case 'ia': {
+        return (
+          <th
+            key={columnId}
+            className={`h-[86px] min-h-[86px] min-w-[104px] px-4 py-3 text-left align-middle`}
+            scope="col"
+            aria-label="Initial allocation"
+            {...d}
+          >
+            <div className="flex w-full items-center justify-start gap-2">
+              {gripDragHandle(columnId, 'IA')}
+              <span className="inline-flex items-center gap-1">
+                IA{' '}
+                <button
+                  type="button"
+                  className="inline-flex rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
+                  aria-label="Edit initial allocation column"
+                >
+                  <Pencil size={14} className="shrink-0" />
+                </button>
+              </span>
+            </div>
+          </th>
+        );
+      }
       case 'sales': {
         const salesHeader = 'Sales';
         return (
@@ -591,21 +627,6 @@ export function AssortmentTable({
               {gripDragHandle(columnId, salesHeader)}
               <span className="shrink-0">{salesHeader}</span>
               <ChevronDown size={16} className="shrink-0 text-[#6A7282]" aria-hidden />
-            </div>
-          </th>
-        );
-      }
-      case 'scheduleStart': {
-        const assortedSkuLocsHeader = 'Assorted SKU Locs';
-        return (
-          <th
-            key={columnId}
-            className="h-[86px] min-h-[86px] min-w-[248px] px-4 py-3 text-left align-middle"
-            {...d}
-          >
-            <div className="flex w-full items-center justify-start gap-2">
-              {gripDragHandle(columnId, assortedSkuLocsHeader)}
-              <span>{assortedSkuLocsHeader}</span>
             </div>
           </th>
         );
@@ -825,24 +846,23 @@ export function AssortmentTable({
     }
   };
 
-  const renderIAHeader = () => (
+  const renderAssortedSkuLocsStickyHeader = () => (
     <th
-      key="initial-allocation"
-      className={`${stickyIaLeft} h-[86px] min-h-[86px] min-w-[104px] px-4 py-3 text-left align-middle`}
+      key="assorted-sku-locs-sticky"
+      className={`${stickyAssortedSkuLocsLeft} h-[86px] min-h-[86px] min-w-[248px] px-4 py-3 text-left align-middle`}
       scope="col"
-      aria-label="Initial allocation"
     >
-      <span className="inline-flex items-center gap-1">
-        IA{' '}
-        <button
-          type="button"
-          className="inline-flex rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
-          aria-label="Edit initial allocation column"
-        >
-          <Pencil size={14} className="shrink-0" />
-        </button>
-      </span>
+      Assorted SKU Locs
     </th>
+  );
+
+  const renderAssortedSkuLocsStickyBodyCell = (row: AssortmentRow) => (
+    <td
+      key="assorted-sku-locs-sticky"
+      className={`${stickyAssortedSkuLocsLeft} h-[86px] min-h-[86px] min-w-[248px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+    >
+      <AssortedSkuLocsProgressCell {...row.assortedSkuLocs} />
+    </td>
   );
 
   const renderGripColumnBodyCell = (
@@ -858,6 +878,54 @@ export function AssortmentTable({
     } | null
   ): ReactNode => {
     switch (columnId) {
+      case 'ia':
+        return (
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] min-w-[104px] py-3 px-4 group relative ${tableRowHoverTd} ${
+              iaColumnNeedsTopAlign(row) ? 'align-top' : 'align-middle'
+            }`}
+          >
+            {row.assortment.assortedCount === row.assortment.totalCount && (
+              <button
+                type="button"
+                onClick={() => onEditRow?.(row, 'initial-allocation')}
+                className={`absolute right-4 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100 ${
+                  iaColumnNeedsTopAlign(row) ? 'top-3' : 'top-1/2 -translate-y-1/2'
+                }`}
+                aria-label="Edit allocation"
+              >
+                <Pencil size={14} />
+              </button>
+            )}
+            {row.hasPendingChanges &&
+              row.lastCommittedSnapshot &&
+              row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
+                <DraftStatusDot
+                  padded={false}
+                  className={`absolute left-3 z-10 ${
+                    iaColumnNeedsTopAlign(row) ? 'top-4' : 'top-1/2 -translate-y-1/2'
+                  }`}
+                  title="Initial allocation edited"
+                  aria-hidden
+                />
+              )}
+            <div
+              className={[
+                row.hasPendingChanges &&
+                row.lastCommittedSnapshot &&
+                row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa)
+                  ? 'pl-[18px]'
+                  : '',
+                row.assortment.assortedCount === row.assortment.totalCount ? 'pr-11' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              <div className="flex flex-col gap-1.5">{renderIaColumnBody(row)}</div>
+            </div>
+          </td>
+        );
       case 'sales':
         return (
           <td
@@ -865,15 +933,6 @@ export function AssortmentTable({
             className={`h-[86px] min-h-[86px] py-3 px-4 text-center align-middle ${tableRowHoverTd}`}
           >
             <SalesCell {...row.sales} />
-          </td>
-        );
-      case 'scheduleStart':
-        return (
-          <td
-            key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[248px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
-          >
-            <AssortedSkuLocsProgressCell {...row.assortedSkuLocs} />
           </td>
         );
       case 'scheduleEnd':
@@ -1040,11 +1099,21 @@ export function AssortmentTable({
   const renderSumIaRecommendationPill = (row: AssortmentRow) =>
     row.sumIaRecommendation != null && row.sumIaRecommendation > 0 ? (
       <div className="group/reason relative inline-flex w-fit max-w-full">
-        <div className="inline-flex w-fit items-center gap-[2px] rounded-[5px] p-1.5">
-          <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
-          <span className={`shrink-0 ${recommendationMetricTextClass}`}>
-            {row.sumIaRecommendation} Units
-          </span>
+        <div className="flex w-fit max-w-full flex-col gap-0.5 rounded-[5px] p-1.5">
+          <div className="inline-flex items-center gap-[2px]">
+            <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
+            <span className={`shrink-0 ${recommendationMetricTextClass}`}>
+              {row.sumIaRecommendation.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-baseline gap-1 pl-[14px]">
+            <span className={`shrink-0 ${recommendationMetricTextClass}`}>
+              {(row.avgIaRecommendation ?? row.avgIa).toLocaleString()}
+            </span>
+            <span className="font-['Inter',sans-serif] text-[12px] font-normal leading-none text-[#6A7282]">
+              avg. per week
+            </span>
+          </div>
         </div>
         <div
           className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[200px] -translate-y-1/2 rounded-lg bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
@@ -1094,54 +1163,6 @@ export function AssortmentTable({
 
   const iaColumnNeedsTopAlign = (row: AssortmentRow) =>
     row.sumIaRecommendation != null && row.sumIaRecommendation > 0;
-
-  const renderIABodyCell = (row: AssortmentRow) => (
-    <td
-      key="ia"
-      className={`${stickyIaLeft} h-[86px] min-h-[86px] min-w-[104px] py-3 px-4 group relative ${tableRowHoverTd} ${
-        iaColumnNeedsTopAlign(row) ? 'align-top' : 'align-middle'
-      }`}
-    >
-      {row.assortment.assortedCount === row.assortment.totalCount && (
-        <button
-          type="button"
-          onClick={() => onEditRow?.(row, 'initial-allocation')}
-          className={`absolute right-4 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100 ${
-            iaColumnNeedsTopAlign(row) ? 'top-3' : 'top-1/2 -translate-y-1/2'
-          }`}
-          aria-label="Edit allocation"
-        >
-          <Pencil size={14} />
-        </button>
-      )}
-      {row.hasPendingChanges &&
-        row.lastCommittedSnapshot &&
-        row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
-          <DraftStatusDot
-            padded={false}
-            className={`absolute left-3 z-10 ${
-              iaColumnNeedsTopAlign(row) ? 'top-4' : 'top-1/2 -translate-y-1/2'
-            }`}
-            title="Initial allocation edited"
-            aria-hidden
-          />
-        )}
-      <div
-        className={[
-          row.hasPendingChanges &&
-          row.lastCommittedSnapshot &&
-          row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa)
-            ? 'pl-[18px]'
-            : '',
-          row.assortment.assortedCount === row.assortment.totalCount ? 'pr-11' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <div className="flex flex-col gap-1.5">{renderIaColumnBody(row)}</div>
-      </div>
-    </td>
-  );
 
   const renderRowActionBodyCell = (row: AssortmentRow) => (
     <td
@@ -1256,46 +1277,63 @@ export function AssortmentTable({
                 </div>
               </th>
               <th
-                className={`sticky left-[calc(3.5rem+200px)] h-[86px] min-h-[86px] min-w-[170px] px-4 py-3 shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] ${
-                  serviceLevelView
-                    ? 'bg-white text-center z-[15]'
-                    : `bg-white text-left ${
-                        locationGroupDropdownOpen ? 'z-[200]' : 'z-[15]'
-                      }`
+                className={`sticky left-[calc(3.5rem+200px)] h-[86px] min-h-[86px] min-w-[170px] px-4 py-3 text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] bg-white ${
+                  locationGroupDropdownOpen ? 'z-[200]' : 'z-[15]'
                 }`}
                 scope="col"
               >
-                {serviceLevelView ? (
-                  <span
-                    className="inline-flex w-full items-center justify-center gap-2"
+                <div className="relative inline-block" ref={locationGroupDropdownRef}>
+                  <button
+                    type="button"
                     aria-label="Location grouping"
+                    aria-expanded={locationGroupDropdownOpen}
+                    aria-haspopup="listbox"
+                    onClick={() => setLocationGroupDropdownOpen((o) => !o)}
+                    className={`inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap transition-colors ${drillDropdownMenuItemHover}`}
                   >
-                    <span
-                      className="inline-flex cursor-grab touch-none active:cursor-grabbing"
-                      aria-hidden
-                    >
-                      <GripVertical className="h-4 w-4 shrink-0 text-[#6A7282]" aria-hidden />
+                    <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
+                      {locationGrouping}
                     </span>
-                    Location
-                  </span>
-                ) : (
-                  <div className="relative inline-block" ref={locationGroupDropdownRef}>
-                    <button
-                      type="button"
-                      onClick={() => setLocationGroupDropdownOpen((o) => !o)}
-                      className={`inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap transition-colors ${drillDropdownMenuItemHover}`}
-                    >
-                      <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
-                        {locationGrouping}
-                      </span>
-                      <ChevronDown size={14} className="shrink-0 text-[#6A7282]" />
-                    </button>
-                    {locationGroupDropdownOpen && (
-                      <div className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
+                    <ChevronDown size={14} className="shrink-0 text-[#6A7282]" />
+                  </button>
+                  {locationGroupDropdownOpen &&
+                    (serviceLevelView ? (
+                      <div
+                        className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
+                        role="listbox"
+                      >
+                        {SERVICE_LEVEL_LOCATION_GROUPING_OPTIONS.map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            role="option"
+                            aria-selected={locationGrouping === opt}
+                            onClick={() => {
+                              setLocationGrouping(opt);
+                              setLocationGroupDropdownOpen(false);
+                            }}
+                            className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                              locationGrouping === opt ? 'bg-slate-100' : ''
+                            }`}
+                          >
+                            {opt}
+                            {locationGrouping === opt && (
+                              <Check size={14} className="shrink-0 text-[#00050a]" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div
+                        className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
+                        role="listbox"
+                      >
                         {LOCATION_DIMENSION_MENU.map(({ id, label }) => (
                           <button
                             key={id}
                             type="button"
+                            role="option"
+                            aria-selected={locationGrouping === label}
                             onClick={() => {
                               setLocationGrouping(label);
                               setLocationGroupDropdownOpen(false);
@@ -1311,11 +1349,10 @@ export function AssortmentTable({
                           </button>
                         ))}
                       </div>
-                    )}
-                  </div>
-                )}
+                    ))}
+                </div>
               </th>
-              {!designOnly && renderIAHeader()}
+              {!designOnly && renderAssortedSkuLocsStickyHeader()}
               {!designOnly && renderGripColumnHeader('assortment')}
               {!designOnly &&
                 visibleGripColumnOrder.flatMap((columnId) => [renderGripColumnHeader(columnId)])}
@@ -1422,7 +1459,7 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
-                {!designOnly && renderIABodyCell(row)}
+                {!designOnly && renderAssortedSkuLocsStickyBodyCell(row)}
                 {!designOnly && renderGripColumnBodyCell('assortment', row, rowIndex, drillM)}
                 {!designOnly &&
                   visibleGripColumnOrder.flatMap((columnId) => {
