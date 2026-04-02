@@ -157,8 +157,6 @@ const BASE_GRIP_COLUMN_IDS = [
   'whStockWh',
   /** % WH Stock for IA (after WH Stock). */
   'whStockPctIa',
-  /** Assorted count / total + Assorted label. */
-  'assortment',
 ] as const;
 
 const DRILL_GRIP_COLUMN_IDS = [
@@ -171,6 +169,7 @@ const DRILL_GRIP_COLUMN_IDS = [
 
 export type GripColumnId =
   | (typeof BASE_GRIP_COLUMN_IDS)[number]
+  | 'assortment'
   | (typeof DRILL_GRIP_COLUMN_IDS)[number];
 
 const DRILL_GRIP_ID_SET = new Set<string>(DRILL_GRIP_COLUMN_IDS);
@@ -231,7 +230,7 @@ function AssortedSkuLocsProgressCell({ now, rec }: AssortmentRow['assortedSkuLoc
 
 function SalesCell({ l7d, l30d }: AssortmentRow['sales']) {
   return (
-    <div className="flex min-w-0 flex-col justify-center gap-0.5 py-0.5">
+    <div className="flex min-w-0 flex-col items-center justify-center gap-0.5 py-0.5 text-center">
       <div className={`tabular-nums ${tableCellPrimary}`}>
         {l7d.toLocaleString()}
         <span className="font-normal"> L7D</span>
@@ -512,7 +511,9 @@ export function AssortmentTable({
   ]);
 
   useEffect(() => {
-    setGripColumnOrder((prev) => prev.filter((id) => (id as string) !== 'rowAction'));
+    setGripColumnOrder((prev) =>
+      prev.filter((id) => (id as string) !== 'rowAction' && id !== 'assortment')
+    );
   }, []);
 
   useEffect(() => {
@@ -583,19 +584,13 @@ export function AssortmentTable({
             key={columnId}
             scope="col"
             aria-sort="descending"
-            className="h-[86px] min-h-[86px] min-w-[200px] px-4 py-3 text-left align-middle"
+            className="h-[86px] min-h-[86px] min-w-[200px] px-4 py-3 text-center align-middle"
             {...d}
           >
-            <div className="flex w-full items-center justify-between gap-2">
-              <span className="inline-flex min-w-0 items-center gap-2">
-                {gripDragHandle(columnId, salesHeader)}
-                <span>{salesHeader}</span>
-              </span>
-              <ChevronDown
-                size={16}
-                className="shrink-0 text-[#6A7282]"
-                aria-hidden
-              />
+            <div className="flex w-full items-center justify-center gap-2">
+              {gripDragHandle(columnId, salesHeader)}
+              <span className="shrink-0">{salesHeader}</span>
+              <ChevronDown size={16} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
           </th>
         );
@@ -616,14 +611,14 @@ export function AssortmentTable({
         );
       }
       case 'scheduleEnd': {
-        const scheduleStartHeader = 'Schedule start date';
+        const scheduleStartHeader = 'Start';
         return (
           <th
             key={columnId}
-            className="h-[86px] min-h-[86px] min-w-[180px] px-4 py-3 text-left align-middle"
+            className="h-[86px] min-h-[86px] min-w-[180px] px-4 py-3 text-right align-middle"
             {...d}
           >
-            <div className="flex w-full items-center justify-start gap-2">
+            <div className="flex w-full items-center justify-end gap-2">
               {gripDragHandle(columnId, scheduleStartHeader)}
               <span className="whitespace-normal leading-tight">{scheduleStartHeader}</span>
             </div>
@@ -631,14 +626,14 @@ export function AssortmentTable({
         );
       }
       case 'forecastPerWeek': {
-        const scheduleEndHeader = 'Schedule end date';
+        const scheduleEndHeader = 'End';
         return (
           <th
             key={columnId}
-            className="h-[86px] min-h-[86px] min-w-[180px] px-4 py-3 text-left align-middle"
+            className="h-[86px] min-h-[86px] min-w-[180px] px-4 py-3 text-right align-middle"
             {...d}
           >
-            <div className="flex w-full items-center justify-start gap-2">
+            <div className="flex w-full items-center justify-end gap-2">
               {gripDragHandle(columnId, scheduleEndHeader)}
               <span className="whitespace-normal leading-tight">{scheduleEndHeader}</span>
             </div>
@@ -650,13 +645,14 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[86px] min-h-[86px] min-w-[140px] px-4 py-3 text-left align-middle"
+            className="h-[86px] min-h-[86px] min-w-[140px] px-4 py-3 text-right align-middle"
             {...d}
           >
-            <div className="flex w-full items-center justify-between gap-2">
-              <span className="inline-flex min-w-0 items-center gap-2">
-                {gripDragHandle(columnId, forecastWkHeader)}
-                <span>{forecastWkHeader}</span>
+            <div className="flex w-full items-center justify-end gap-2">
+              {gripDragHandle(columnId, forecastWkHeader)}
+              <span className="flex min-w-0 flex-col items-end leading-tight">
+                <span>Forecast</span>
+                <span>/wk</span>
               </span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
@@ -671,10 +667,11 @@ export function AssortmentTable({
             className="h-[86px] min-h-[86px] min-w-[140px] px-4 py-3 text-left align-middle"
             {...d}
           >
-            <div className="flex w-full items-center justify-between gap-2">
-              <span className="inline-flex min-w-0 items-center gap-2">
-                {gripDragHandle(columnId, targetCoverageHeader)}
-                <span>{targetCoverageHeader}</span>
+            <div className="flex w-full items-center justify-start gap-2">
+              {gripDragHandle(columnId, targetCoverageHeader)}
+              <span className="flex min-w-0 flex-col items-start leading-tight">
+                <span>Target</span>
+                <span>Coverage</span>
               </span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
@@ -702,15 +699,13 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[86px] min-h-[86px] min-w-[152px] px-4 py-3 text-left align-middle"
+            className="h-[86px] min-h-[86px] min-w-[152px] px-4 py-3 text-right align-middle"
             scope="col"
             {...d}
           >
-            <div className="flex w-full items-center justify-between gap-2">
-              <span className="inline-flex min-w-0 items-center gap-2">
-                {gripDragHandle(columnId, pctHeader)}
-                <span className="whitespace-normal leading-tight">{pctHeader}</span>
-              </span>
+            <div className="flex w-full items-center justify-end gap-2">
+              {gripDragHandle(columnId, pctHeader)}
+              <span className="min-w-0 whitespace-normal text-right leading-tight">{pctHeader}</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
           </th>
@@ -721,12 +716,10 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[86px] min-h-[86px] min-w-[120px] px-4 py-3 text-center align-middle"
+            className="h-[86px] min-h-[86px] min-w-[120px] px-4 py-3 text-right align-middle"
             scope="col"
-            {...d}
           >
-            <div className="flex w-full items-center justify-center gap-1">
-              {gripDragHandle(columnId, assortmentHeader)}
+            <div className="flex w-full items-center justify-end gap-1">
               <span>{assortmentHeader}</span>
               <button
                 type="button"
@@ -744,15 +737,13 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[86px] min-h-[86px] min-w-[132px] px-4 py-3 text-left align-middle"
+            className="h-[86px] min-h-[86px] min-w-[132px] px-4 py-3 text-right align-middle"
             scope="col"
             {...d}
           >
-            <div className="flex w-full items-center justify-between gap-2">
-              <span className="inline-flex min-w-0 items-center gap-2">
-                {gripDragHandle(columnId, whStockHeader)}
-                <span>{whStockHeader}</span>
-              </span>
+            <div className="flex w-full items-center justify-end gap-2">
+              {gripDragHandle(columnId, whStockHeader)}
+              <span>{whStockHeader}</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
           </th>
@@ -775,10 +766,11 @@ export function AssortmentTable({
             className="h-[86px] min-h-[86px] min-w-[140px] px-3 py-3 text-left align-middle"
             {...d}
           >
-            <div className="flex w-full items-center justify-between gap-2">
-              <span className="inline-flex min-w-0 items-center gap-2">
-                {gripDragHandle(columnId, `${targetCoverageDrillHeader} (drill)`)}
-                <span>{targetCoverageDrillHeader}</span>
+            <div className="flex w-full items-center justify-start gap-2">
+              {gripDragHandle(columnId, `${targetCoverageDrillHeader} (drill)`)}
+              <span className="flex min-w-0 flex-col items-start leading-tight">
+                <span>Target</span>
+                <span>Coverage</span>
               </span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
@@ -790,13 +782,14 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[86px] min-h-[86px] min-w-[140px] px-3 py-3 text-left align-middle"
+            className="h-[86px] min-h-[86px] min-w-[140px] px-3 py-3 text-right align-middle"
             {...d}
           >
-            <div className="flex w-full items-center justify-between gap-2">
-              <span className="inline-flex min-w-0 items-center gap-2">
-                {gripDragHandle(columnId, `${forecastWkDrillHeader} (drill)`)}
-                <span>{forecastWkDrillHeader}</span>
+            <div className="flex w-full items-center justify-end gap-2">
+              {gripDragHandle(columnId, `${forecastWkDrillHeader} (drill)`)}
+              <span className="flex min-w-0 flex-col items-end leading-tight">
+                <span>Forecast</span>
+                <span>/wk</span>
               </span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
@@ -804,7 +797,7 @@ export function AssortmentTable({
         );
       }
       case 'drillForecast': {
-        const scheduleEndDrillHeader = 'Schedule end date';
+        const scheduleEndDrillHeader = 'End';
         return (
           <th
             key={columnId}
@@ -869,7 +862,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] py-3 px-4 text-center align-middle ${tableRowHoverTd}`}
           >
             <SalesCell {...row.sales} />
           </td>
@@ -887,7 +880,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[180px] py-3 px-4 text-left align-middle ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[180px] py-3 px-4 text-right align-middle ${tableCellPrimary} ${tableRowHoverTd}`}
           >
             {formatScheduleDateCell(row.scheduledAssortmentStart)}
           </td>
@@ -896,7 +889,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[180px] py-3 px-4 text-left align-middle ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[180px] py-3 px-4 text-right align-middle ${tableCellPrimary} ${tableRowHoverTd}`}
           >
             {formatScheduleDateCell(row.scheduledAssortmentFinish)}
           </td>
@@ -905,7 +898,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[128px] py-3 px-4 text-left align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[140px] py-3 px-4 text-right align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
           >
             {row.forecastPerWeek.toLocaleString()}
           </td>
@@ -914,7 +907,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[100px] py-3 px-4 text-left align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[140px] py-3 pl-10 pr-4 text-left align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
           >
             {row.targetCoverageWeeks} wk
           </td>
@@ -932,7 +925,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[152px] py-3 px-4 text-left align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[152px] py-3 px-4 text-right align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
           >
             {row.whStockPctForIa.toFixed(1)}%
           </td>
@@ -946,7 +939,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`relative h-[86px] min-h-[86px] min-w-[120px] py-3 px-4 text-center align-middle group ${tableRowHoverTd}`}
+            className={`relative h-[86px] min-h-[86px] min-w-[120px] py-3 px-4 text-right align-middle group ${tableRowHoverTd}`}
           >
             {assortedCount === totalCount && (
               <button
@@ -968,8 +961,7 @@ export function AssortmentTable({
             )}
             <div
               className={[
-                'flex flex-col items-center justify-center gap-0.5',
-                pendingAssortment ? 'pl-[14px]' : '',
+                'flex w-full flex-col items-end justify-center gap-0.5 text-right',
                 assortedCount === totalCount ? 'pr-7' : '',
               ]
                 .filter(Boolean)
@@ -993,9 +985,9 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[132px] py-3 px-4 text-left align-middle tabular-nums ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[132px] py-3 px-4 text-right align-middle tabular-nums ${tableRowHoverTd}`}
           >
-            <div>
+            <div className="flex flex-col items-end text-right">
               <div className={tableCellPrimary}>{row.whStock.value.toLocaleString()}</div>
               <div className={tableCellSecondary}>{row.whStock.pfp.toLocaleString()} PFP</div>
             </div>
@@ -1011,7 +1003,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[100px] px-3 py-3 text-left align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[140px] py-3 pl-9 pr-3 text-left align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
           >
             {drillM != null ? `${drillM.targetCoverageWk} wk` : '—'}
           </td>
@@ -1020,7 +1012,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[128px] px-3 py-3 text-left align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[140px] py-3 px-3 text-right align-middle tabular-nums ${tableCellPrimary} ${tableRowHoverTd}`}
           >
             {row.forecastPerWeek.toLocaleString()}
           </td>
@@ -1167,7 +1159,7 @@ export function AssortmentTable({
             const rect = e.currentTarget.getBoundingClientRect();
             setActionRowMenu((prev) => (prev?.rowId === row.id ? null : { rowId: row.id, rect }));
           }}
-          className="inline-flex h-8 w-8 items-center justify-center rounded text-[#101828] transition-colors hover:bg-slate-100"
+          className="inline-flex h-8 w-8 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
         >
           <MoreVertical size={20} strokeWidth={2} aria-hidden />
         </button>
@@ -1324,6 +1316,7 @@ export function AssortmentTable({
                 )}
               </th>
               {!designOnly && renderIAHeader()}
+              {!designOnly && renderGripColumnHeader('assortment')}
               {!designOnly &&
                 visibleGripColumnOrder.flatMap((columnId) => [renderGripColumnHeader(columnId)])}
               {showAssortmentScheduleColumn && (
@@ -1430,6 +1423,7 @@ export function AssortmentTable({
                   </div>
                 </td>
                 {!designOnly && renderIABodyCell(row)}
+                {!designOnly && renderGripColumnBodyCell('assortment', row, rowIndex, drillM)}
                 {!designOnly &&
                   visibleGripColumnOrder.flatMap((columnId) => {
                     const cell = renderGripColumnBodyCell(columnId, row, rowIndex, drillM);
