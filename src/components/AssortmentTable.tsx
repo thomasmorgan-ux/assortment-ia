@@ -65,7 +65,8 @@ const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 const gripAlignedBodyPl = 'pl-6';
 
 /** IA column (sum IA + recommendation); legacy 104px is baked into `tableMinWidthPx` `base`. */
-const IA_COLUMN_MIN_WIDTH_PX = 192;
+/** Fits “Current: … Reco.: …” + sparkles on one line (tight to content). */
+const IA_COLUMN_MIN_WIDTH_PX = 208;
 const IA_COLUMN_MIN_WIDTH_LEGACY_PX = 104;
 
 /** Dedicated "% WH stock for IA" grip column (percentage only; title in header); follows IA. */
@@ -1720,65 +1721,63 @@ export function AssortmentTable({
     }
   };
 
-  const renderSumIaRecommendationPill = (row: AssortmentRow) =>
-    row.sumIaRecommendation != null && row.sumIaRecommendation > 0 ? (
-      <div className="group/reason relative inline-flex w-max max-w-none">
-        <div className="inline-flex flex-nowrap items-center gap-x-1 whitespace-nowrap rounded-[5px] py-1 pl-1 pr-1.5">
-          <span className="inline-flex shrink-0 items-center gap-px">
-            <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
-            <span className={`shrink-0 ${recommendationMetricTextClass}`}>
-              {row.sumIaRecommendation.toLocaleString()}
-            </span>
-          </span>
-        </div>
-        <div
-          className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[200px] -translate-y-1/2 rounded-lg bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
-          role="tooltip"
-        >
-          <p className="mb-2 text-xs font-medium leading-normal">Recommendation Reasons</p>
-          <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
-            <div className="flex items-center justify-between gap-2">
-              <span>High past sales for similar products</span>
-              <span>X35</span>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span>Low past sales for similar products</span>
-              <span>X18</span>
-            </div>
-          </div>
-          <span
-            className="absolute -left-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-r-[#212121]"
-            aria-hidden
-          />
-        </div>
-      </div>
-    ) : null;
+  const iaMetaRecoTypography =
+    "font-['Inter',sans-serif] text-[12px] font-normal tabular-nums leading-none text-[#6864E6]";
 
-  /** Sum IA input and optional sum IA recommendation pill only. */
+  /** Sum IA input + Current / Reco. metadata (matches allocation cell design). */
   const renderIaColumnBody = (row: AssortmentRow) => {
-    const lines: ReactNode[] = [
+    const recoVal = row.sumIaRecommendation;
+    const hasReco = recoVal != null && recoVal > 0;
+    return [
       <div key="sum-ia" className="min-w-0">
         <TableCellNumericInput
           value={row.sumIa}
           ariaLabel={`Initial allocation sum IA for ${row.productGroup.name}`}
           onCommit={(next) => _onSumIaChange(row.id, next)}
+          className={`${tableCellNumericInputClass} text-right`}
         />
       </div>,
+      <div
+        key="ia-current-reco"
+        className="flex min-w-0 flex-nowrap items-center gap-x-3 whitespace-nowrap"
+      >
+        <span className={`shrink-0 ${tableCellSecondary}`}>
+          Current: {row.sumIa.toLocaleString()}
+        </span>
+        {hasReco ? (
+          <div className="group/reason relative inline-flex w-max max-w-none shrink-0 items-center gap-x-1">
+            <span className={iaMetaRecoTypography}>Reco.:</span>
+            <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
+            <span className={iaMetaRecoTypography}>{recoVal.toLocaleString()}</span>
+            <div
+              className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[200px] -translate-y-1/2 rounded-lg bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
+              role="tooltip"
+            >
+              <p className="mb-2 text-xs font-medium leading-normal">Recommendation Reasons</p>
+              <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
+                <div className="flex items-center justify-between gap-2">
+                  <span>High past sales for similar products</span>
+                  <span>X35</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span>Low past sales for similar products</span>
+                  <span>X18</span>
+                </div>
+              </div>
+              <span
+                className="absolute -left-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-r-[#212121]"
+                aria-hidden
+              />
+            </div>
+          </div>
+        ) : (
+          <span className={`shrink-0 ${tableCellSecondary}`}>Reco.: —</span>
+        )}
+      </div>,
     ];
-
-    if (row.sumIaRecommendation != null && row.sumIaRecommendation > 0) {
-      lines.push(
-        <div key="sum-ia-rec" className="min-w-0">
-          {renderSumIaRecommendationPill(row)}
-        </div>
-      );
-    }
-
-    return lines;
   };
 
-  const iaColumnNeedsTopAlign = (row: AssortmentRow) =>
-    row.sumIaRecommendation != null && row.sumIaRecommendation > 0;
+  const iaColumnNeedsTopAlign = (_row: AssortmentRow) => true;
 
   const renderRowActionBodyCell = (row: AssortmentRow) => (
     <td

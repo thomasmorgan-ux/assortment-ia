@@ -96,29 +96,33 @@ export function SelectionActionBar({
 
   return (
     <div
-      className={`flex items-start overflow-hidden rounded px-4 py-3 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.08)] ${
-        inline ? 'w-full gap-3' : 'fixed bottom-6 left-1/2 z-50 -translate-x-1/2'
+      className={`flex items-center overflow-hidden rounded px-4 py-3 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.08)] ${
+        inline
+          ? 'w-full gap-3'
+          : 'fixed bottom-6 left-1/2 z-50 w-max max-w-[calc(100vw-3rem)] -translate-x-1/2'
       }`}
       style={{ backgroundColor: SELECTION_BAR_BG }}
       role="region"
       aria-label="Selection actions"
     >
-      <div className={`flex min-w-0 flex-1 flex-wrap items-center ${inline ? 'gap-3' : 'gap-6'}`}>
+      <div
+        className={`flex min-w-0 flex-nowrap items-center overflow-x-auto [scrollbar-width:thin] ${inline ? 'min-w-0 flex-1 gap-3' : 'gap-6'}`}
+      >
       {/* Selection summary */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex shrink-0 flex-col gap-0.5">
         <p className="text-sm font-normal leading-normal text-white">
           <span className="font-semibold">{selectedRows.length}</span> SKU-LOCATIONS SELECTED
         </p>
         <p className="text-xs font-normal leading-normal text-white/90">
-          <span className="font-semibold">{productCount}</span> products in{' '}
-          <span className="font-semibold">{locationCount}</span> locations
+          <span className="font-semibold text-white">{productCount}</span> products in{' '}
+          <span className="font-semibold text-white">{locationCount}</span> locations
         </p>
       </div>
 
       <div className="h-10 w-px shrink-0 bg-white/20" aria-hidden />
 
       {/* Action buttons – token styling */}
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={() => (onAssortSelection ? onAssortSelection(selectedRows) : selectedRows.forEach((r) => onAssort?.(r)))}
