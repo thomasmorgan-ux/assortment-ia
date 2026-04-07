@@ -164,7 +164,7 @@ function RowCard({
                   type="number"
                   value={localSumIa}
                   onChange={(e) => onLocalSumIa(Number(e.target.value) || 0)}
-                  className="h-10 w-[100px] rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
+                  className="h-10 w-[100px] rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ function RowCard({
                   type="number"
                   value={localAvgIa}
                   onChange={(e) => onLocalAvgIa(Number(e.target.value) || 0)}
-                  className="h-10 w-[100px] rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
+                  className="h-10 w-[100px] rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
                 />
               </div>
             </div>

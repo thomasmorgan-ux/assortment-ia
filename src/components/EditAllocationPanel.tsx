@@ -119,7 +119,7 @@ const topLocationsMock: { metric: string; committed: number | string; current: s
 const TOTAL_MIN_QUANTITY = 3;
 
 const EDIT_PANEL_ASSORT_COUNT_INPUT_CLASS =
-  'box-border h-9 w-14 min-w-[3.5rem] max-w-[5rem] rounded-[2px] border border-solid border-[#e9eaeb] bg-white px-2 py-0 ' +
+  'box-border h-9 w-14 min-w-[3.5rem] max-w-[5rem] rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-2 py-0 ' +
   "font-['Inter',sans-serif] text-sm font-semibold tabular-nums leading-normal text-[#101828] " +
   'focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25';
 
@@ -531,7 +531,7 @@ export function EditAllocationPanel({
                                       onScheduledAssortmentScheduleChange?.(r.id, 'start', e.target.value)
                                     }
                                     disabled={r.assortment.assortedCount === 0}
-                                    className="h-9 w-full min-w-0 max-w-full rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                                    className="h-9 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
                                     aria-describedby={`${dateId}-hint`}
                                   />
                                 </div>
@@ -547,7 +547,7 @@ export function EditAllocationPanel({
                                       onScheduledAssortmentScheduleChange?.(r.id, 'finish', e.target.value)
                                     }
                                     disabled={r.assortment.assortedCount === 0}
-                                    className="h-9 w-full min-w-0 max-w-full rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                                    className="h-9 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
                                     aria-describedby={`${dateId}-hint`}
                                   />
                                 </div>
@@ -677,7 +677,7 @@ export function EditAllocationPanel({
                               onScheduledAssortmentScheduleChange?.(singleRow.id, 'start', e.target.value)
                             }
                             disabled={singleRow.assortment.assortedCount === 0}
-                            className="h-9 w-full min-w-0 max-w-full rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                            className="h-9 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
                             aria-describedby="assortment-schedule-hint"
                           />
                         </div>
@@ -696,7 +696,7 @@ export function EditAllocationPanel({
                               onScheduledAssortmentScheduleChange?.(singleRow.id, 'finish', e.target.value)
                             }
                             disabled={singleRow.assortment.assortedCount === 0}
-                            className="h-9 w-full min-w-0 max-w-full rounded border border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                            className="h-9 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
                             aria-describedby="assortment-schedule-hint"
                           />
                         </div>
@@ -848,7 +848,7 @@ export function EditAllocationPanel({
                             type="number"
                             value={state.totalIaInput}
                             onChange={(e) => updateRowState(r.id, { totalIaInput: e.target.value.replace(/[^0-9]/g, '') })}
-                            className={`h-10 w-24 rounded border px-3 text-sm text-[#000000] ${
+                            className={`h-10 w-24 rounded-[2px] border-[0.5px] border-solid px-3 text-sm text-[#000000] ${
                               isAboveMax
                                 ? 'border-red-500 bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500'
                                 : isBelowMin

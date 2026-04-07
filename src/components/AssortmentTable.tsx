@@ -24,8 +24,9 @@ import { AutoneDrilldownIcon } from './AutoneDrilldownIcon';
 import { DraftStatusDot } from './DraftStatusDot';
 import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
+import { ScheduleDatePopoverInput } from './ScheduleDatePopoverInput';
 import type { AssortmentRow, ModalKind } from '../types';
-import { drillDropdownMenuItemHover } from '../lib/dropdownMenuClasses';
+import { drillDropdownMenuItemHover, rowActionsMenuPanelChromeClass } from '../lib/dropdownMenuClasses';
 
 /** SKU-style titles when column is grouped by Product (vs Product Group name). */
 const PRODUCT_LEVEL_NAMES: Record<string, string[]> = {
@@ -64,39 +65,35 @@ const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 /** Indent body content to match header text after grip (`h-4 w-4`) + `gap-2`. */
 const gripAlignedBodyPl = 'pl-6';
 
+/** Product / location header grouping lists — same chrome as row actions, under triggers (`top-[43px]`). */
+const groupingDropdownPanelClass = `absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full ${rowActionsMenuPanelChromeClass}`;
+
+/** Service-level tolerance listboxes — at least trigger width (`min-w-full`), wider when labels need it (`w-max`). */
+const tableAnchorListboxPanelClass = `absolute left-0 top-full z-[210] mt-0.5 min-w-full w-max max-w-[min(100vw-1.5rem,24rem)] ${rowActionsMenuPanelChromeClass}`;
+
+/** Header grouping options + service-level tolerance listbox rows — matches row actions `menuitem` type. */
+const groupingDropdownMenuItemBaseClass =
+  `group/opt flex h-9 w-full shrink-0 items-center justify-between gap-2 rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`;
+
 /** IA column (sum IA + recommendation); legacy 104px is baked into `tableMinWidthPx` `base`. */
-/** Fits “Current: … Reco.: …” + sparkles on one line (tight to content). */
-const IA_COLUMN_MIN_WIDTH_PX = 208;
+/** Narrower min width; Current / Recco row wraps below when tight (`flex-wrap` on meta row). */
+const IA_COLUMN_MIN_WIDTH_PX = 168;
 const IA_COLUMN_MIN_WIDTH_LEGACY_PX = 104;
 
 /** Dedicated "% WH stock for IA" grip column (percentage only; title in header); follows IA. */
-/** Wide enough for grip + “% WH stock for IA” on one line. */
-const WH_STOCK_PCT_IA_COLUMN_MIN_WIDTH_PX = 204;
+/** Narrow min width; header label wraps (`whitespace-normal`) so grip + title stay readable. */
+const WH_STOCK_PCT_IA_COLUMN_MIN_WIDTH_PX = 176;
+
+/** Sales (L7D / L30D) — grip column; header + values left-aligned with `gripAlignedBodyPl`. */
+const SALES_COLUMN_MIN_WIDTH_PX = 148;
 
 /** Design system text input (Figma Input text / stroke #e9eaeb, 40px height, 2px radius) */
 const tableCellNumericInputClass =
-  "box-border h-10 w-full min-w-[56px] max-w-full rounded-[2px] border border-solid border-[#e9eaeb] bg-white px-3 py-0 " +
+  "box-border h-10 w-full min-w-[56px] max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 " +
   "font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] " +
   "placeholder:font-normal placeholder:text-[#4b535c] " +
-  "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25";
-
-/** Same chrome as numeric cell input, for `type="date"` (value YYYY-MM-DD). */
-const tableCellDateInputClass = `${tableCellNumericInputClass} min-w-0`;
-
-/** Normalize stored schedule string to `YYYY-MM-DD` for date inputs. */
-function scheduleDateToInputValue(raw: string | undefined): string {
-  if (!raw?.trim()) return '';
-  const t = raw.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  const m = t.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (m) return m[1];
-  const d = new Date(`${t}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return '';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  return `${yyyy}-${mm}-${dd}`;
-}
+  "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 " +
+  "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60";
 
 export function TableCellNumericInput({
   value,
@@ -245,7 +242,7 @@ const SERVICE_LEVEL_HIDDEN_GRIP_IDS = [
 ] as const satisfies readonly GripColumnId[];
 const SERVICE_LEVEL_HIDDEN_GRIP_ID_SET = new Set<string>(SERVICE_LEVEL_HIDDEN_GRIP_IDS);
 const SERVICE_LEVEL_HIDDEN_GRIP_MIN_WIDTH_PX =
-  200 + 180 + 180 + 140 + 140 + 120 + 132;
+  SALES_COLUMN_MIN_WIDTH_PX + 180 + 180 + 140 + 140 + 120 + 132;
 
 /** Recommendation / IA metrics accent (purple). */
 const ASSORTED_SKU_LOCS_REC_TEXT = 'text-[#6864E6]';
@@ -303,7 +300,7 @@ function AssortedSkuLocsProgressCell({ now, rec }: AssortmentRow['assortedSkuLoc
 
 function SalesCell({ l7d, l30d }: AssortmentRow['sales']) {
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center gap-0.5 py-0.5 text-center">
+    <div className="flex min-w-0 flex-col items-start justify-center gap-0.5 py-0.5 text-left">
       <div className={`tabular-nums ${tableCellPrimary}`}>
         {l7d.toLocaleString()}
         <span className="font-normal"> L7D</span>
@@ -581,15 +578,15 @@ export function AssortmentTable({
   /** WH stock column (value + PFP). */
   const whStockWhColumnMinWidthPx = 132;
   /** Assortment column, or Service level “Forecast / week” column (wider). */
-  const assortmentColumnMinWidthPx = serviceLevelView ? 200 : 220;
+  const assortmentColumnMinWidthPx = 200;
   /** Service level only — “Next scheduled event” column. */
-  const serviceNextScheduledEventColumnMinWidthPx = 220;
+  const serviceNextScheduledEventColumnMinWidthPx = 200;
   /** Service level only — “Stockout tolerance” column. */
   const serviceStockoutToleranceColumnMinWidthPx = 200;
   /** Service level only — “Uncertainty tolerance” column. */
   const serviceUncertaintyToleranceColumnMinWidthPx = 200;
   /** Service level only — “Safety stock” column (“N of stock coverage”). */
-  const serviceSafetyStockColumnMinWidthPx = 260;
+  const serviceSafetyStockColumnMinWidthPx = 200;
   /** Service level only — “Display quantity” column. */
   const serviceDisplayQuantityColumnMinWidthPx = 200;
   /** Action column (overflow menu). */
@@ -867,13 +864,13 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[62px] min-h-[62px] px-3 py-[9px] text-left align-middle"
+            className="h-[62px] min-h-[62px] px-1 py-[9px] text-left align-middle"
             style={{ minWidth: IA_COLUMN_MIN_WIDTH_PX }}
             scope="col"
             aria-label={ariaLabel}
             {...d}
           >
-            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+            <div className="flex w-full min-w-0 items-center justify-start gap-1.5">
               {gripDragHandle(columnId, headerLabel)}
               <span className={serviceLevelView ? 'whitespace-normal leading-tight' : undefined}>
                 {headerLabel}
@@ -895,7 +892,7 @@ export function AssortmentTable({
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
               {gripDragHandle(columnId, title)}
-              <span className="shrink-0 whitespace-nowrap">{title}</span>
+              <span className={`min-w-0 whitespace-normal leading-tight ${tableCellPrimary}`}>{title}</span>
             </div>
           </th>
         );
@@ -906,7 +903,8 @@ export function AssortmentTable({
           <th
             key={columnId}
             scope="col"
-            className="h-[62px] min-h-[62px] min-w-[220px] box-border bg-white px-4 py-[9px] text-left align-middle"
+            className="h-[62px] min-h-[62px] box-border bg-white px-4 py-[9px] text-left align-middle"
+            style={{ minWidth: serviceNextScheduledEventColumnMinWidthPx }}
             {...d}
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
@@ -954,7 +952,8 @@ export function AssortmentTable({
           <th
             key={columnId}
             scope="col"
-            className="h-[62px] min-h-[62px] min-w-[260px] box-border bg-white px-4 py-[9px] text-left align-middle"
+            className="h-[62px] min-h-[62px] box-border bg-white px-4 py-[9px] text-left align-middle"
+            style={{ minWidth: serviceSafetyStockColumnMinWidthPx }}
             {...d}
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
@@ -1005,13 +1004,13 @@ export function AssortmentTable({
             key={columnId}
             scope="col"
             aria-sort="descending"
-            className="h-[62px] min-h-[62px] min-w-[200px] px-4 py-[9px] text-center align-middle"
+            className="h-[62px] min-h-[62px] px-4 py-[9px] text-left align-middle"
+            style={{ minWidth: SALES_COLUMN_MIN_WIDTH_PX }}
             {...d}
           >
-            <div className="flex w-full items-center justify-center gap-2">
+            <div className="flex w-full min-w-0 items-center justify-start gap-2">
               {gripDragHandle(columnId, salesHeader)}
               <span className="shrink-0">{salesHeader}</span>
-              <ChevronDown size={16} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
           </th>
         );
@@ -1117,7 +1116,8 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[62px] min-h-[62px] min-w-[220px] px-4 py-[9px] text-left align-middle"
+            className="h-[62px] min-h-[62px] px-4 py-[9px] text-left align-middle"
+            style={{ minWidth: assortmentColumnMinWidthPx }}
             scope="col"
             {...d}
           >
@@ -1234,7 +1234,7 @@ export function AssortmentTable({
           return (
             <td
               key={columnId}
-              className={`h-[86px] min-h-[86px] py-3 px-3 text-left align-middle ${tableCellPrimary} ${tableRowHoverTd}`}
+              className={`h-[86px] min-h-[86px] py-3 px-1 text-left align-middle ${tableCellPrimary} ${tableRowHoverTd}`}
               style={{ minWidth: IA_COLUMN_MIN_WIDTH_PX }}
             >
               <div className={`min-w-0 ${gripAlignedBodyPl}`}>{tier}</div>
@@ -1244,7 +1244,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] py-3 px-3 group relative ${tableRowHoverTd} ${
+            className={`h-[86px] min-h-[86px] py-3 px-1 group relative ${tableRowHoverTd} ${
               iaColumnNeedsTopAlign(row) ? 'align-top' : 'align-middle'
             }`}
             style={{ minWidth: IA_COLUMN_MIN_WIDTH_PX }}
@@ -1253,7 +1253,7 @@ export function AssortmentTable({
               <button
                 type="button"
                 onClick={() => onEditRow?.(row, 'initial-allocation')}
-                className={`absolute right-3 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100 ${
+                className={`absolute right-1 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100 ${
                   iaColumnNeedsTopAlign(row) ? 'top-3' : 'top-1/2 -translate-y-1/2'
                 }`}
                 aria-label="Edit allocation"
@@ -1266,7 +1266,7 @@ export function AssortmentTable({
               row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
                 <DraftStatusDot
                   padded={false}
-                  className={`absolute left-3 z-10 ${
+                  className={`absolute left-1 z-10 ${
                     iaColumnNeedsTopAlign(row) ? 'top-4' : 'top-1/2 -translate-y-1/2'
                   }`}
                   title="Initial allocation edited"
@@ -1285,8 +1285,10 @@ export function AssortmentTable({
                 .filter(Boolean)
                 .join(' ')}
             >
-              <div className="flex w-full min-w-0 flex-col gap-1.5">
-                <div className="flex flex-col gap-1.5">{renderIaColumnBody(row)}</div>
+              <div className="flex w-full min-w-0 flex-col items-end gap-1.5">
+                <div className="flex w-full flex-col items-end gap-1.5">
+                  {renderIaColumnBody(row)}
+                </div>
               </div>
             </div>
           </td>
@@ -1310,7 +1312,8 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[220px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+            style={{ minWidth: serviceNextScheduledEventColumnMinWidthPx }}
           >
             <div className={`min-w-0 ${gripAlignedBodyPl}`}>
               {ev ? (
@@ -1348,16 +1351,13 @@ export function AssortmentTable({
                   setUncertaintyToleranceDropdownRowId(null);
                   setStockoutToleranceDropdownRowId((id) => (id === row.id ? null : row.id));
                 }}
-                className="inline-flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+                className="inline-flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
               >
                 <span className="min-w-0 truncate text-left">{value}</span>
                 <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
               </button>
               {menuOpen && (
-                <div
-                  className="absolute left-0 top-full z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
-                  role="listbox"
-                >
+                <div className={tableAnchorListboxPanelClass} role="listbox">
                   {STOCKOUT_TOLERANCE_OPTIONS.map((opt) => (
                     <button
                       key={opt}
@@ -1368,7 +1368,7 @@ export function AssortmentTable({
                         setStockoutToleranceByRowId((prev) => ({ ...prev, [row.id]: opt }));
                         setStockoutToleranceDropdownRowId(null);
                       }}
-                      className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                      className={`${groupingDropdownMenuItemBaseClass} whitespace-nowrap ${
                         opt === value ? 'bg-slate-100' : ''
                       }`}
                     >
@@ -1405,16 +1405,13 @@ export function AssortmentTable({
                     id === row.id ? null : row.id
                   );
                 }}
-                className="inline-flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+                className="inline-flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
               >
                 <span className="min-w-0 truncate text-left">{value}</span>
                 <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
               </button>
               {menuOpen && (
-                <div
-                  className="absolute left-0 top-full z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
-                  role="listbox"
-                >
+                <div className={tableAnchorListboxPanelClass} role="listbox">
                   {UNCERTAINTY_TOLERANCE_OPTIONS.map((opt) => (
                     <button
                       key={opt}
@@ -1425,7 +1422,7 @@ export function AssortmentTable({
                         setUncertaintyToleranceByRowId((prev) => ({ ...prev, [row.id]: opt }));
                         setUncertaintyToleranceDropdownRowId(null);
                       }}
-                      className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                      className={`${groupingDropdownMenuItemBaseClass} whitespace-nowrap ${
                         opt === value ? 'bg-slate-100' : ''
                       }`}
                     >
@@ -1445,7 +1442,8 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[260px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+            style={{ minWidth: serviceSafetyStockColumnMinWidthPx }}
           >
             <div
               className={`flex min-w-0 flex-col items-start justify-center gap-0.5 py-0.5 ${gripAlignedBodyPl}`}
@@ -1478,7 +1476,7 @@ export function AssortmentTable({
                     [row.id]: e.target.value,
                   }))
                 }
-                className="box-border w-full min-w-0 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] outline-none tabular-nums placeholder:font-normal placeholder:text-[#6A7282]"
+                className="box-border w-full min-w-0 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] outline-none tabular-nums placeholder:font-normal placeholder:text-[#6A7282]"
               />
             </div>
           </td>
@@ -1496,9 +1494,12 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] py-3 px-4 text-center align-middle ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+            style={{ minWidth: SALES_COLUMN_MIN_WIDTH_PX }}
           >
-            <SalesCell {...row.sales} />
+            <div className={`min-w-0 ${gripAlignedBodyPl}`}>
+              <SalesCell {...row.sales} />
+            </div>
           </td>
         );
       case 'scheduleEnd':
@@ -1507,14 +1508,11 @@ export function AssortmentTable({
             key={columnId}
             className={`h-[86px] min-h-[86px] min-w-[180px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
           >
-            <input
-              type="date"
-              value={scheduleDateToInputValue(row.scheduledAssortmentStart)}
-              onChange={(e) =>
-                onScheduledAssortmentScheduleChange?.(row.id, 'start', e.target.value)
-              }
-              className={tableCellDateInputClass}
-              aria-label={`Assortment start date for ${row.productGroup.name}`}
+            <ScheduleDatePopoverInput
+              value={row.scheduledAssortmentStart}
+              onCommit={(next) => onScheduledAssortmentScheduleChange?.(row.id, 'start', next)}
+              className="min-w-0"
+              ariaLabel={`Assortment start date for ${row.productGroup.name}`}
             />
           </td>
         );
@@ -1524,14 +1522,11 @@ export function AssortmentTable({
             key={columnId}
             className={`h-[86px] min-h-[86px] min-w-[180px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
           >
-            <input
-              type="date"
-              value={scheduleDateToInputValue(row.scheduledAssortmentFinish)}
-              onChange={(e) =>
-                onScheduledAssortmentScheduleChange?.(row.id, 'finish', e.target.value)
-              }
-              className={tableCellDateInputClass}
-              aria-label={`Assortment end date for ${row.productGroup.name}`}
+            <ScheduleDatePopoverInput
+              value={row.scheduledAssortmentFinish}
+              onCommit={(next) => onScheduledAssortmentScheduleChange?.(row.id, 'finish', next)}
+              className="min-w-0"
+              ariaLabel={`Assortment end date for ${row.productGroup.name}`}
             />
           </td>
         );
@@ -1572,7 +1567,8 @@ export function AssortmentTable({
           return (
             <td
               key={columnId}
-              className={`h-[86px] min-h-[86px] min-w-[200px] py-3 px-4 text-right align-middle ${tableRowHoverTd}`}
+              className={`h-[86px] min-h-[86px] py-3 px-4 text-right align-middle ${tableRowHoverTd}`}
+              style={{ minWidth: assortmentColumnMinWidthPx }}
             >
               <div className="flex flex-col items-end justify-center gap-0.5">
                 <span className={`tabular-nums ${tableCellPrimary}`}>{total.toLocaleString()}</span>
@@ -1594,7 +1590,8 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`relative min-h-[86px] py-3 px-4 text-left align-top group ${tableRowHoverTd} min-w-[220px]`}
+            className={`relative min-h-[86px] py-3 px-4 text-left align-top group ${tableRowHoverTd}`}
+            style={{ minWidth: assortmentColumnMinWidthPx }}
           >
             {assortedCount === totalCount && (
               <button
@@ -1628,18 +1625,6 @@ export function AssortmentTable({
                   {row.lastCommittedSnapshot.assortment.assortedCount} → {assortedCount}/{totalCount}
                 </div>
               ) : null}
-              <div className="flex min-w-0 max-w-full flex-nowrap items-baseline justify-start gap-x-1">
-                <div className="w-[4.5rem] min-w-0 shrink-0">
-                  <TableCellNumericInput
-                    value={assortedCount}
-                    onCommit={(n) => onAssortmentCountChange?.(row.id, n)}
-                    ariaLabel={`Assorted SKU count for ${row.productGroup.name}`}
-                  />
-                </div>
-                <span className={`shrink-0 whitespace-nowrap tabular-nums ${tableCellPrimary}`}>
-                  /{totalCount} assorted
-                </span>
-              </div>
               <div className="flex flex-wrap gap-1">
                 <button
                   type="button"
@@ -1660,6 +1645,19 @@ export function AssortmentTable({
                 >
                   Unassort
                 </button>
+              </div>
+              <div className="flex min-w-0 max-w-full flex-nowrap items-baseline justify-start gap-x-1">
+                <div className="w-[4.5rem] min-w-0 shrink-0">
+                  <TableCellNumericInput
+                    value={assortedCount}
+                    onCommit={(n) => onAssortmentCountChange?.(row.id, n)}
+                    ariaLabel={`Assorted SKU count for ${row.productGroup.name}`}
+                    disabled={assortedCount <= 0}
+                  />
+                </div>
+                <span className={`shrink-0 whitespace-nowrap tabular-nums ${tableCellPrimary}`}>
+                  /{totalCount} assorted
+                </span>
               </div>
             </div>
           </td>
@@ -1724,12 +1722,12 @@ export function AssortmentTable({
   const iaMetaRecoTypography =
     "font-['Inter',sans-serif] text-[12px] font-normal tabular-nums leading-none text-[#6864E6]";
 
-  /** Sum IA input + Current / Reco. metadata (matches allocation cell design). */
+  /** Sum IA input + Current / Recco metadata (matches allocation cell design). */
   const renderIaColumnBody = (row: AssortmentRow) => {
     const recoVal = row.sumIaRecommendation;
     const hasReco = recoVal != null && recoVal > 0;
     return [
-      <div key="sum-ia" className="min-w-0">
+      <div key="sum-ia" className="min-w-0 w-full">
         <TableCellNumericInput
           value={row.sumIa}
           ariaLabel={`Initial allocation sum IA for ${row.productGroup.name}`}
@@ -1739,14 +1737,14 @@ export function AssortmentTable({
       </div>,
       <div
         key="ia-current-reco"
-        className="flex min-w-0 flex-nowrap items-center gap-x-3 whitespace-nowrap"
+        className="flex w-full min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-0.5"
       >
         <span className={`shrink-0 ${tableCellSecondary}`}>
           Current: {row.sumIa.toLocaleString()}
         </span>
         {hasReco ? (
           <div className="group/reason relative inline-flex w-max max-w-none shrink-0 items-center gap-x-1">
-            <span className={iaMetaRecoTypography}>Reco.:</span>
+            <span className={iaMetaRecoTypography}>Recco:</span>
             <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
             <span className={iaMetaRecoTypography}>{recoVal.toLocaleString()}</span>
             <div
@@ -1771,7 +1769,7 @@ export function AssortmentTable({
             </div>
           </div>
         ) : (
-          <span className={`shrink-0 ${tableCellSecondary}`}>Reco.: —</span>
+          <span className={`shrink-0 ${tableCellSecondary}`}>Recco: —</span>
         )}
       </div>,
     ];
@@ -1824,7 +1822,7 @@ export function AssortmentTable({
                     type="checkbox"
                     checked={allSelected}
                     onChange={(e) => onSelectAll(e.target.checked)}
-                    className="w-4 h-4 rounded border-2 border-[#e9eaeb] bg-white text-sky-600 focus:ring-sky-500"
+                    className="w-4 h-4 rounded border-[0.5px] border-solid border-[#e9eaeb] bg-white text-sky-600 focus:ring-sky-500"
                   />
                 </label>
               </th>
@@ -1838,7 +1836,7 @@ export function AssortmentTable({
                   <button
                     type="button"
                     onClick={() => setProductGroupDropdownOpen((o) => !o)}
-                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
                   >
                     <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
                       {productGrouping}
@@ -1847,7 +1845,7 @@ export function AssortmentTable({
                   </button>
                   {productGroupDropdownOpen &&
                     (serviceLevelView ? (
-                      <div className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
+                      <div className={groupingDropdownPanelClass}>
                         {SERVICE_LEVEL_PRODUCT_GROUPING_OPTIONS.map((opt) => (
                           <button
                             key={opt}
@@ -1856,7 +1854,7 @@ export function AssortmentTable({
                               setProductGrouping(opt);
                               setProductGroupDropdownOpen(false);
                             }}
-                            className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                            className={`${groupingDropdownMenuItemBaseClass} ${
                               productGrouping === opt ? 'bg-slate-100' : ''
                             }`}
                           >
@@ -1868,7 +1866,7 @@ export function AssortmentTable({
                         ))}
                       </div>
                     ) : (
-                      <div className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg">
+                      <div className={groupingDropdownPanelClass}>
                         {PRODUCT_GROUPING_OPTIONS.map((opt) => (
                           <button
                             key={opt}
@@ -1877,7 +1875,7 @@ export function AssortmentTable({
                               setProductGrouping(opt);
                               setProductGroupDropdownOpen(false);
                             }}
-                            className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                            className={`${groupingDropdownMenuItemBaseClass} ${
                               productGrouping === opt ? 'bg-slate-100' : ''
                             }`}
                           >
@@ -1904,7 +1902,7 @@ export function AssortmentTable({
                     aria-expanded={locationGroupDropdownOpen}
                     aria-haspopup="listbox"
                     onClick={() => setLocationGroupDropdownOpen((o) => !o)}
-                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
                   >
                     <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
                       {locationGrouping}
@@ -1913,10 +1911,7 @@ export function AssortmentTable({
                   </button>
                   {locationGroupDropdownOpen &&
                     (serviceLevelView ? (
-                      <div
-                        className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
-                        role="listbox"
-                      >
+                      <div className={groupingDropdownPanelClass} role="listbox">
                         {SERVICE_LEVEL_LOCATION_GROUPING_OPTIONS.map((opt) => (
                           <button
                             key={opt}
@@ -1927,7 +1922,7 @@ export function AssortmentTable({
                               setLocationGrouping(opt);
                               setLocationGroupDropdownOpen(false);
                             }}
-                            className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                            className={`${groupingDropdownMenuItemBaseClass} ${
                               locationGrouping === opt ? 'bg-slate-100' : ''
                             }`}
                           >
@@ -1939,10 +1934,7 @@ export function AssortmentTable({
                         ))}
                       </div>
                     ) : (
-                      <div
-                        className="absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
-                        role="listbox"
-                      >
+                      <div className={groupingDropdownPanelClass} role="listbox">
                         {LOCATION_DIMENSION_MENU.map(({ id, label }) => (
                           <button
                             key={id}
@@ -1953,7 +1945,7 @@ export function AssortmentTable({
                               setLocationGrouping(label);
                               setLocationGroupDropdownOpen(false);
                             }}
-                            className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                            className={`${groupingDropdownMenuItemBaseClass} ${
                               locationGrouping === label ? 'bg-slate-100' : ''
                             }`}
                           >
@@ -2017,7 +2009,7 @@ export function AssortmentTable({
                       type="checkbox"
                       checked={!!row.selected}
                       onChange={(e) => onSelectRow(row.id, e.target.checked)}
-                      className="w-4 h-4 rounded border-2 border-[#e9eaeb] bg-white text-sky-600 focus:ring-sky-500"
+                      className="w-4 h-4 rounded border-[0.5px] border-solid border-[#e9eaeb] bg-white text-sky-600 focus:ring-sky-500"
                     />
                   </div>
                 </td>
@@ -2192,7 +2184,7 @@ export function AssortmentTable({
           <div
             role="menu"
             aria-label="Row actions"
-            className="fixed z-[200] flex max-h-[min(320px,85vh)] min-w-[200px] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
+            className={`fixed z-[200] min-w-[200px] ${rowActionsMenuPanelChromeClass}`}
             style={(() => {
               const gutter = 8;
               /** Matches `min-w-[200px]` so we can clamp before paint. */

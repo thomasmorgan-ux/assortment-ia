@@ -656,8 +656,7 @@ export function MainContent() {
 
       {recSuccessBanner && (
         <div
-          className="fixed left-1/2 top-[116px] z-[60] w-full max-w-2xl -translate-x-1/2 flex items-center gap-3 rounded-[6px] border border-[#6864E6] p-4"
-          style={{ borderWidth: '0.5px', backgroundColor: '#fbf4ff' }}
+          className="fixed left-1/2 top-[116px] z-[60] w-full max-w-2xl -translate-x-1/2 flex items-center gap-3 rounded-[6px] border-[0.5px] border-solid border-[#6864E6] bg-[#fbf4ff] p-4"
           role="status"
           aria-live="polite"
         >
@@ -687,8 +686,7 @@ export function MainContent() {
         <div className="flex w-full min-w-0 flex-col gap-3">
           {focusView !== 'service-level' && !newRecsAvailableBannerDismissed && (
             <div
-              className="flex w-full min-w-0 flex-wrap items-start gap-3 rounded-[6px] border border-solid border-[#00050a]/[0.12] bg-[#f8f8f8] p-4 sm:items-center sm:gap-4"
-              style={{ borderWidth: '0.5px' }}
+              className="flex w-full min-w-0 flex-wrap items-start gap-3 rounded-[6px] border-[0.5px] border-solid border-[#00050a]/[0.12] bg-[#f8f8f8] p-4 sm:items-center sm:gap-4"
               role="region"
               aria-label="New recommendations available"
             >
@@ -713,8 +711,7 @@ export function MainContent() {
                       setNewRecsAvailableBannerDismissed(true);
                       setGenerateRecModalOpen(true);
                     }}
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded border border-solid border-[#e9eaeb] bg-white px-4 py-2 font-['Inter',sans-serif] text-base font-medium leading-normal text-[#00050a] transition-colors hover:bg-slate-50"
-                    style={{ borderWidth: '0.5px' }}
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded border-[0.5px] border-solid border-[#e9eaeb] bg-white px-4 py-2 font-['Inter',sans-serif] text-base font-medium leading-normal text-[#00050a] transition-colors hover:bg-slate-50"
                   >
                     Accept
                   </button>
@@ -817,8 +814,7 @@ export function MainContent() {
             >
               <div
                 ref={toolbarMetricDropdownRef}
-                className="relative flex h-10 shrink-0 overflow-visible rounded-[2px] border border-solid border-[#e9eaeb] bg-white"
-                style={{ borderWidth: '0.5px' }}
+                className="relative flex h-10 shrink-0 overflow-visible rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white"
               >
                 <button
                   type="button"
@@ -831,7 +827,7 @@ export function MainContent() {
                   <span className="truncate">{toolbarMetricLabel(toolbarMetric)}</span>
                   <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
                 </button>
-                <div className="w-px shrink-0 self-stretch bg-[#e9eaeb]" aria-hidden />
+                <div className="w-[0.5px] shrink-0 self-stretch bg-[#e9eaeb]" aria-hidden />
                 <button
                   type="button"
                   className="flex w-10 shrink-0 items-center justify-center border-0 bg-transparent text-[#101828]"
@@ -844,7 +840,7 @@ export function MainContent() {
                     id="toolbar-metric-listbox"
                     role="listbox"
                     aria-label="Table metric"
-                    className="absolute left-0 top-[42px] z-[210] mt-0.5 min-w-full w-max max-w-[min(280px,calc(100vw-2rem))] max-h-[min(320px,50vh)] overflow-y-auto rounded-[2px] border border-solid border-[#e9eaeb] bg-white py-1 shadow-lg"
+                    className="absolute left-0 top-[42px] z-[210] mt-0.5 flex min-w-full w-max max-w-[min(280px,calc(100vw-2rem))] max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
                   >
                     {TOOLBAR_METRIC_OPTIONS.map((opt) => (
                       <button
@@ -856,13 +852,13 @@ export function MainContent() {
                           setToolbarMetric(opt.id);
                           setToolbarMetricOpen(false);
                         }}
-                        className={`flex w-full cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left font-['Inter',sans-serif] text-sm font-normal leading-normal text-[#101828] transition-colors ${drillDropdownMenuItemHover} ${
+                        className={`flex h-9 w-full shrink-0 cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
                           toolbarMetric === opt.id ? 'bg-slate-100' : ''
                         }`}
                       >
                         {opt.label}
                         {toolbarMetric === opt.id && (
-                          <Check size={14} className="shrink-0 text-[#101828]" strokeWidth={2} aria-hidden />
+                          <Check size={14} className="shrink-0 text-[#00050a]" strokeWidth={2} aria-hidden />
                         )}
                       </button>
                     ))}
@@ -882,8 +878,7 @@ export function MainContent() {
                 }}
                 aria-expanded={Boolean(advancedFiltersAnchor?.source === 'button')}
                 aria-haspopup="menu"
-                className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-[2px] border border-solid border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors hover:border-[#d1d5db]"
-                style={{ borderWidth: '0.5px' }}
+                className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors hover:border-[#d1d5db]"
                 aria-label="Filters"
               >
                 <Filter size={16} className="shrink-0" strokeWidth={2} aria-hidden />

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { drillDropdownMenuItemHover } from '../lib/dropdownMenuClasses';
+import { drillDropdownMenuItemHover, rowActionsMenuPanelChromeClass } from '../lib/dropdownMenuClasses';
 
 export const PRODUCT_DRILL_DIMENSIONS = [
   { id: 'product', label: 'Product' },
@@ -60,19 +60,21 @@ export function DrillDownProductModal({
 
   const viewportW = typeof window !== 'undefined' ? window.innerWidth : 0;
   const viewportH = typeof window !== 'undefined' ? window.innerHeight : 0;
+  const edgeGutter = 16;
+  const maxMenuPx = 320;
   const minW = Math.max(anchorRect.width, MIN_WIDTH);
   let left = anchorRect.right + GAP;
-  if (left + minW > viewportW - 16) {
+  if (left + minW > viewportW - edgeGutter) {
     left = Math.max(8, anchorRect.left - minW - GAP);
   }
-  const top = Math.min(Math.max(8, anchorRect.top), Math.max(8, viewportH - 320 - 16));
-  const maxH = viewportH - top - 16;
-  const maxHeight = maxH > 120 ? maxH : 280;
+  /** Top edge matches the drill anchor (`getBoundingClientRect` on the button). */
+  const top = Math.max(8, anchorRect.top);
+  const maxHeight = Math.min(maxMenuPx, Math.max(0, viewportH - top - edgeGutter));
 
   return (
     <div
       ref={popoverRef}
-      className="fixed z-[200] flex max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 font-['Inter',sans-serif] shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
+      className={`fixed z-[200] ${rowActionsMenuPanelChromeClass}`}
       style={{
         top: `${top}px`,
         left: `${left}px`,
@@ -92,7 +94,7 @@ export function DrillDownProductModal({
             onSelectDimension?.(id);
             onClose();
           }}
-          className={`flex h-9 w-full shrink-0 items-center gap-2 rounded-md bg-white px-3 py-0 text-left text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`}
+          className={`flex h-9 w-full shrink-0 items-center gap-2 rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`}
         >
           {label}
         </button>

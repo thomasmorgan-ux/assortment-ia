@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { drillDropdownMenuItemHover } from '../lib/dropdownMenuClasses';
+import { drillDropdownMenuItemHover, rowActionsMenuPanelChromeClass } from '../lib/dropdownMenuClasses';
 
 /** Same order as design: Location → Country → Location Type → Region → Location Group → Location Cluster */
 export const LOCATION_DIMENSION_MENU = [
@@ -17,7 +17,6 @@ const LOCATION_TYPE_DRILL_OPTIONS = [
   { id: 'location', label: 'locations' },
 ] as const;
 
-const GAP = 4;
 const MIN_WIDTH = 200;
 const MIN_WIDTH_LOCATION_TYPE = 280;
 
@@ -68,26 +67,29 @@ export function DrillDownLocationModal({
 
   const viewportW = typeof window !== 'undefined' ? window.innerWidth : 0;
   const viewportH = typeof window !== 'undefined' ? window.innerHeight : 0;
+  const edgeGutter = 16;
+  const maxMenuPx = 320;
   const useLocationTypeUi =
     locationTypeDrill && productColumnTitle && locationTypeName;
   const minW = Math.max(
     anchorRect.width,
     useLocationTypeUi ? MIN_WIDTH_LOCATION_TYPE : MIN_WIDTH
   );
-  let left = anchorRect.right + GAP;
-  if (left + minW > viewportW - 16) {
-    left = Math.max(8, anchorRect.left - minW - GAP);
+  /** Top-left of menu matches top-left of drill control. */
+  let left = anchorRect.left;
+  left = Math.max(edgeGutter, left);
+  if (left + minW > viewportW - edgeGutter) {
+    left = Math.max(edgeGutter, viewportW - edgeGutter - minW);
   }
-  const top = Math.min(Math.max(8, anchorRect.top), Math.max(8, viewportH - 320 - 16));
-  const maxH = viewportH - top - 16;
-  const maxHeight = maxH > 120 ? maxH : 280;
+  const top = Math.max(edgeGutter, anchorRect.top);
+  const maxHeight = Math.min(maxMenuPx, Math.max(0, viewportH - top - edgeGutter));
 
   const menuAriaLabel = useLocationTypeUi ? 'Show locations by scope' : 'Location';
 
   return (
     <div
       ref={popoverRef}
-      className="fixed z-[200] flex max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
+      className={`fixed z-[200] ${rowActionsMenuPanelChromeClass}`}
       style={{
         top: `${top}px`,
         left: `${left}px`,
@@ -100,7 +102,7 @@ export function DrillDownLocationModal({
       <span className="sr-only">{menuAriaLabel}</span>
       {useLocationTypeUi ? (
         <>
-          <div className="shrink-0 border-b border-[#e9eaeb] px-1 py-2 text-sm leading-snug text-[#00050a]">
+          <div className="shrink-0 border-b-[0.5px] border-solid border-[#e9eaeb] px-1 py-2 text-sm leading-snug text-[#00050a]">
             For <span className="font-medium">{productColumnTitle}</span> and{' '}
             <span className="font-medium">{locationTypeName}</span> show all:
           </div>
