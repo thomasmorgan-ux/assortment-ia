@@ -105,6 +105,9 @@ const SALES_COLUMN_MIN_WIDTH_PX = 148;
 const SCHEDULE_RANGE_COLUMN_MIN_WIDTH_PX = 280;
 /** Assorted SKU Locs (grip column `scheduleStart`): pill + ALL|NONE|REC on one row. */
 const ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX = 268;
+/** Recommended assorted SKU locs — before “Assorted SKU Locs”; purple pill, no quick actions. */
+const REC_ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX = 172;
+const REC_ASSORTED_SKU_LOCS_COLUMN_SURFACE_CLASS = 'bg-white';
 
 /** Service level “Forecast / week” — 150px narrower than the main Assortment column (288px). */
 const SERVICE_LEVEL_FORECAST_WEEK_COLUMN_MIN_WIDTH_PX = 138;
@@ -243,6 +246,8 @@ const DRILL_GRIP_COLUMN_IDS = [
 export type GripColumnId =
   | (typeof BASE_GRIP_COLUMN_IDS)[number]
   | 'assortment'
+  /** Recommended assorted SKU Locs — fixed before Assorted SKU Locs, not in drag order list. */
+  | 'recSkuLocs'
   /** Assorted SKU Locs — fixed after Location, not reorderable. */
   | 'scheduleStart'
   /** Service level tab only — after Forecast confidence (ia). */
@@ -282,9 +287,13 @@ const SERVICE_LEVEL_HIDDEN_GRIP_MIN_WIDTH_PX =
 
 /** Recommendation / IA metrics accent (purple). */
 const ASSORTED_SKU_LOCS_REC_TEXT = 'text-[#6864E6]';
-/** Assorted SKU Locs pill — light track + blue fill (design). */
+/** Assorted SKU Locs pill — light track + teal fill (design). */
 const SKU_LOCS_PILL_TRACK = 'bg-[#F3F4F6]';
 const SKU_LOCS_PILL_FILL = 'bg-[#2EB8C2]';
+
+/** Rec assorted SKU Locs pill — light track + medium gray fill (design reference). */
+const REC_SKU_LOCS_PILL_TRACK = 'bg-[#F3F4F6]';
+const REC_SKU_LOCS_PILL_FILL = 'bg-[#6864E6]';
 
 /** Inter 14 / regular / tabular / tight — IA / assortment recommendation metrics. */
 const skuLocsMetricTypography = "font-['Inter',sans-serif] text-[14px] font-normal tabular-nums leading-none";
@@ -298,6 +307,18 @@ function AssortedSkuLocsProgressCell({
   const pct =
     now.total > 0 ? Math.min(100, Math.max(0, (now.count / now.total) * 100)) : 0;
   const fullOrNearly = pct >= 99.5 || now.total <= 0;
+  /** Teal on grey track + white on fill — avoids teal-on-teal when the bar covers the label. */
+  const dualToneLabel = (
+    <>
+      {now.count.toLocaleString()}
+      <span className="mx-1 font-normal opacity-90">/</span>
+      {now.total.toLocaleString()}
+    </>
+  );
+  const clipPct = Math.round(pct * 1000) / 1000;
+  const trailClip = Math.min(100, Math.max(0, 100 - clipPct));
+  const showDualToneText =
+    now.total > 0 && !fullOrNearly && clipPct > 0 && clipPct < 99.5;
   const subtitle =
     managementKind === 'autone' ? 'Some managed by autone' : 'Managed by you';
   return (
@@ -316,21 +337,98 @@ function AssortedSkuLocsProgressCell({
             style={{ width: fullOrNearly && now.total > 0 ? '100%' : `${pct}%` }}
             aria-hidden
           />
-          <div
-            className={`relative flex h-full w-full items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none ${
-              fullOrNearly && now.total > 0 ? 'text-white' : 'text-[#2EB8C2]'
-            }`}
-          >
-            {now.count.toLocaleString()}
-            <span className="mx-1 font-normal opacity-90">/</span>
-            {now.total.toLocaleString()}
-          </div>
+          {showDualToneText ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2">
+              <span
+                className="absolute inset-0 flex items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none text-[#2EB8C2]"
+                style={{ clipPath: `inset(0 0 0 ${clipPct}%)` }}
+                aria-hidden
+              >
+                {dualToneLabel}
+              </span>
+              <span
+                className="absolute inset-0 flex items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none text-white"
+                style={{ clipPath: `inset(0 ${trailClip}% 0 0)` }}
+                aria-hidden
+              >
+                {dualToneLabel}
+              </span>
+            </div>
+          ) : (
+            <div
+              className={`relative flex h-full w-full items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none ${
+                fullOrNearly && now.total > 0 ? 'text-white' : 'text-[#2EB8C2]'
+              }`}
+            >
+              {dualToneLabel}
+            </div>
+          )}
         </div>
         {trailing}
       </div>
       <p className={`mt-1.5 ${tableCellSecondary}`}>
         {subtitle}
       </p>
+    </div>
+  );
+}
+
+function RecAssortedSkuLocsProgressCell({ rec }: { rec: AssortmentRow['assortedSkuLocs']['rec'] }) {
+  const pct =
+    rec.total > 0 ? Math.min(100, Math.max(0, (rec.count / rec.total) * 100)) : 0;
+  const fullOrNearly = pct >= 99.5 || rec.total <= 0;
+  const dualToneLabel = (
+    <>
+      {rec.count.toLocaleString()}
+      <span className="mx-1 font-normal opacity-90">/</span>
+      {rec.total.toLocaleString()}
+    </>
+  );
+  const clipPct = Math.round(pct * 1000) / 1000;
+  const trailClip = Math.min(100, Math.max(0, 100 - clipPct));
+  const showDualToneText = rec.total > 0 && !fullOrNearly && clipPct > 0 && clipPct < 99.5;
+  const labelTypography =
+    "font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none";
+  return (
+    <div
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={rec.total}
+      aria-valuenow={rec.count}
+      aria-label={`Recommended assorted SKU locations ${rec.count} of ${rec.total}`}
+      className={`relative isolate mx-auto h-[30px] w-[150px] max-w-full shrink-0 overflow-hidden rounded-[8px] ${REC_SKU_LOCS_PILL_TRACK}`}
+    >
+      <div
+        className={`absolute inset-y-0 left-0 ${REC_SKU_LOCS_PILL_FILL}`}
+        style={{ width: fullOrNearly && rec.total > 0 ? '100%' : `${pct}%` }}
+        aria-hidden
+      />
+      {showDualToneText ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2">
+          <span
+            className={`absolute inset-0 flex items-center justify-center px-2 ${labelTypography} text-[#4B5563]`}
+            style={{ clipPath: `inset(0 0 0 ${clipPct}%)` }}
+            aria-hidden
+          >
+            {dualToneLabel}
+          </span>
+          <span
+            className={`absolute inset-0 flex items-center justify-center px-2 ${labelTypography} text-white`}
+            style={{ clipPath: `inset(0 ${trailClip}% 0 0)` }}
+            aria-hidden
+          >
+            {dualToneLabel}
+          </span>
+        </div>
+      ) : (
+        <div
+          className={`relative flex h-full w-full items-center justify-center px-2 ${labelTypography} ${
+            fullOrNearly && rec.total > 0 ? 'text-white' : 'text-[#4B5563]'
+          }`}
+        >
+          {dualToneLabel}
+        </div>
+      )}
     </div>
   );
 }
@@ -718,11 +816,11 @@ export function AssortmentTable({
   const tableMinWidthPx = useMemo(() => {
     const base = productDrillDownActive
       ? showRecommendationColumns
-        ? 2910
-        : 2680
+        ? 3082
+        : 2852
       : showRecommendationColumns
-        ? 2420
-        : 2200;
+        ? 2592
+        : 2372;
     return (
       base +
       STICKY_GROUPING_COLUMNS_WIDTH_EXTRA_PX -
@@ -906,7 +1004,8 @@ export function AssortmentTable({
         return (
           s !== 'rowAction' &&
           s !== 'assortment' &&
-          s !== 'scheduleStart'
+          s !== 'scheduleStart' &&
+          s !== 'recSkuLocs'
         );
       });
       const ordered = next.includes('ia') ? next : (['ia' as GripColumnId, ...next] as GripColumnId[]);
@@ -1105,6 +1204,23 @@ export function AssortmentTable({
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
               {gripDragHandle(columnId, title)}
               <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>{title}</span>
+            </div>
+          </th>
+        );
+      }
+      case 'recSkuLocs': {
+        const recHeader = 'Rec Assorted SKU Locs';
+        return (
+          <th
+            key={columnId}
+            className={`h-[62px] min-h-[62px] box-border px-4 py-[9px] text-left align-middle ${REC_ASSORTED_SKU_LOCS_COLUMN_SURFACE_CLASS}`}
+            style={{ minWidth: REC_ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX }}
+            scope="col"
+            {...d}
+          >
+            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+              {gripDragHandle(columnId, recHeader)}
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>{recHeader}</span>
             </div>
           </th>
         );
@@ -1573,6 +1689,16 @@ export function AssortmentTable({
                 className="box-border w-full min-w-0 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] outline-none tabular-nums placeholder:font-normal placeholder:text-[#6A7282]"
               />
             </div>
+          </td>
+        );
+      case 'recSkuLocs':
+        return (
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] box-border py-3 px-4 text-center align-middle ${REC_ASSORTED_SKU_LOCS_COLUMN_SURFACE_CLASS} ${tableRowHoverTd}`}
+            style={{ minWidth: REC_ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX }}
+          >
+            <RecAssortedSkuLocsProgressCell rec={row.assortedSkuLocs.rec} />
           </td>
         );
       case 'scheduleStart':
@@ -2065,6 +2191,7 @@ export function AssortmentTable({
                   </div>
                 </th>
               )}
+              {!designOnly && renderGripColumnHeader('recSkuLocs')}
               {!designOnly && renderGripColumnHeader('scheduleStart')}
               {!designOnly && renderGripColumnHeader('assortment')}
               {!designOnly &&
@@ -2194,6 +2321,7 @@ export function AssortmentTable({
                     </div>
                   </td>
                 )}
+                {!designOnly && renderGripColumnBodyCell('recSkuLocs', row, rowIndex, drillM)}
                 {!designOnly && renderGripColumnBodyCell('scheduleStart', row, rowIndex, drillM)}
                 {!designOnly && renderGripColumnBodyCell('assortment', row, rowIndex, drillM)}
                 {!designOnly &&
