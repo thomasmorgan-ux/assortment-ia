@@ -631,7 +631,7 @@ export function MainContent() {
   };
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-slate-50">
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-50">
       {optimisingBannerVisible && !optimisingBannerDismissed && (
         <div className="fixed left-1/2 top-[116px] z-[60] w-full max-w-2xl -translate-x-1/2">
           <OptimisingIABanner
@@ -681,7 +681,8 @@ export function MainContent() {
         </div>
       )}
 
-      <div className="flex min-h-full w-full flex-col gap-4 bg-white px-6 py-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-white px-6 py-4">
         {/* Focus tabs — outside bordered toolbar card */}
         <div className="flex w-full min-w-0 flex-col gap-3">
           {focusView !== 'service-level' && !newRecsAvailableBannerDismissed && (
@@ -1071,6 +1072,7 @@ export function MainContent() {
               }}
             />
           </div>
+        </div>
         </div>
       </div>
 
