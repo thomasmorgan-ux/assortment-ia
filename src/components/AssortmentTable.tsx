@@ -61,6 +61,9 @@ const tableCellSecondary =
 /** Row hover fill (with `group` on `<tr>`) */
 const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 
+/** Indent body content to match header text after grip (`h-4 w-4`) + `gap-2`. */
+const gripAlignedBodyPl = 'pl-6';
+
 /** IA column (sum + recommendation + % WH Stock for IA); legacy 104px is baked into `tableMinWidthPx` `base`. */
 /** Tight fit for % + “% WH Stock for IA” row + px-3; allows ~3-digit % + label without wrap. */
 const IA_COLUMN_MIN_WIDTH_PX = 192;
@@ -175,9 +178,32 @@ export type GripColumnId =
   | 'serviceNextScheduledEvent'
   /** Service level tab only — after Next scheduled event. */
   | 'serviceStockoutTolerance'
+  /** Service level tab only — after Stockout tolerance. */
+  | 'serviceUncertaintyTolerance'
+  /** Service level tab only — after Uncertainty tolerance. */
+  | 'serviceSafetyStock'
+  /** Service level tab only — after Safety stock. */
+  | 'serviceDisplayQuantity'
   | (typeof DRILL_GRIP_COLUMN_IDS)[number];
 
 const DRILL_GRIP_ID_SET = new Set<string>(DRILL_GRIP_COLUMN_IDS);
+
+/**
+ * Service level tab: hide standard supply-chain grip columns (Start/End dates, Sales, Forecast/wk, etc.).
+ * Min-widths match header `min-w-*` for `tableMinWidthPx` when these are omitted.
+ */
+const SERVICE_LEVEL_HIDDEN_GRIP_IDS = [
+  'sales',
+  'scheduleEnd',
+  'forecastPerWeek',
+  'targetCoverage',
+  'inventory',
+  'whStock',
+  'whStockWh',
+] as const satisfies readonly GripColumnId[];
+const SERVICE_LEVEL_HIDDEN_GRIP_ID_SET = new Set<string>(SERVICE_LEVEL_HIDDEN_GRIP_IDS);
+const SERVICE_LEVEL_HIDDEN_GRIP_MIN_WIDTH_PX =
+  200 + 180 + 180 + 140 + 140 + 120 + 132;
 
 /** Recommendation / IA metrics accent (purple). */
 const ASSORTED_SKU_LOCS_REC_TEXT = 'text-[#6864E6]';
@@ -318,11 +344,36 @@ function nextScheduledEventDisplay(
 const STOCKOUT_TOLERANCE_OPTIONS = ['Very high', 'High', 'medium', 'Low', 'none'] as const;
 type StockoutToleranceOption = (typeof STOCKOUT_TOLERANCE_OPTIONS)[number];
 
+const UNCERTAINTY_TOLERANCE_OPTIONS = [
+  'Very aggressive',
+  'Aggressive',
+  'Somewhat aggressive',
+  'Somewhat conservative',
+  'Conservative',
+  'Very conservative',
+] as const;
+type UncertaintyToleranceOption = (typeof UNCERTAINTY_TOLERANCE_OPTIONS)[number];
+
 /** Default tier when row has no user override; stable per row id. */
 function defaultStockoutToleranceTier(rowId: string): StockoutToleranceOption {
   let h = 0;
   for (let i = 0; i < rowId.length; i++) h = (Math.imul(31, h) + rowId.charCodeAt(i)) >>> 0;
   return STOCKOUT_TOLERANCE_OPTIONS[h % STOCKOUT_TOLERANCE_OPTIONS.length];
+}
+
+function defaultUncertaintyToleranceTier(rowId: string): UncertaintyToleranceOption {
+  let h = 0;
+  for (let i = 0; i < rowId.length; i++) h = (Math.imul(31, h) + rowId.charCodeAt(i)) >>> 0;
+  h = (h ^ 0x9e3779b9) >>> 0;
+  return UNCERTAINTY_TOLERANCE_OPTIONS[h % UNCERTAINTY_TOLERANCE_OPTIONS.length];
+}
+
+/** Service level “Safety stock” — per-row measure (hash-based, stable) for demo copy. */
+function safetyStockCoverageMeasure(rowId: string): number {
+  let h = 0;
+  for (let i = 0; i < rowId.length; i++) h = (Math.imul(31, h) + rowId.charCodeAt(i)) >>> 0;
+  h = (h ^ 0x51edcb01) >>> 0;
+  return 100 + (h % 1980) * 5;
 }
 
 /** e.g. "16/16 Assorted" → two lines for the recommendations pill. */
@@ -481,6 +532,12 @@ export function AssortmentTable({
   const serviceNextScheduledEventColumnMinWidthPx = 220;
   /** Service level only — “Stockout tolerance” column. */
   const serviceStockoutToleranceColumnMinWidthPx = 200;
+  /** Service level only — “Uncertainty tolerance” column. */
+  const serviceUncertaintyToleranceColumnMinWidthPx = 200;
+  /** Service level only — “Safety stock” column (“N of stock coverage”). */
+  const serviceSafetyStockColumnMinWidthPx = 260;
+  /** Service level only — “Display quantity” column. */
+  const serviceDisplayQuantityColumnMinWidthPx = 200;
   /** Action column (overflow menu). */
   const rowActionColumnMinWidthPx = 80;
   const tableMinWidthPx = useMemo(() => {
@@ -496,12 +553,19 @@ export function AssortmentTable({
       mergedSkuLocsColumnWidthSavePx -
       statusColumnMinWidthPx -
       removedTrailingColumnsMinWidthPx +
-      whStockWhColumnMinWidthPx +
+      (serviceLevelView ? 0 : whStockWhColumnMinWidthPx) +
       rowActionColumnMinWidthPx +
       assortmentColumnMinWidthPx +
       (IA_COLUMN_MIN_WIDTH_PX - IA_COLUMN_MIN_WIDTH_LEGACY_PX) -
       (showAssortmentScheduleColumn ? 0 : scheduleColumnMinWidthPx) +
-      (serviceLevelView ? serviceNextScheduledEventColumnMinWidthPx + serviceStockoutToleranceColumnMinWidthPx : 0)
+      (serviceLevelView
+        ? serviceNextScheduledEventColumnMinWidthPx +
+          serviceStockoutToleranceColumnMinWidthPx +
+          serviceUncertaintyToleranceColumnMinWidthPx +
+          serviceSafetyStockColumnMinWidthPx +
+          serviceDisplayQuantityColumnMinWidthPx -
+          SERVICE_LEVEL_HIDDEN_GRIP_MIN_WIDTH_PX
+        : 0)
     );
   }, [
     productDrillDownActive,
@@ -572,22 +636,85 @@ export function AssortmentTable({
   const [stockoutToleranceByRowId, setStockoutToleranceByRowId] = useState<
     Record<string, StockoutToleranceOption>
   >({});
+  const [stockoutToleranceDropdownRowId, setStockoutToleranceDropdownRowId] = useState<string | null>(
+    null
+  );
+  const [uncertaintyToleranceByRowId, setUncertaintyToleranceByRowId] = useState<
+    Record<string, UncertaintyToleranceOption>
+  >({});
+  const [uncertaintyToleranceDropdownRowId, setUncertaintyToleranceDropdownRowId] = useState<
+    string | null
+  >(null);
+  const [displayQuantityInputByRowId, setDisplayQuantityInputByRowId] = useState<
+    Record<string, string>
+  >({});
+
+  useEffect(() => {
+    if (!serviceLevelView) {
+      setStockoutToleranceDropdownRowId(null);
+      setUncertaintyToleranceDropdownRowId(null);
+      setDisplayQuantityInputByRowId({});
+    }
+  }, [serviceLevelView]);
+
+  useEffect(() => {
+    if (stockoutToleranceDropdownRowId == null && uncertaintyToleranceDropdownRowId == null) return;
+    const onMouseDown = (e: MouseEvent) => {
+      const el = e.target;
+      if (!(el instanceof Element)) return;
+      if (
+        el.closest('[data-stockout-tolerance-menu]') ||
+        el.closest('[data-uncertainty-tolerance-menu]')
+      )
+        return;
+      setStockoutToleranceDropdownRowId(null);
+      setUncertaintyToleranceDropdownRowId(null);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [stockoutToleranceDropdownRowId, uncertaintyToleranceDropdownRowId]);
 
   useEffect(() => {
     setGripColumnOrder((prev) => {
       const without = prev.filter(
-        (id) => id !== 'serviceNextScheduledEvent' && id !== 'serviceStockoutTolerance'
+        (id) =>
+          id !== 'serviceNextScheduledEvent' &&
+          id !== 'serviceStockoutTolerance' &&
+          id !== 'serviceUncertaintyTolerance' &&
+          id !== 'serviceSafetyStock' &&
+          id !== 'serviceDisplayQuantity'
       );
       if (!serviceLevelView) return without;
       const iaIdx = without.indexOf('ia');
       const insertNext: GripColumnId = 'serviceNextScheduledEvent';
       const insertStock: GripColumnId = 'serviceStockoutTolerance';
-      if (iaIdx === -1) return [...without, insertNext, insertStock];
+      const insertUncertainty: GripColumnId = 'serviceUncertaintyTolerance';
+      const insertSafety: GripColumnId = 'serviceSafetyStock';
+      const insertDisplayQty: GripColumnId = 'serviceDisplayQuantity';
+      if (iaIdx === -1) {
+        return [
+          ...without,
+          insertNext,
+          insertStock,
+          insertUncertainty,
+          insertSafety,
+          insertDisplayQty,
+        ];
+      }
       const next: GripColumnId[] = [...without];
       next.splice(iaIdx + 1, 0, insertNext);
       const evIdx = next.indexOf('serviceNextScheduledEvent');
       if (evIdx === -1) return next;
       next.splice(evIdx + 1, 0, insertStock);
+      const stockIdx = next.indexOf('serviceStockoutTolerance');
+      if (stockIdx === -1) return next;
+      next.splice(stockIdx + 1, 0, insertUncertainty);
+      const uncIdx = next.indexOf('serviceUncertaintyTolerance');
+      if (uncIdx === -1) return next;
+      next.splice(uncIdx + 1, 0, insertSafety);
+      const safetyIdx = next.indexOf('serviceSafetyStock');
+      if (safetyIdx === -1) return next;
+      next.splice(safetyIdx + 1, 0, insertDisplayQty);
       return next;
     });
   }, [serviceLevelView]);
@@ -665,7 +792,13 @@ export function AssortmentTable({
   const visibleGripColumnOrder = gripColumnOrder.filter(
     (id) =>
       (!DRILL_GRIP_ID_SET.has(id) || productDrillDownActive) &&
-      (serviceLevelView || (id !== 'serviceNextScheduledEvent' && id !== 'serviceStockoutTolerance'))
+      (serviceLevelView ||
+        (id !== 'serviceNextScheduledEvent' &&
+          id !== 'serviceStockoutTolerance' &&
+          id !== 'serviceUncertaintyTolerance' &&
+          id !== 'serviceSafetyStock' &&
+          id !== 'serviceDisplayQuantity')) &&
+      !(serviceLevelView && SERVICE_LEVEL_HIDDEN_GRIP_ID_SET.has(id))
   );
 
   const renderGripColumnHeader = (columnId: GripColumnId): ReactNode => {
@@ -720,10 +853,55 @@ export function AssortmentTable({
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
               {gripDragHandle(columnId, title)}
-              <span className={`flex min-w-0 flex-col items-start leading-tight ${tableCellPrimary}`}>
-                <span>Stockout</span>
-                <span>tolerance</span>
-              </span>
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>{title}</span>
+            </div>
+          </th>
+        );
+      }
+      case 'serviceUncertaintyTolerance': {
+        const title = 'Uncertainty tolerance';
+        return (
+          <th
+            key={columnId}
+            scope="col"
+            className="h-[86px] min-h-[86px] min-w-[200px] box-border bg-white px-4 py-3 text-left align-middle"
+            {...d}
+          >
+            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+              {gripDragHandle(columnId, title)}
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>{title}</span>
+            </div>
+          </th>
+        );
+      }
+      case 'serviceSafetyStock': {
+        const title = 'Safety stock';
+        return (
+          <th
+            key={columnId}
+            scope="col"
+            className="h-[86px] min-h-[86px] min-w-[260px] box-border bg-white px-4 py-3 text-left align-middle"
+            {...d}
+          >
+            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+              {gripDragHandle(columnId, title)}
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>{title}</span>
+            </div>
+          </th>
+        );
+      }
+      case 'serviceDisplayQuantity': {
+        const title = 'Display quantity';
+        return (
+          <th
+            key={columnId}
+            scope="col"
+            className="h-[86px] min-h-[86px] min-w-[200px] box-border bg-white px-4 py-3 text-left align-middle"
+            {...d}
+          >
+            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+              {gripDragHandle(columnId, title)}
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>{title}</span>
             </div>
           </th>
         );
@@ -739,9 +917,8 @@ export function AssortmentTable({
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
               {gripDragHandle(columnId, assortedSkuLocsHeader)}
-              <span className={`flex min-w-0 flex-col items-start leading-tight ${tableCellPrimary}`}>
-                <span>Assorted SKU</span>
-                <span>Locs</span>
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>
+                {assortedSkuLocsHeader}
               </span>
             </div>
           </th>
@@ -861,9 +1038,8 @@ export function AssortmentTable({
             >
               <div className="flex w-full min-w-0 items-center justify-end gap-2">
                 {gripDragHandle(columnId, forecastWeekHeader)}
-                <span className={`flex min-w-0 flex-col items-end leading-tight ${tableCellPrimary}`}>
-                  <span>Forecast</span>
-                  <span>/ week</span>
+                <span className={`whitespace-normal text-right leading-tight ${tableCellPrimary}`}>
+                  {forecastWeekHeader}
                 </span>
               </div>
             </th>
@@ -875,8 +1051,10 @@ export function AssortmentTable({
             key={columnId}
             className="h-[86px] min-h-[86px] min-w-[120px] px-4 py-3 text-right align-middle"
             scope="col"
+            {...d}
           >
-            <div className="flex w-full items-center justify-end gap-1">
+            <div className="flex w-full items-center justify-end gap-2">
+              {gripDragHandle(columnId, assortmentHeader)}
               <span>{assortmentHeader}</span>
               <button
                 type="button"
@@ -1004,7 +1182,7 @@ export function AssortmentTable({
               className={`h-[86px] min-h-[86px] py-3 px-3 text-left align-middle ${tableCellPrimary} ${tableRowHoverTd}`}
               style={{ minWidth: IA_COLUMN_MIN_WIDTH_PX }}
             >
-              {tier}
+              <div className={`min-w-0 ${gripAlignedBodyPl}`}>{tier}</div>
             </td>
           );
         }
@@ -1071,50 +1249,177 @@ export function AssortmentTable({
             key={columnId}
             className={`h-[86px] min-h-[86px] min-w-[220px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
           >
-            {ev ? (
-              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>
-                {ev.deadlineLabel}, {ev.scheduleName}
-              </span>
-            ) : (
-              <span className={tableCellSecondary}>No schedule</span>
-            )}
+            <div className={`min-w-0 ${gripAlignedBodyPl}`}>
+              {ev ? (
+                <div className="flex min-w-0 flex-col items-start justify-center gap-0.5 py-0.5">
+                  <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>
+                    {ev.deadlineLabel}
+                  </span>
+                  <span className={`whitespace-normal leading-tight ${tableCellSecondary}`}>
+                    {ev.scheduleName}
+                  </span>
+                </div>
+              ) : (
+                <span className={tableCellSecondary}>No schedule</span>
+              )}
+            </div>
           </td>
         );
       }
       case 'serviceStockoutTolerance': {
         const value = stockoutToleranceByRowId[row.id] ?? defaultStockoutToleranceTier(row.id);
+        const menuOpen = stockoutToleranceDropdownRowId === row.id;
         return (
           <td
             key={columnId}
             className={`h-[86px] min-h-[86px] min-w-[200px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
           >
-            <div className="relative w-full min-w-0">
-              <select
+            <div className={`w-full min-w-0 ${gripAlignedBodyPl}`}>
+              <div className="relative inline-block w-full min-w-0" data-stockout-tolerance-menu>
+              <button
+                type="button"
                 aria-label="Stockout tolerance"
-                value={value}
-                onChange={(e) =>
-                  setStockoutToleranceByRowId((prev) => ({
-                    ...prev,
-                    [row.id]: e.target.value as StockoutToleranceOption,
-                  }))
-                }
-                className="box-border w-full min-w-0 cursor-pointer appearance-none rounded-[2px] border border-[#e9eaeb] bg-white py-2.5 pl-3 pr-9 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25"
+                aria-expanded={menuOpen}
+                aria-haspopup="listbox"
+                onClick={() => {
+                  setUncertaintyToleranceDropdownRowId(null);
+                  setStockoutToleranceDropdownRowId((id) => (id === row.id ? null : row.id));
+                }}
+                className="inline-flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
               >
-                {STOCKOUT_TOLERANCE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6A7282]"
-                aria-hidden
-              />
+                <span className="min-w-0 truncate text-left">{value}</span>
+                <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
+              </button>
+              {menuOpen && (
+                <div
+                  className="absolute left-0 top-full z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
+                  role="listbox"
+                >
+                  {STOCKOUT_TOLERANCE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      role="option"
+                      aria-selected={opt === value}
+                      onClick={() => {
+                        setStockoutToleranceByRowId((prev) => ({ ...prev, [row.id]: opt }));
+                        setStockoutToleranceDropdownRowId(null);
+                      }}
+                      className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                        opt === value ? 'bg-slate-100' : ''
+                      }`}
+                    >
+                      {opt}
+                      {opt === value && <Check size={14} className="shrink-0 text-[#00050a]" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             </div>
           </td>
         );
       }
+      case 'serviceUncertaintyTolerance': {
+        const value =
+          uncertaintyToleranceByRowId[row.id] ?? defaultUncertaintyToleranceTier(row.id);
+        const menuOpen = uncertaintyToleranceDropdownRowId === row.id;
+        return (
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] min-w-[200px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+          >
+            <div className={`w-full min-w-0 ${gripAlignedBodyPl}`}>
+              <div className="relative inline-block w-full min-w-0" data-uncertainty-tolerance-menu>
+              <button
+                type="button"
+                aria-label="Uncertainty tolerance"
+                aria-expanded={menuOpen}
+                aria-haspopup="listbox"
+                onClick={() => {
+                  setStockoutToleranceDropdownRowId(null);
+                  setUncertaintyToleranceDropdownRowId((id) =>
+                    id === row.id ? null : row.id
+                  );
+                }}
+                className="inline-flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+              >
+                <span className="min-w-0 truncate text-left">{value}</span>
+                <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
+              </button>
+              {menuOpen && (
+                <div
+                  className="absolute left-0 top-full z-[210] mt-0.5 min-w-full rounded-[2px] border border-[#e9eaeb] bg-white py-1 shadow-lg"
+                  role="listbox"
+                >
+                  {UNCERTAINTY_TOLERANCE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      role="option"
+                      aria-selected={opt === value}
+                      onClick={() => {
+                        setUncertaintyToleranceByRowId((prev) => ({ ...prev, [row.id]: opt }));
+                        setUncertaintyToleranceDropdownRowId(null);
+                      }}
+                      className={`group/opt flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-normal leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                        opt === value ? 'bg-slate-100' : ''
+                      }`}
+                    >
+                      {opt}
+                      {opt === value && <Check size={14} className="shrink-0 text-[#00050a]" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            </div>
+          </td>
+        );
+      }
+      case 'serviceSafetyStock': {
+        const measure = safetyStockCoverageMeasure(row.id);
+        return (
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] min-w-[260px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+          >
+            <div
+              className={`flex min-w-0 flex-col items-start justify-center gap-0.5 py-0.5 ${gripAlignedBodyPl}`}
+            >
+              <div className={`tabular-nums ${tableCellPrimary}`}>
+                {measure.toLocaleString()}
+              </div>
+              <div className={tableCellSecondary}>of stock coverage</div>
+            </div>
+          </td>
+        );
+      }
+      case 'serviceDisplayQuantity':
+        return (
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] min-w-[200px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+          >
+            <div className={`relative inline-block w-full min-w-0 ${gripAlignedBodyPl}`}>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="(Optional) Input"
+                aria-label="Display quantity"
+                value={displayQuantityInputByRowId[row.id] ?? ''}
+                onChange={(e) =>
+                  setDisplayQuantityInputByRowId((prev) => ({
+                    ...prev,
+                    [row.id]: e.target.value,
+                  }))
+                }
+                className="box-border w-full min-w-0 rounded-[2px] border border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] outline-none tabular-nums placeholder:font-normal placeholder:text-[#6A7282]"
+              />
+            </div>
+          </td>
+        );
       case 'scheduleStart':
         return (
           <td
