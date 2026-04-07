@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, type SetStateAction } from 'react';
 import {
   Sparkles,
   X,
@@ -40,14 +40,6 @@ type AdvancedFiltersAnchorState = {
 };
 
 type FocusView = 'all' | 'pre-season-ia' | 'in-season-ia' | 'service-level';
-
-/** Product grouping values allowed when the Service level focus tab is active. */
-const SERVICE_LEVEL_PRODUCT_GROUPING_SET = new Set<string>([
-  'Product',
-  'Department',
-  'Sub-department',
-  'Season',
-]);
 
 /** Options in the toolbar metric split-dropdown (matches design). */
 type ToolbarMetricOptionId =
@@ -142,8 +134,33 @@ export function MainContent() {
   /** Contextual drill after picking countries/locations from Location Type. */
   const [locationTypeSubDrillBreadcrumb, setLocationTypeSubDrillBreadcrumb] =
     useState<{ label: string } | null>(null);
-  const [productColumnGrouping, setProductColumnGrouping] = useState('Product Group');
-  const [locationColumnGrouping, setLocationColumnGrouping] = useState('Location Group');
+  /** Product / Location grouping — non–service-level tabs (e.g. All) default to group-level headers. */
+  const [allTabProductGrouping, setAllTabProductGrouping] = useState('Product Group');
+  const [allTabLocationGrouping, setAllTabLocationGrouping] = useState('Location Group');
+  /** Service level tab uses Product / Location headers and SKU-style cells (see design). */
+  const [serviceTabProductGrouping, setServiceTabProductGrouping] = useState('Product');
+  const [serviceTabLocationGrouping, setServiceTabLocationGrouping] = useState('Location');
+  const isServiceLevelTab = focusView === 'service-level';
+  const productColumnGrouping = isServiceLevelTab
+    ? serviceTabProductGrouping
+    : allTabProductGrouping;
+  const locationColumnGrouping = isServiceLevelTab
+    ? serviceTabLocationGrouping
+    : allTabLocationGrouping;
+  const setProductColumnGrouping = useCallback(
+    (value: SetStateAction<string>) => {
+      if (focusView === 'service-level') setServiceTabProductGrouping(value);
+      else setAllTabProductGrouping(value);
+    },
+    [focusView]
+  );
+  const setLocationColumnGrouping = useCallback(
+    (value: SetStateAction<string>) => {
+      if (focusView === 'service-level') setServiceTabLocationGrouping(value);
+      else setAllTabLocationGrouping(value);
+    },
+    [focusView]
+  );
   const [optimisingBannerVisible, setOptimisingBannerVisible] = useState(false);
   const [optimisingBannerDismissed, setOptimisingBannerDismissed] = useState(false);
   const [hasGeneratedRecommendations, setHasGeneratedRecommendations] = useState(false);
@@ -167,14 +184,6 @@ export function MainContent() {
   const [toolbarMetricOpen, setToolbarMetricOpen] = useState(false);
   const [toolbarMetric, setToolbarMetric] = useState<ToolbarMetricOptionId>('sales-l7d');
   const toolbarMetricDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (focusView !== 'service-level') return;
-    setProductColumnGrouping((prev) =>
-      SERVICE_LEVEL_PRODUCT_GROUPING_SET.has(prev) ? prev : 'Product'
-    );
-    setLocationColumnGrouping('Location');
-  }, [focusView]);
 
   const advancedFilterScopeKey = useMemo(() => {
     const pathIds = productDrillPath.map((c) => c.id).join('/');

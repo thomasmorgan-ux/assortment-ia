@@ -12,6 +12,7 @@ import {
   Pencil,
   Check,
   ChevronDown,
+  ChevronsDown,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -20,7 +21,6 @@ import {
   Info,
   MoreVertical,
 } from 'lucide-react';
-import { AutoneDrilldownIcon } from './AutoneDrilldownIcon';
 import { DraftStatusDot } from './DraftStatusDot';
 import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
@@ -507,7 +507,7 @@ interface AssortmentTableProps {
   showAssortmentRecommendationsColumn?: boolean;
   /** Show Assortment schedule column only after user sets dates in the allocation editor. */
   showAssortmentScheduleColumn?: boolean;
-  /** Service level focus tab: product header dropdown uses Product / Department / Sub-department / Season. */
+  /** Service level focus tab: product/location grouping menus and column treatment match service-level design. */
   serviceLevelView?: boolean;
 }
 
@@ -646,9 +646,10 @@ export function AssortmentTable({
     'Product Group',
   ];
 
-  /** Service level tab only — Product, Department, Sub-department, Season (same menu pattern as Location). */
+  /** Service level tab — Product / Location headers and SKU + city cells (see design). */
   const SERVICE_LEVEL_PRODUCT_GROUPING_OPTIONS = [
     'Product',
+    'Product Group',
     'Department',
     'Sub-department',
     'Season',
@@ -2010,46 +2011,42 @@ export function AssortmentTable({
                     />
                   </div>
                 </td>
-                <td className={`sticky left-14 z-20 h-[86px] min-h-[86px] w-[220px] min-w-[220px] max-w-[220px] box-border bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] group relative ${tableRowHoverTd}`}>
-                  {locationGrouping !== 'Region' && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        setProductDrillSourceRow(row);
-                        setDrillDownAnchor(e.currentTarget.getBoundingClientRect());
-                      }}
-                      className="absolute right-4 top-1/2 inline-flex items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 -translate-y-1/2"
-                      aria-label="Drill down product dimension"
-                    >
-                      <AutoneDrilldownIcon size={14} />
-                    </button>
-                  )}
-                  <div>
-                    <div className={tableCellPrimary}>{productCell.primary}</div>
-                    <div className={`flex items-center gap-1 ${tableCellSecondary}`}>
-                      {productCell.secondary}
+                <td className={`sticky left-14 z-20 h-[86px] min-h-[86px] w-[220px] min-w-[220px] max-w-[220px] box-border bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] group ${tableRowHoverTd}`}>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className={`min-w-0 truncate ${tableCellPrimary}`}>{productCell.primary}</div>
+                      <div className={`mt-0.5 flex items-center gap-1 ${tableCellSecondary}`}>
+                        {productCell.secondary}
+                      </div>
                     </div>
+                    {locationGrouping !== 'Region' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          setProductDrillSourceRow(row);
+                          setDrillDownAnchor(e.currentTarget.getBoundingClientRect());
+                        }}
+                        className="inline-flex shrink-0 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
+                        aria-label="Drill down product dimension"
+                      >
+                        <ChevronsDown size={14} strokeWidth={2} aria-hidden />
+                      </button>
+                    )}
                   </div>
                 </td>
-                <td className={`sticky left-[calc(3.5rem+220px)] z-[15] h-[86px] min-h-[86px] min-w-[190px] bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] group relative ${tableRowHoverTd}`}>
-                  {locationGrouping !== 'Region' && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        setLocationDrillSource({ rowId: row.id, rowIndex });
-                        setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect());
-                      }}
-                      className="absolute right-4 top-1/2 z-10 inline-flex items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 -translate-y-1/2"
-                      aria-label="Drill down location dimension"
-                    >
-                      <AutoneDrilldownIcon size={14} />
-                    </button>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <MapPin size={18} strokeWidth={1.5} className="shrink-0 text-[#2EB8C2]" aria-hidden />
-                    <div>
-                      <div className={tableCellPrimary}>{locationCell.primary}</div>
-                      <div className={`flex items-center gap-1 ${tableCellSecondary}`}>
+                <td className={`sticky left-[calc(3.5rem+220px)] z-[15] h-[86px] min-h-[86px] min-w-[190px] bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] group ${tableRowHoverTd}`}>
+                  <div
+                    className={`flex min-w-0 gap-2 ${serviceLevelView ? 'items-center' : 'items-start'}`}
+                  >
+                    <MapPin
+                      size={18}
+                      strokeWidth={1.5}
+                      className={`shrink-0 text-[#2EB8C2] ${serviceLevelView ? '' : 'mt-0.5'}`}
+                      aria-hidden
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className={`min-w-0 truncate ${tableCellPrimary}`}>{locationCell.primary}</div>
+                      <div className={`mt-0.5 flex items-center gap-1 ${tableCellSecondary}`}>
                         <span
                           className={
                             locationGrouping === 'Location Type' || locationGrouping === 'Region'
@@ -2061,6 +2058,21 @@ export function AssortmentTable({
                         </span>
                       </div>
                     </div>
+                    {locationGrouping !== 'Region' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          setLocationDrillSource({ rowId: row.id, rowIndex });
+                          setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect());
+                        }}
+                        className={`inline-flex shrink-0 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 ${
+                          serviceLevelView ? '' : 'self-center'
+                        }`}
+                        aria-label="Drill down location dimension"
+                      >
+                        <ChevronsDown size={14} strokeWidth={2} aria-hidden />
+                      </button>
+                    )}
                   </div>
                 </td>
                 {!designOnly && renderGripColumnBodyCell('scheduleStart', row, rowIndex, drillM)}
