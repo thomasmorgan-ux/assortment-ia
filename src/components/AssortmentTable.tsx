@@ -68,6 +68,10 @@ const gripAlignedBodyPl = 'pl-6';
 /** Sticky Product + Location columns: +20px each vs former 200px / 170px min widths. */
 const STICKY_GROUPING_COLUMNS_WIDTH_EXTRA_PX = 40;
 
+/** Grouping `<th>` triggers — ~30px wider than compact “Product” / “Location” labels (~96px / ~101px). */
+const groupingHeaderProductTriggerClass = 'min-w-[126px]';
+const groupingHeaderLocationTriggerClass = 'min-w-[131px]';
+
 /** Product / location header grouping lists — same chrome as row actions, under triggers (`top-[43px]`). */
 const groupingDropdownPanelClass = `absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full ${rowActionsMenuPanelChromeClass}`;
 
@@ -1834,7 +1838,7 @@ export function AssortmentTable({
                   <button
                     type="button"
                     onClick={() => setProductGroupDropdownOpen((o) => !o)}
-                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+                    className={`inline-flex flex-nowrap items-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap ${groupingHeaderProductTriggerClass}`}
                   >
                     <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
                       {productGrouping}
@@ -1900,7 +1904,7 @@ export function AssortmentTable({
                     aria-expanded={locationGroupDropdownOpen}
                     aria-haspopup="listbox"
                     onClick={() => setLocationGroupDropdownOpen((o) => !o)}
-                    className="inline-flex flex-nowrap items-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+                    className={`inline-flex flex-nowrap items-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap ${groupingHeaderLocationTriggerClass}`}
                   >
                     <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
                       {locationGrouping}
