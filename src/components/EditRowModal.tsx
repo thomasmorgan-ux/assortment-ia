@@ -147,7 +147,7 @@ function RowCard({
           <EditPanelRow
             label="Product Group"
             value={row.productGroup.name}
-            subValue={`${row.productGroup.productCount} Products`}
+            subValue={`${row.productGroup.productCount} products`}
           />
         </AccordionItem>
         <AccordionItem

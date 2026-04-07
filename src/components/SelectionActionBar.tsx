@@ -10,7 +10,7 @@ const INITIAL_ALLOC_TOOLTIP = 'Assort all selected to initial allocation';
 interface SelectionActionBarProps {
   selectedRows: AssortmentRow[];
   onClearSelection: () => void;
-  /** Opens the Generate Recommendations panel. */
+  /** Opens the Generate recommendations panel. */
   onGenerateRecommendations?: () => void;
   /** Opens the Initial Allocation panel for the selected rows. Only valid when all selected rows are assorted. */
   onOpenInitialAllocation?: (rows: AssortmentRow[]) => void;
@@ -159,7 +159,7 @@ export function SelectionActionBar({
               border: '1px solid var(--Tokens-Foreground, #FFF)',
               background: 'var(--Tokens-Background, #12171E)',
             }}
-            aria-label="Generate Recommendations"
+            aria-label="Generate recommendations"
             title={
               generateRecsDisabled
                 ? !allSelectedAssorted
@@ -169,7 +169,7 @@ export function SelectionActionBar({
             }
           >
             <Sparkles size={16} className="shrink-0" />
-            Generate Recommendations
+            Generate recommendations
           </button>
           {showGenerateRecsTooltip &&
             tooltipRect &&

@@ -76,7 +76,7 @@ const TOOLBAR_METRIC_OPTIONS: readonly { id: ToolbarMetricOptionId; label: strin
   { id: 'wh-pfp', label: 'WH PFP' },
   { id: 'ia', label: 'IA' },
   { id: 'recommended-ia', label: 'Recommended IA' },
-  { id: 'wh-stock-pct-ia', label: '% WH Stock for IA' },
+  { id: 'wh-stock-pct-ia', label: '% WH stock for IA' },
 ];
 
 function toolbarMetricLabel(id: ToolbarMetricOptionId): string {
@@ -407,6 +407,27 @@ export function MainContent() {
     );
   };
 
+  const handleScheduledAssortmentScheduleChange = useCallback(
+    (rowId: string, field: 'start' | 'finish', value: string) => {
+      if (String(value ?? '').trim() !== '') {
+        setAssortmentScheduleColumnVisible(true);
+      }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === rowId
+            ? {
+                ...r,
+                ...(field === 'start'
+                  ? { scheduledAssortmentStart: value || undefined }
+                  : { scheduledAssortmentFinish: value || undefined }),
+              }
+            : r
+        )
+      );
+    },
+    []
+  );
+
   const onSelectRow = (id: string, checked: boolean) => {
     updateRow(id, { selected: checked });
   };
@@ -478,6 +499,32 @@ export function MainContent() {
       })
     );
   };
+
+  const handleAssortmentCountChange = useCallback((rowId: string, rawCount: number) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const { totalCount } = r.assortment;
+        const next = Math.max(0, Math.min(Math.trunc(rawCount), totalCount));
+        if (next === r.assortment.assortedCount) return r;
+        const assorted = `${next}/${totalCount} Assorted`;
+        const snapshot = r.lastCommittedSnapshot ?? {
+          assortment: { assortedCount: r.assortment.assortedCount, totalCount: r.assortment.totalCount },
+          sumIa: r.sumIa,
+          avgIa: r.avgIa,
+        };
+        return {
+          ...r,
+          assortment: { ...r.assortment, assortedCount: next, assorted },
+          ...(next === 0
+            ? { scheduledAssortmentStart: undefined, scheduledAssortmentFinish: undefined }
+            : {}),
+          hasPendingChanges: true,
+          lastCommittedSnapshot: snapshot,
+        };
+      })
+    );
+  }, []);
 
   /** Set each of the given rows to fully assorted (used by SelectionActionBar Assort button). */
   const onAssortSelection = (rowsToAssort: AssortmentRow[]) => {
@@ -584,7 +631,7 @@ export function MainContent() {
   };
 
   return (
-    <main className="flex-1 flex flex-col min-h-0 bg-slate-50">
+    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-slate-50">
       {optimisingBannerVisible && !optimisingBannerDismissed && (
         <div className="fixed left-1/2 top-[116px] z-[60] w-full max-w-2xl -translate-x-1/2">
           <OptimisingIABanner
@@ -634,7 +681,7 @@ export function MainContent() {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col min-h-0 bg-white px-6 py-4 gap-4">
+      <div className="flex min-h-full w-full flex-col gap-4 bg-white px-6 py-4">
         {/* Focus tabs — outside bordered toolbar card */}
         <div className="flex w-full min-w-0 flex-col gap-3">
           {focusView !== 'service-level' && !newRecsAvailableBannerDismissed && (
@@ -925,7 +972,7 @@ export function MainContent() {
         </div>
         )}
 
-        <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden">
+        <div className="flex flex-col gap-0">
           <div
             id="assortment-focus-panel"
             role="tabpanel"
@@ -938,7 +985,7 @@ export function MainContent() {
                     ? 'tab-focus-in-season-ia'
                     : 'tab-focus-service-level'
             }
-            className="flex min-h-0 min-w-0 flex-1 flex-col"
+            className="flex min-w-0 flex-col"
           >
             <AssortmentTable
               rows={tableRows}
@@ -958,6 +1005,8 @@ export function MainContent() {
               onAvgIaChange={onAvgIaChange}
               onCommit={onCommit}
               onRevert={onRevert}
+              onScheduledAssortmentScheduleChange={handleScheduledAssortmentScheduleChange}
+              onAssortmentCountChange={handleAssortmentCountChange}
               onEditRow={(row, openFrom) => {
                 const selected = rows.filter((r) => r.selected);
                 const rowsToEdit =
@@ -1034,23 +1083,7 @@ export function MainContent() {
           onUnassort={onUnassort}
           onAssortToMax={(row) => onAssortSelection([row])}
           onUnassortToZero={(row) => onUnassortSelection([row])}
-          onScheduledAssortmentScheduleChange={(rowId, field, value) => {
-            if (String(value ?? '').trim() !== '') {
-              setAssortmentScheduleColumnVisible(true);
-            }
-            setRows((prev) =>
-              prev.map((r) =>
-                r.id === rowId
-                  ? {
-                      ...r,
-                      ...(field === 'start'
-                        ? { scheduledAssortmentStart: value || undefined }
-                        : { scheduledAssortmentFinish: value || undefined }),
-                    }
-                  : r
-              )
-            );
-          }}
+          onScheduledAssortmentScheduleChange={handleScheduledAssortmentScheduleChange}
           onAssortmentCancelDraft={() => {
             if (!editAllocation || editAllocation.openFrom !== 'assortment') return;
             editAllocation.rows.forEach((r) => onRevert(r.id));
