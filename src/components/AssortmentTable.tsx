@@ -145,7 +145,7 @@ const LOCATION_DRILL_ID_TO_GROUPING: Record<string, string> = Object.fromEntries
   LOCATION_DIMENSION_MENU.map((m) => [m.id, m.label])
 ) as Record<string, string>;
 
-/** Columns with grip handles — reorderable (`scheduleStart` is fixed after Location). */
+/** Columns with grip handles — reorderable (`scheduleStart` follows Location in header order). */
 const BASE_GRIP_COLUMN_IDS = [
   'ia',
   'sales',
@@ -171,6 +171,10 @@ export type GripColumnId =
   | 'assortment'
   /** Assorted SKU Locs — fixed after Location, not reorderable. */
   | 'scheduleStart'
+  /** Service level tab only — after Forecast confidence (ia). */
+  | 'serviceNextScheduledEvent'
+  /** Service level tab only — after Next scheduled event. */
+  | 'serviceStockoutTolerance'
   | (typeof DRILL_GRIP_COLUMN_IDS)[number];
 
 const DRILL_GRIP_ID_SET = new Set<string>(DRILL_GRIP_COLUMN_IDS);
@@ -211,7 +215,7 @@ function AssortedSkuLocsProgressCell({ now, rec }: AssortmentRow['assortedSkuLoc
       </div>
       <div className="flex min-w-0 items-center gap-2">
         <span className={`w-14 shrink-0 font-['Inter',sans-serif] text-[12px] font-normal leading-normal text-[#6A7282]`}>
-          Rec
+          Total
         </span>
         <div className="min-h-0 min-w-0 flex-1">
           <div className="h-2 w-full overflow-hidden rounded-full bg-[#EEF2F6]">
@@ -269,6 +273,56 @@ function formatScheduleDateCell(iso: string | undefined): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yyyy = d.getFullYear();
   return `${dd}/${mm}/${yyyy}`;
+}
+
+/** Pseudo-random pair for Service level “Forecast / week” column; stable per row id. */
+function forecastWeekDemoMetrics(rowId: string): { total: number; avgPerWeek: number } {
+  let h = 0;
+  for (let i = 0; i < rowId.length; i++) h = (Math.imul(31, h) + rowId.charCodeAt(i)) >>> 0;
+  const total = 500 + (h % 49_500);
+  const h2 = (h ^ 0x9e3779b9) >>> 0;
+  const avgPerWeek = (10 + (h2 % 9_990)) / 10;
+  return { total, avgPerWeek };
+}
+
+const FORECAST_CONFIDENCE_TIERS = ['Optimistic', 'Realistic', 'Pessimistic'] as const;
+
+function forecastConfidenceTier(rowId: string): (typeof FORECAST_CONFIDENCE_TIERS)[number] {
+  let h = 0;
+  for (let i = 0; i < rowId.length; i++) h = (Math.imul(31, h) + rowId.charCodeAt(i)) >>> 0;
+  return FORECAST_CONFIDENCE_TIERS[h % 3];
+}
+
+const NEXT_EVENT_DEADLINE_SAMPLES = ['Mar 15, 2026', 'Apr 3, 2026', 'May 20, 2026', 'Jun 1, 2026'] as const;
+const NEXT_EVENT_NAME_SAMPLES = [
+  'Spring reset',
+  'Bordeaux window',
+  'Pre-season gate',
+  'Allocation freeze',
+] as const;
+
+/** Row data or deterministic demo for Service level “Next scheduled event” cells. */
+function nextScheduledEventDisplay(
+  row: AssortmentRow
+): { deadlineLabel: string; scheduleName: string } | null {
+  if (row.nextScheduledEvent) return row.nextScheduledEvent;
+  let h = 0;
+  for (let i = 0; i < row.id.length; i++) h = (Math.imul(31, h) + row.id.charCodeAt(i)) >>> 0;
+  if (h % 4 !== 0) return null;
+  return {
+    deadlineLabel: NEXT_EVENT_DEADLINE_SAMPLES[h % NEXT_EVENT_DEADLINE_SAMPLES.length],
+    scheduleName: NEXT_EVENT_NAME_SAMPLES[(h >>> 8) % NEXT_EVENT_NAME_SAMPLES.length],
+  };
+}
+
+const STOCKOUT_TOLERANCE_OPTIONS = ['Very high', 'High', 'medium', 'Low', 'none'] as const;
+type StockoutToleranceOption = (typeof STOCKOUT_TOLERANCE_OPTIONS)[number];
+
+/** Default tier when row has no user override; stable per row id. */
+function defaultStockoutToleranceTier(rowId: string): StockoutToleranceOption {
+  let h = 0;
+  for (let i = 0; i < rowId.length; i++) h = (Math.imul(31, h) + rowId.charCodeAt(i)) >>> 0;
+  return STOCKOUT_TOLERANCE_OPTIONS[h % STOCKOUT_TOLERANCE_OPTIONS.length];
 }
 
 /** e.g. "16/16 Assorted" → two lines for the recommendations pill. */
@@ -421,8 +475,12 @@ export function AssortmentTable({
   const removedTrailingColumnsMinWidthPx = 410;
   /** WH Stock column (value + PFP). */
   const whStockWhColumnMinWidthPx = 132;
-  /** Assortment column (fraction + label). */
-  const assortmentColumnMinWidthPx = 120;
+  /** Assortment column, or Service level “Forecast / week” column (wider). */
+  const assortmentColumnMinWidthPx = serviceLevelView ? 200 : 120;
+  /** Service level only — “Next scheduled event” column. */
+  const serviceNextScheduledEventColumnMinWidthPx = 220;
+  /** Service level only — “Stockout tolerance” column. */
+  const serviceStockoutToleranceColumnMinWidthPx = 200;
   /** Action column (overflow menu). */
   const rowActionColumnMinWidthPx = 80;
   const tableMinWidthPx = useMemo(() => {
@@ -442,12 +500,14 @@ export function AssortmentTable({
       rowActionColumnMinWidthPx +
       assortmentColumnMinWidthPx +
       (IA_COLUMN_MIN_WIDTH_PX - IA_COLUMN_MIN_WIDTH_LEGACY_PX) -
-      (showAssortmentScheduleColumn ? 0 : scheduleColumnMinWidthPx)
+      (showAssortmentScheduleColumn ? 0 : scheduleColumnMinWidthPx) +
+      (serviceLevelView ? serviceNextScheduledEventColumnMinWidthPx + serviceStockoutToleranceColumnMinWidthPx : 0)
     );
   }, [
     productDrillDownActive,
     showRecommendationColumns,
     showAssortmentScheduleColumn,
+    serviceLevelView,
   ]);
 
   const PRODUCT_GROUPING_OPTIONS = [
@@ -509,6 +569,28 @@ export function AssortmentTable({
   const [gripColumnOrder, setGripColumnOrder] = useState<GripColumnId[]>(() => [
     ...BASE_GRIP_COLUMN_IDS,
   ]);
+  const [stockoutToleranceByRowId, setStockoutToleranceByRowId] = useState<
+    Record<string, StockoutToleranceOption>
+  >({});
+
+  useEffect(() => {
+    setGripColumnOrder((prev) => {
+      const without = prev.filter(
+        (id) => id !== 'serviceNextScheduledEvent' && id !== 'serviceStockoutTolerance'
+      );
+      if (!serviceLevelView) return without;
+      const iaIdx = without.indexOf('ia');
+      const insertNext: GripColumnId = 'serviceNextScheduledEvent';
+      const insertStock: GripColumnId = 'serviceStockoutTolerance';
+      if (iaIdx === -1) return [...without, insertNext, insertStock];
+      const next: GripColumnId[] = [...without];
+      next.splice(iaIdx + 1, 0, insertNext);
+      const evIdx = next.indexOf('serviceNextScheduledEvent');
+      if (evIdx === -1) return next;
+      next.splice(evIdx + 1, 0, insertStock);
+      return next;
+    });
+  }, [serviceLevelView]);
 
   useEffect(() => {
     setGripColumnOrder((prev) => {
@@ -581,33 +663,66 @@ export function AssortmentTable({
   );
 
   const visibleGripColumnOrder = gripColumnOrder.filter(
-    (id) => !DRILL_GRIP_ID_SET.has(id) || productDrillDownActive
+    (id) =>
+      (!DRILL_GRIP_ID_SET.has(id) || productDrillDownActive) &&
+      (serviceLevelView || (id !== 'serviceNextScheduledEvent' && id !== 'serviceStockoutTolerance'))
   );
 
   const renderGripColumnHeader = (columnId: GripColumnId): ReactNode => {
     const d = gripThDropProps(columnId);
     switch (columnId) {
       case 'ia': {
+        const forecastConfidenceHeader = 'Forecast confidence';
+        const headerLabel = serviceLevelView ? forecastConfidenceHeader : 'IA';
+        const ariaLabel = serviceLevelView ? forecastConfidenceHeader : 'Initial allocation';
         return (
           <th
             key={columnId}
             className="h-[86px] min-h-[86px] px-3 py-3 text-left align-middle"
             style={{ minWidth: IA_COLUMN_MIN_WIDTH_PX }}
             scope="col"
-            aria-label="Initial allocation"
+            aria-label={ariaLabel}
             {...d}
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
-              {gripDragHandle(columnId, 'IA')}
-              <span className="inline-flex shrink-0 items-center gap-1">
-                IA{' '}
-                <button
-                  type="button"
-                  className="inline-flex rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
-                  aria-label="Edit initial allocation column"
-                >
-                  <Pencil size={14} className="shrink-0" />
-                </button>
+              {gripDragHandle(columnId, headerLabel)}
+              <span className={serviceLevelView ? 'whitespace-normal leading-tight' : undefined}>
+                {headerLabel}
+              </span>
+            </div>
+          </th>
+        );
+      }
+      case 'serviceNextScheduledEvent': {
+        const title = 'Next scheduled event';
+        return (
+          <th
+            key={columnId}
+            scope="col"
+            className="h-[86px] min-h-[86px] min-w-[220px] box-border bg-white px-4 py-3 text-left align-middle"
+            {...d}
+          >
+            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+              {gripDragHandle(columnId, title)}
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>{title}</span>
+            </div>
+          </th>
+        );
+      }
+      case 'serviceStockoutTolerance': {
+        const title = 'Stockout tolerance';
+        return (
+          <th
+            key={columnId}
+            scope="col"
+            className="h-[86px] min-h-[86px] min-w-[200px] box-border bg-white px-4 py-3 text-left align-middle"
+            {...d}
+          >
+            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+              {gripDragHandle(columnId, title)}
+              <span className={`flex min-w-0 flex-col items-start leading-tight ${tableCellPrimary}`}>
+                <span>Stockout</span>
+                <span>tolerance</span>
               </span>
             </div>
           </th>
@@ -618,10 +733,17 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="sticky left-[calc(3.5rem+200px+170px)] z-[14] box-border h-[86px] min-h-[86px] min-w-[248px] bg-white px-4 py-3 text-left align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)]"
+            className="h-[86px] min-h-[86px] min-w-[248px] box-border bg-white px-4 py-3 text-left align-middle"
             scope="col"
+            {...d}
           >
-            {assortedSkuLocsHeader}
+            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+              {gripDragHandle(columnId, assortedSkuLocsHeader)}
+              <span className={`flex min-w-0 flex-col items-start leading-tight ${tableCellPrimary}`}>
+                <span>Assorted SKU</span>
+                <span>Locs</span>
+              </span>
+            </div>
           </th>
         );
       }
@@ -728,6 +850,25 @@ export function AssortmentTable({
         );
       }
       case 'assortment': {
+        if (serviceLevelView) {
+          const forecastWeekHeader = 'Forecast / week';
+          return (
+            <th
+              key={columnId}
+              className="h-[86px] min-h-[86px] min-w-[200px] px-4 py-3 text-right align-middle"
+              scope="col"
+              {...d}
+            >
+              <div className="flex w-full min-w-0 items-center justify-end gap-2">
+                {gripDragHandle(columnId, forecastWeekHeader)}
+                <span className={`flex min-w-0 flex-col items-end leading-tight ${tableCellPrimary}`}>
+                  <span>Forecast</span>
+                  <span>/ week</span>
+                </span>
+              </div>
+            </th>
+          );
+        }
         const assortmentHeader = 'Assortment';
         return (
           <th
@@ -855,6 +996,18 @@ export function AssortmentTable({
   ): ReactNode => {
     switch (columnId) {
       case 'ia':
+        if (serviceLevelView) {
+          const tier = forecastConfidenceTier(row.id);
+          return (
+            <td
+              key={columnId}
+              className={`h-[86px] min-h-[86px] py-3 px-3 text-left align-middle ${tableCellPrimary} ${tableRowHoverTd}`}
+              style={{ minWidth: IA_COLUMN_MIN_WIDTH_PX }}
+            >
+              {tier}
+            </td>
+          );
+        }
         return (
           <td
             key={columnId}
@@ -911,11 +1064,62 @@ export function AssortmentTable({
             </div>
           </td>
         );
+      case 'serviceNextScheduledEvent': {
+        const ev = nextScheduledEventDisplay(row);
+        return (
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] min-w-[220px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+          >
+            {ev ? (
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>
+                {ev.deadlineLabel}, {ev.scheduleName}
+              </span>
+            ) : (
+              <span className={tableCellSecondary}>No schedule</span>
+            )}
+          </td>
+        );
+      }
+      case 'serviceStockoutTolerance': {
+        const value = stockoutToleranceByRowId[row.id] ?? defaultStockoutToleranceTier(row.id);
+        return (
+          <td
+            key={columnId}
+            className={`h-[86px] min-h-[86px] min-w-[200px] bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+          >
+            <div className="relative w-full min-w-0">
+              <select
+                aria-label="Stockout tolerance"
+                value={value}
+                onChange={(e) =>
+                  setStockoutToleranceByRowId((prev) => ({
+                    ...prev,
+                    [row.id]: e.target.value as StockoutToleranceOption,
+                  }))
+                }
+                className="box-border w-full min-w-0 cursor-pointer appearance-none rounded-[2px] border border-[#e9eaeb] bg-white py-2.5 pl-3 pr-9 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25"
+              >
+                {STOCKOUT_TOLERANCE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6A7282]"
+                aria-hidden
+              />
+            </div>
+          </td>
+        );
+      }
       case 'scheduleStart':
         return (
           <td
             key={columnId}
-            className={`sticky left-[calc(3.5rem+200px+170px)] z-[14] box-border h-[86px] min-h-[86px] min-w-[248px] bg-white py-3 px-4 text-left align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] min-w-[248px] box-border bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
           >
             <AssortedSkuLocsProgressCell {...row.assortedSkuLocs} />
           </td>
@@ -975,6 +1179,29 @@ export function AssortmentTable({
           </td>
         );
       case 'assortment': {
+        if (serviceLevelView) {
+          const { total, avgPerWeek } = forecastWeekDemoMetrics(row.id);
+          const avgFmt = avgPerWeek.toLocaleString(undefined, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          });
+          return (
+            <td
+              key={columnId}
+              className={`h-[86px] min-h-[86px] min-w-[200px] py-3 px-4 text-right align-middle ${tableRowHoverTd}`}
+            >
+              <div className="flex flex-col items-end justify-center gap-0.5">
+                <span className={`tabular-nums ${tableCellPrimary}`}>{total.toLocaleString()}</span>
+                <span className="inline-flex flex-nowrap items-center justify-end gap-x-1.5 whitespace-nowrap">
+                  <span className={`tabular-nums ${tableCellPrimary}`}>{avgFmt}</span>
+                  <span className="font-['Inter',sans-serif] text-[12px] font-normal leading-none text-[#6A7282]">
+                    avg. per week
+                  </span>
+                </span>
+              </div>
+            </td>
+          );
+        }
         const { assortedCount, totalCount } = row.assortment;
         const pendingAssortment =
           row.hasPendingChanges &&

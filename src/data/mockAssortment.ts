@@ -204,6 +204,7 @@ export const mockRows: AssortmentRow[] = [
     mq: 28,
     scheduledAssortmentStart: '2025-10-01',
     scheduledAssortmentFinish: '2026-05-28',
+    nextScheduledEvent: { deadlineLabel: 'Apr 12, 2026', scheduleName: 'Spring assortment window' },
     committed: true,
     productDrillMetrics: { skuLocations: 28, minQty: 28, inventory: 32, targetCoverageWk: 5, forecastSalesPerWk: 16 },
   },

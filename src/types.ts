@@ -46,6 +46,8 @@ export interface AssortmentRow {
   /** Optional schedule window (YYYY-MM-DD) for when assortment change applies. Set from EditAllocationPanel. */
   scheduledAssortmentStart?: string;
   scheduledAssortmentFinish?: string;
+  /** Service level table: “Next scheduled event” column (deadline + schedule name). */
+  nextScheduledEvent?: { deadlineLabel: string; scheduleName: string };
   /** Extra columns when product drill-down breadcrumb is active */
   productDrillMetrics?: {
     skuLocations: number;
