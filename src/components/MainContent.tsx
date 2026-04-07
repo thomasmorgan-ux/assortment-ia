@@ -639,53 +639,46 @@ export function MainContent() {
         <div className="flex w-full min-w-0 flex-col gap-3">
           {focusView !== 'service-level' && !newRecsAvailableBannerDismissed && (
             <div
-              className="flex w-full min-w-0 flex-wrap items-center gap-4 rounded-[5px] border border-solid border-[#e9eaeb] bg-white px-4 py-3"
+              className="flex w-full min-w-0 flex-wrap items-start gap-3 rounded-[6px] border border-solid border-[#00050a]/[0.12] bg-[#f8f8f8] p-4 sm:items-center sm:gap-4"
               style={{ borderWidth: '0.5px' }}
               role="region"
               aria-label="New recommendations available"
             >
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-solid border-[#e9eaeb] bg-white"
-                  style={{ borderWidth: '0.5px' }}
-                  aria-hidden
-                >
-                  <Info className="h-5 w-5 text-[#6A7282]" strokeWidth={2} />
-                </div>
-                <p className="min-w-0 flex-1 font-['Inter',sans-serif] text-sm font-normal leading-normal text-[#344054]">
-                  New recommendations are available for{' '}
-                  <span className="font-semibold tabular-nums text-[#101828]">
-                    {tableRows
-                      .reduce(
-                        (sum, r) =>
-                          sum + r.productGroup.productCount * r.locationCluster.locationCount,
-                        0
-                      )
-                      .toLocaleString()}
-                  </span>{' '}
-                  sku-locations in your current view. Would you like to accept them?
+              <Info
+                className="mt-0.5 h-6 w-6 shrink-0 text-[#00050a] sm:mt-0"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <p className="font-['Inter',sans-serif] text-[18px] font-medium leading-normal text-[#00050a]">
+                  New recommendations available
+                </p>
+                <p className="font-['Inter',sans-serif] text-sm font-normal leading-normal text-[#4b535c]">
+                  They apply to sku-locations in your current view. Would you like to accept them?
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewRecsAvailableBannerDismissed(true);
-                    setGenerateRecModalOpen(true);
-                  }}
-                  className="rounded border border-solid border-[#e9eaeb] bg-white px-4 py-2 font-['Inter',sans-serif] text-sm font-semibold leading-normal text-[#101828] transition-colors hover:bg-slate-50"
-                  style={{ borderWidth: '0.5px' }}
-                >
-                  Accept
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewRecsAvailableBannerDismissed(true)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-[#6A7282] transition-colors hover:bg-slate-100 hover:text-[#101828]"
-                  aria-label="Dismiss"
-                >
-                  <X size={18} strokeWidth={2} aria-hidden />
-                </button>
+              <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-4 sm:ml-auto sm:w-auto sm:shrink-0">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewRecsAvailableBannerDismissed(true);
+                      setGenerateRecModalOpen(true);
+                    }}
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded border border-solid border-[#e9eaeb] bg-white px-4 py-2 font-['Inter',sans-serif] text-base font-medium leading-normal text-[#00050a] transition-colors hover:bg-slate-50"
+                    style={{ borderWidth: '0.5px' }}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewRecsAvailableBannerDismissed(true)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-[#00050a] transition-colors hover:bg-black/[0.06]"
+                    aria-label="Dismiss"
+                  >
+                    <X size={16} strokeWidth={2} aria-hidden />
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -785,7 +778,7 @@ export function MainContent() {
                   aria-expanded={toolbarMetricOpen}
                   aria-haspopup="listbox"
                   aria-controls="toolbar-metric-listbox"
-                  className="flex min-w-[148px] max-w-[min(220px,50vw)] items-center justify-between gap-2 border-0 bg-transparent px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] transition-colors hover:bg-slate-50"
+                  className="flex min-w-[148px] max-w-[min(220px,50vw)] items-center justify-between gap-2 border-0 bg-transparent px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828]"
                 >
                   <span className="truncate">{toolbarMetricLabel(toolbarMetric)}</span>
                   <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
@@ -793,7 +786,7 @@ export function MainContent() {
                 <div className="w-px shrink-0 self-stretch bg-[#e9eaeb]" aria-hidden />
                 <button
                   type="button"
-                  className="flex w-10 shrink-0 items-center justify-center border-0 bg-transparent text-[#101828] transition-colors hover:bg-slate-50"
+                  className="flex w-10 shrink-0 items-center justify-center border-0 bg-transparent text-[#101828]"
                   aria-label={`Sort by ${toolbarMetricLabel(toolbarMetric)}`}
                 >
                   <ArrowDown size={16} strokeWidth={2} aria-hidden />
