@@ -98,6 +98,10 @@ const tableCellNumericInputClass =
   "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 " +
   "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60";
 
+/** Matches `ScheduleDatePopoverInput` trigger sizing; label uses `leading-tight` like next-event deadline. */
+const serviceLevelToleranceTriggerClass =
+  "flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap transition-colors focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25";
+
 export function TableCellNumericInput({
   value,
   onCommit,
@@ -1346,9 +1350,9 @@ export function AssortmentTable({
                   setUncertaintyToleranceDropdownRowId(null);
                   setStockoutToleranceDropdownRowId((id) => (id === row.id ? null : row.id));
                 }}
-                className="inline-flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+                className={serviceLevelToleranceTriggerClass}
               >
-                <span className="min-w-0 truncate text-left">{value}</span>
+                <span className="min-w-0 truncate text-left leading-tight">{value}</span>
                 <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
               </button>
               {menuOpen && (
@@ -1400,9 +1404,9 @@ export function AssortmentTable({
                     id === row.id ? null : row.id
                   );
                 }}
-                className="inline-flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap"
+                className={serviceLevelToleranceTriggerClass}
               >
-                <span className="min-w-0 truncate text-left">{value}</span>
+                <span className="min-w-0 truncate text-left leading-tight">{value}</span>
                 <ChevronDown size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
               </button>
               {menuOpen && (
