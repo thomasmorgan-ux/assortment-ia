@@ -1055,10 +1055,7 @@ export function AssortmentTable({
           >
             <div className="flex w-full items-center justify-end gap-2">
               {gripDragHandle(columnId, forecastWkHeader)}
-              <span className="flex min-w-0 flex-col items-end leading-tight">
-                <span>Forecast</span>
-                <span>/wk</span>
-              </span>
+              <span className="shrink-0 whitespace-nowrap">{forecastWkHeader}</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
           </th>
@@ -1074,10 +1071,7 @@ export function AssortmentTable({
           >
             <div className="flex w-full items-center justify-end gap-2">
               {gripDragHandle(columnId, targetCoverageHeader)}
-              <span className="flex min-w-0 flex-col items-end leading-tight">
-                <span>Target</span>
-                <span>Coverage</span>
-              </span>
+              <span className="shrink-0 whitespace-nowrap">{targetCoverageHeader}</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
           </th>
@@ -1169,10 +1163,7 @@ export function AssortmentTable({
           >
             <div className="flex w-full items-center justify-end gap-2">
               {gripDragHandle(columnId, `${targetCoverageDrillHeader} (drill)`)}
-              <span className="flex min-w-0 flex-col items-end leading-tight">
-                <span>Target</span>
-                <span>Coverage</span>
-              </span>
+              <span className="shrink-0 whitespace-nowrap">{targetCoverageDrillHeader}</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
           </th>
@@ -1188,10 +1179,7 @@ export function AssortmentTable({
           >
             <div className="flex w-full items-center justify-end gap-2">
               {gripDragHandle(columnId, `${forecastWkDrillHeader} (drill)`)}
-              <span className="flex min-w-0 flex-col items-end leading-tight">
-                <span>Forecast</span>
-                <span>/wk</span>
-              </span>
+              <span className="shrink-0 whitespace-nowrap">{forecastWkDrillHeader}</span>
               <Info size={14} className="shrink-0 text-[#6A7282]" aria-hidden />
             </div>
           </th>
@@ -1740,14 +1728,6 @@ export function AssortmentTable({
             <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
             <span className={`shrink-0 ${recommendationMetricTextClass}`}>
               {row.sumIaRecommendation.toLocaleString()}
-            </span>
-          </span>
-          <span className="inline-flex shrink-0 items-center gap-0.5">
-            <span className={recommendationMetricTextClass}>
-              {(row.avgIaRecommendation ?? row.avgIa).toLocaleString()}
-            </span>
-            <span className="font-['Inter',sans-serif] text-[12px] font-normal leading-none text-[#6A7282]">
-              avg. per week
             </span>
           </span>
         </div>
