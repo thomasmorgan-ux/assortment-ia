@@ -65,6 +65,9 @@ const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 /** Indent body content to match header text after grip (`h-4 w-4`) + `gap-2`. */
 const gripAlignedBodyPl = 'pl-6';
 
+/** Sticky Product + Location columns: +20px each vs former 200px / 170px min widths. */
+const STICKY_GROUPING_COLUMNS_WIDTH_EXTRA_PX = 40;
+
 /** Product / location header grouping lists — same chrome as row actions, under triggers (`top-[43px]`). */
 const groupingDropdownPanelClass = `absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full ${rowActionsMenuPanelChromeClass}`;
 
@@ -600,7 +603,8 @@ export function AssortmentTable({
         ? 2400
         : 2180;
     return (
-      base -
+      base +
+      STICKY_GROUPING_COLUMNS_WIDTH_EXTRA_PX -
       mergedSkuLocsColumnWidthSavePx -
       statusColumnMinWidthPx -
       removedTrailingColumnsMinWidthPx +
@@ -1244,18 +1248,14 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] py-3 px-1 group relative ${tableRowHoverTd} ${
-              iaColumnNeedsTopAlign(row) ? 'align-top' : 'align-middle'
-            }`}
+            className={`h-[86px] min-h-[86px] py-3 px-1 align-middle group relative ${tableRowHoverTd}`}
             style={{ minWidth: IA_COLUMN_MIN_WIDTH_PX }}
           >
             {row.assortment.assortedCount === row.assortment.totalCount && (
               <button
                 type="button"
                 onClick={() => onEditRow?.(row, 'initial-allocation')}
-                className={`absolute right-1 p-1 rounded text-[#6A7282] hover:bg-slate-100 hover:text-sky-600 transition-all opacity-0 group-hover:opacity-100 ${
-                  iaColumnNeedsTopAlign(row) ? 'top-3' : 'top-1/2 -translate-y-1/2'
-                }`}
+                className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-[#6A7282] opacity-0 transition-all hover:bg-slate-100 hover:text-sky-600 group-hover:opacity-100"
                 aria-label="Edit allocation"
               >
                 <Pencil size={14} />
@@ -1266,15 +1266,14 @@ export function AssortmentTable({
               row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa) && (
                 <DraftStatusDot
                   padded={false}
-                  className={`absolute left-1 z-10 ${
-                    iaColumnNeedsTopAlign(row) ? 'top-4' : 'top-1/2 -translate-y-1/2'
-                  }`}
+                  className="absolute left-1 top-1/2 z-10 -translate-y-1/2"
                   title="Initial allocation edited"
                   aria-hidden
                 />
               )}
             <div
               className={[
+                'flex w-full min-w-0 flex-col items-end gap-1.5',
                 row.hasPendingChanges &&
                 row.lastCommittedSnapshot &&
                 row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa)
@@ -1285,11 +1284,7 @@ export function AssortmentTable({
                 .filter(Boolean)
                 .join(' ')}
             >
-              <div className="flex w-full min-w-0 flex-col items-end gap-1.5">
-                <div className="flex w-full flex-col items-end gap-1.5">
-                  {renderIaColumnBody(row)}
-                </div>
-              </div>
+              {renderIaColumnBody(row)}
             </div>
           </td>
         );
@@ -1775,8 +1770,6 @@ export function AssortmentTable({
     ];
   };
 
-  const iaColumnNeedsTopAlign = (_row: AssortmentRow) => true;
-
   const renderRowActionBodyCell = (row: AssortmentRow) => (
     <td
       key="row-action"
@@ -1827,7 +1820,7 @@ export function AssortmentTable({
                 </label>
               </th>
               <th
-                className={`sticky left-14 h-[62px] min-h-[62px] w-[200px] min-w-[200px] max-w-[200px] box-border bg-white px-4 py-[9px] text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] ${
+                className={`sticky left-14 h-[62px] min-h-[62px] w-[220px] min-w-[220px] max-w-[220px] box-border bg-white px-4 py-[9px] text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] ${
                   productGroupDropdownOpen ? 'z-[200]' : 'z-20'
                 }`}
                 scope="col"
@@ -1890,7 +1883,7 @@ export function AssortmentTable({
                 </div>
               </th>
               <th
-                className={`sticky left-[calc(3.5rem+200px)] h-[62px] min-h-[62px] min-w-[170px] px-4 py-[9px] text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] bg-white ${
+                className={`sticky left-[calc(3.5rem+220px)] h-[62px] min-h-[62px] min-w-[190px] px-4 py-[9px] text-left shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] bg-white ${
                   locationGroupDropdownOpen ? 'z-[200]' : 'z-[15]'
                 }`}
                 scope="col"
@@ -2013,7 +2006,7 @@ export function AssortmentTable({
                     />
                   </div>
                 </td>
-                <td className={`sticky left-14 z-20 h-[86px] min-h-[86px] w-[200px] min-w-[200px] max-w-[200px] box-border bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] group relative ${tableRowHoverTd}`}>
+                <td className={`sticky left-14 z-20 h-[86px] min-h-[86px] w-[220px] min-w-[220px] max-w-[220px] box-border bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] group relative ${tableRowHoverTd}`}>
                   {locationGrouping !== 'Region' && (
                     <button
                       type="button"
@@ -2034,7 +2027,7 @@ export function AssortmentTable({
                     </div>
                   </div>
                 </td>
-                <td className={`sticky left-[calc(3.5rem+200px)] z-[15] h-[86px] min-h-[86px] min-w-[170px] bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] group relative ${tableRowHoverTd}`}>
+                <td className={`sticky left-[calc(3.5rem+220px)] z-[15] h-[86px] min-h-[86px] min-w-[190px] bg-white py-3 px-4 align-middle shadow-[4px_0_12px_-6px_rgba(15,23,42,0.12)] group relative ${tableRowHoverTd}`}>
                   {locationGrouping !== 'Region' && (
                     <button
                       type="button"

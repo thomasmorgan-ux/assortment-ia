@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { X, Sparkles, Check } from 'lucide-react';
 import type { AssortmentRow } from '../types';
 
-/** Bar and control surface (matches product token). */
-const SELECTION_BAR_BG = '#00050A';
+/** Bar and control surface — match app `Header` (`bg-[#12171e]`). */
+const SELECTION_BAR_BG = '#12171e';
 
 const ASSORT_ALL_TOOLTIP = 'Assort all selected to generate recommendations';
 const RECS_ALREADY_TOOLTIP = 'Recommendations already generated for the selected rows';
