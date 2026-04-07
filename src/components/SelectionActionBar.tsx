@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import { X, Sparkles, Check } from 'lucide-react';
 import type { AssortmentRow } from '../types';
 
+/** Bar and control surface (matches product token). */
+const SELECTION_BAR_BG = '#00050A';
+
 const ASSORT_ALL_TOOLTIP = 'Assort all selected to generate recommendations';
 const RECS_ALREADY_TOOLTIP = 'Recommendations already generated for the selected rows';
 const INITIAL_ALLOC_TOOLTIP = 'Assort all selected to initial allocation';
@@ -96,7 +99,7 @@ export function SelectionActionBar({
       className={`flex items-start overflow-hidden rounded px-4 py-3 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.08)] ${
         inline ? 'w-full gap-3' : 'fixed bottom-6 left-1/2 z-50 -translate-x-1/2'
       }`}
-      style={{ backgroundColor: '#12171e' }}
+      style={{ backgroundColor: SELECTION_BAR_BG }}
       role="region"
       aria-label="Selection actions"
     >
@@ -124,7 +127,7 @@ export function SelectionActionBar({
           style={{
             borderRadius: 'var(--Tokens-Border-s, 4px)',
             border: '1px solid var(--Tokens-Foreground, #FFF)',
-            background: 'var(--Tokens-Background, #12171E)',
+            background: SELECTION_BAR_BG,
           }}
           data-node-id="751:68465"
         >
@@ -138,7 +141,7 @@ export function SelectionActionBar({
           style={{
             borderRadius: 'var(--Tokens-Border-s, 4px)',
             border: '1px solid var(--Tokens-Foreground, #FFF)',
-            background: 'var(--Tokens-Background, #12171E)',
+            background: SELECTION_BAR_BG,
           }}
         >
           Unassort
@@ -157,7 +160,7 @@ export function SelectionActionBar({
             style={{
               borderRadius: 'var(--Tokens-Border-s, 4px)',
               border: '1px solid var(--Tokens-Foreground, #FFF)',
-              background: 'var(--Tokens-Background, #12171E)',
+              background: SELECTION_BAR_BG,
             }}
             aria-label="Generate recommendations"
             title={
@@ -207,7 +210,7 @@ export function SelectionActionBar({
             style={{
               borderRadius: 'var(--Tokens-Border-s, 4px)',
               border: '1px solid var(--Tokens-Foreground, #FFF)',
-              background: 'var(--Tokens-Background, #12171E)',
+              background: SELECTION_BAR_BG,
             }}
             aria-label="Initial Allocation"
             title={allSelectedAssorted ? undefined : INITIAL_ALLOC_TOOLTIP}
@@ -248,7 +251,7 @@ export function SelectionActionBar({
               style={{
                 borderRadius: 'var(--Tokens-Border-s, 4px)',
                 border: '1px solid var(--Tokens-Foreground, #FFF)',
-                background: 'var(--Tokens-Background, #12171E)',
+                background: SELECTION_BAR_BG,
               }}
             >
               <Check size={16} className="shrink-0" />
@@ -268,7 +271,7 @@ export function SelectionActionBar({
               style={{
                 borderRadius: 'var(--Tokens-Border-s, 4px)',
                 border: '1px solid var(--Tokens-Foreground, #FFF)',
-                background: 'var(--Tokens-Background, #12171E)',
+                background: SELECTION_BAR_BG,
               }}
             >
               <X size={16} className="shrink-0" />
@@ -286,7 +289,7 @@ export function SelectionActionBar({
         className="ml-2 flex h-10 w-10 shrink-0 items-center justify-center text-white/80 transition-colors hover:opacity-90 hover:text-white"
         style={{
           borderRadius: 'var(--Tokens-Border-s, 4px)',
-          background: 'var(--Tokens-Background, #12171E)',
+          background: SELECTION_BAR_BG,
         }}
         aria-label="Clear selection and close"
       >

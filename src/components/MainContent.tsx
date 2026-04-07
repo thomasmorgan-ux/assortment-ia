@@ -1001,6 +1001,8 @@ export function MainContent() {
               onSelectAll={onSelectAll}
               onAssort={onAssort}
               onUnassort={onUnassort}
+              onAssortToMax={(row) => onAssortSelection([row])}
+              onUnassortToZero={(row) => onUnassortSelection([row])}
               onSumIaChange={onSumIaChange}
               onAvgIaChange={onAvgIaChange}
               onCommit={onCommit}
@@ -1084,6 +1086,7 @@ export function MainContent() {
           onAssortToMax={(row) => onAssortSelection([row])}
           onUnassortToZero={(row) => onUnassortSelection([row])}
           onScheduledAssortmentScheduleChange={handleScheduledAssortmentScheduleChange}
+          onAssortmentCountChange={handleAssortmentCountChange}
           onAssortmentCancelDraft={() => {
             if (!editAllocation || editAllocation.openFrom !== 'assortment') return;
             editAllocation.rows.forEach((r) => onRevert(r.id));

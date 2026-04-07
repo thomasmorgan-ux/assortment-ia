@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { X, Clock, Info, ChevronLeft, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import { DraftStatusDot } from './DraftStatusDot';
+import { TableCellNumericInput } from './AssortmentTable';
 import type { AssortmentRow } from '../types';
 import { dropdownMenuItemHover } from '../lib/dropdownMenuClasses';
 
@@ -30,6 +31,8 @@ interface EditAllocationPanelProps {
   /** When set, Assortment section Unassort button sets row to 0 assorted. */
   onUnassortToZero?: (row: AssortmentRow) => void;
   onScheduledAssortmentScheduleChange?: (rowId: string, field: 'start' | 'finish', value: string) => void;
+  /** Inline assorted count (clamped in parent). */
+  onAssortmentCountChange?: (rowId: string, count: number) => void;
   /** Assortment drawer: Cancel draft reverts panel rows to last commit and closes. */
   onAssortmentCancelDraft?: () => void;
 }
@@ -114,6 +117,11 @@ const topLocationsMock: { metric: string; committed: number | string; current: s
 ];
 
 const TOTAL_MIN_QUANTITY = 3;
+
+const EDIT_PANEL_ASSORT_COUNT_INPUT_CLASS =
+  'box-border h-9 w-14 min-w-[3.5rem] max-w-[5rem] rounded-[2px] border border-solid border-[#e9eaeb] bg-white px-2 py-0 ' +
+  "font-['Inter',sans-serif] text-sm font-semibold tabular-nums leading-normal text-[#101828] " +
+  'focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25';
 
 const topProductsMock: { metric: string; committed: number | string; current: string }[] = [
   { metric: 'Top Product 1', committed: 0, current: '5 Navy Jumper in Paris' },
@@ -201,6 +209,7 @@ export function EditAllocationPanel({
   onAssortToMax,
   onUnassortToZero,
   onScheduledAssortmentScheduleChange,
+  onAssortmentCountChange,
   onAssortmentCancelDraft,
 }: EditAllocationPanelProps) {
   const isInitialAllocation = openFrom === 'initial-allocation';
@@ -471,12 +480,18 @@ export function EditAllocationPanel({
                           <div className="border-t border-[#e9eaeb] p-4">
                             <h4 className="mb-3 text-sm font-semibold text-[#000000]">Assortment</h4>
                             <div className="flex flex-wrap items-center gap-3">
-                              <span className="text-sm text-[#000000]">
-                                <span className={r.hasPendingChanges ? 'font-medium text-amber-600' : ''}>
-                                  {r.assortment.assortedCount}
-                                </span>
-                                <span>/{r.assortment.totalCount} Assorted</span>
-                              </span>
+                              <div className="flex flex-wrap items-baseline gap-1 text-sm text-[#000000]">
+                                <TableCellNumericInput
+                                  value={r.assortment.assortedCount}
+                                  onCommit={(n) => onAssortmentCountChange?.(r.id, n)}
+                                  ariaLabel={`Assorted count for ${r.productGroup.name} in ${r.locationCluster.name}`}
+                                  className={
+                                    EDIT_PANEL_ASSORT_COUNT_INPUT_CLASS +
+                                    (r.hasPendingChanges ? ' text-amber-700' : '')
+                                  }
+                                />
+                                <span>/{r.assortment.totalCount} assorted</span>
+                              </div>
                               <div className="flex flex-wrap gap-2">
                                 <button
                                   type="button"
@@ -608,12 +623,18 @@ export function EditAllocationPanel({
                   <section>
                     <h3 className="mb-3 text-sm font-semibold text-[#000000]">Assortment</h3>
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-sm text-[#000000]">
-                        <span className={singleRow.hasPendingChanges ? 'font-medium text-amber-600' : ''}>
-                          {singleRow.assortment.assortedCount}
-                        </span>
-                        <span>/{singleRow.assortment.totalCount} Assorted</span>
-                      </span>
+                      <div className="flex flex-wrap items-baseline gap-1 text-sm text-[#000000]">
+                        <TableCellNumericInput
+                          value={singleRow.assortment.assortedCount}
+                          onCommit={(n) => onAssortmentCountChange?.(singleRow.id, n)}
+                          ariaLabel={`Assorted count for ${singleRow.productGroup.name}`}
+                          className={
+                            EDIT_PANEL_ASSORT_COUNT_INPUT_CLASS +
+                            (singleRow.hasPendingChanges ? ' text-amber-700' : '')
+                          }
+                        />
+                        <span>/{singleRow.assortment.totalCount} assorted</span>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"

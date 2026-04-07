@@ -69,7 +69,8 @@ const IA_COLUMN_MIN_WIDTH_PX = 192;
 const IA_COLUMN_MIN_WIDTH_LEGACY_PX = 104;
 
 /** Dedicated "% WH stock for IA" grip column (percentage only; title in header); follows IA. */
-const WH_STOCK_PCT_IA_COLUMN_MIN_WIDTH_PX = 168;
+/** Wide enough for grip + “% WH stock for IA” on one line. */
+const WH_STOCK_PCT_IA_COLUMN_MIN_WIDTH_PX = 204;
 
 /** Design system text input (Figma Input text / stroke #e9eaeb, 40px height, 2px radius) */
 const tableCellNumericInputClass =
@@ -96,16 +97,22 @@ function scheduleDateToInputValue(raw: string | undefined): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function TableCellNumericInput({
+export function TableCellNumericInput({
   value,
   onCommit,
   ariaLabel,
   disabled,
+  /** Overrides default table cell input styling (e.g. edit drawer). */
+  className,
+  /** First pointer-down while not focused opens the panel instead of focusing the field (e.g. assortment drawer). */
+  onOpenEditPanel,
 }: {
   value: number;
   onCommit: (next: number) => void;
   ariaLabel: string;
   disabled?: boolean;
+  className?: string;
+  onOpenEditPanel?: () => void;
 }) {
   const [text, setText] = useState(() => String(value));
 
@@ -120,13 +127,14 @@ function TableCellNumericInput({
     return Number.isFinite(n) ? Math.trunc(n) : 0;
   };
 
+  const inputClass = className ?? tableCellNumericInputClass;
   return (
     <input
       type="text"
       inputMode="numeric"
       aria-label={ariaLabel}
       disabled={disabled}
-      className={tableCellNumericInputClass}
+      className={onOpenEditPanel ? `${inputClass} cursor-pointer` : inputClass}
       value={text}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
@@ -137,6 +145,17 @@ function TableCellNumericInput({
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
       }}
+      onPointerDown={
+        onOpenEditPanel
+          ? (e) => {
+              if (!e.isPrimary || disabled) return;
+              if (document.activeElement !== e.currentTarget) {
+                e.preventDefault();
+                onOpenEditPanel();
+              }
+            }
+          : undefined
+      }
     />
   );
 }
@@ -433,6 +452,10 @@ interface AssortmentTableProps {
   onSelectAll: (checked: boolean) => void;
   onAssort: (row: AssortmentRow) => void;
   onUnassort: (row: AssortmentRow) => void;
+  /** Table Assort column: jump to fully assorted (optional; falls back to `onAssort`). */
+  onAssortToMax?: (row: AssortmentRow) => void;
+  /** Table Assort column: clear to zero (optional; falls back to `onUnassort`). */
+  onUnassortToZero?: (row: AssortmentRow) => void;
   onSumIaChange: (id: string, value: number) => void;
   onAvgIaChange: (id: string, value: number) => void;
   onOpenModal?: (kind: ModalKind, row?: AssortmentRow) => void;
@@ -488,8 +511,10 @@ export function AssortmentTable({
   designOnly = false,
   onSelectRow,
   onSelectAll,
-  onAssort: _onAssort,
-  onUnassort: _onUnassort,
+  onAssort,
+  onUnassort,
+  onAssortToMax,
+  onUnassortToZero,
   onSumIaChange: _onSumIaChange,
   onAvgIaChange: _onAvgIaChange,
   onOpenModal: _onOpenModal,
@@ -555,7 +580,7 @@ export function AssortmentTable({
   /** WH stock column (value + PFP). */
   const whStockWhColumnMinWidthPx = 132;
   /** Assortment column, or Service level “Forecast / week” column (wider). */
-  const assortmentColumnMinWidthPx = serviceLevelView ? 200 : 120;
+  const assortmentColumnMinWidthPx = serviceLevelView ? 200 : 220;
   /** Service level only — “Next scheduled event” column. */
   const serviceNextScheduledEventColumnMinWidthPx = 220;
   /** Service level only — “Stockout tolerance” column. */
@@ -869,7 +894,7 @@ export function AssortmentTable({
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
               {gripDragHandle(columnId, title)}
-              <span className="whitespace-normal leading-tight">{title}</span>
+              <span className="shrink-0 whitespace-nowrap">{title}</span>
             </div>
           </th>
         );
@@ -1097,11 +1122,11 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[62px] min-h-[62px] min-w-[120px] px-4 py-[9px] text-right align-middle"
+            className="h-[62px] min-h-[62px] min-w-[220px] px-4 py-[9px] text-left align-middle"
             scope="col"
             {...d}
           >
-            <div className="flex w-full items-center justify-end gap-2">
+            <div className="flex w-full items-center justify-start gap-2">
               {gripDragHandle(columnId, assortmentHeader)}
               <span>{assortmentHeader}</span>
             </div>
@@ -1580,13 +1605,13 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`relative h-[86px] min-h-[86px] min-w-[120px] py-3 px-4 text-right align-middle group ${tableRowHoverTd}`}
+            className={`relative min-h-[86px] py-3 px-4 text-left align-top group ${tableRowHoverTd} min-w-[220px]`}
           >
             {assortedCount === totalCount && (
               <button
                 type="button"
                 onClick={() => onEditRow?.(row, 'assortment')}
-                className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 opacity-0 group-hover:opacity-100"
+                className="absolute right-2 top-3 z-10 rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 opacity-0 group-hover:opacity-100"
                 aria-label="Edit assortment"
               >
                 <Pencil size={14} />
@@ -1595,14 +1620,15 @@ export function AssortmentTable({
             {pendingAssortment && (
               <DraftStatusDot
                 padded={false}
-                className="absolute left-2 top-1/2 z-10 -translate-y-1/2"
+                className="absolute left-2 top-4 z-10"
                 title="Assortment edited"
                 aria-hidden
               />
             )}
             <div
               className={[
-                'flex w-full flex-col items-end justify-center gap-1 text-right',
+                'flex w-full min-w-0 flex-col items-start gap-1.5 text-left',
+                pendingAssortment ? 'pl-[18px]' : '',
                 assortedCount === totalCount ? 'pr-7' : '',
               ]
                 .filter(Boolean)
@@ -1613,7 +1639,7 @@ export function AssortmentTable({
                   {row.lastCommittedSnapshot.assortment.assortedCount} → {assortedCount}/{totalCount}
                 </div>
               ) : null}
-              <div className="flex min-w-0 max-w-full flex-wrap items-baseline justify-end gap-x-1">
+              <div className="flex min-w-0 max-w-full flex-nowrap items-baseline justify-start gap-x-1">
                 <div className="w-[4.5rem] min-w-0 shrink-0">
                   <TableCellNumericInput
                     value={assortedCount}
@@ -1621,9 +1647,31 @@ export function AssortmentTable({
                     ariaLabel={`Assorted SKU count for ${row.productGroup.name}`}
                   />
                 </div>
-                <span className={`shrink-0 tabular-nums ${tableCellPrimary}`}>/{totalCount}</span>
+                <span className={`shrink-0 whitespace-nowrap tabular-nums ${tableCellPrimary}`}>
+                  /{totalCount} assorted
+                </span>
               </div>
-              <div className={tableCellPrimary}>Assorted</div>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onAssortToMax) onAssortToMax(row);
+                    else onAssort(row);
+                  }}
+                  disabled={assortedCount >= totalCount}
+                  className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Assort
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (onUnassortToZero ? onUnassortToZero(row) : onUnassort(row))}
+                  disabled={assortedCount <= 0}
+                  className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Unassort
+                </button>
+              </div>
             </div>
           </td>
         );
