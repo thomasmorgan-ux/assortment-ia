@@ -249,7 +249,7 @@ export function AdvancedFiltersPopover({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-[80] w-max min-w-[200px] rounded-md border border-[#e9eaeb] bg-[#FFFFFF] px-3 py-4 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.1)]"
+      className="fixed z-[80] w-max min-w-[200px] rounded-[6px] border border-[#e9eaeb] bg-[#FFFFFF] px-3 py-4 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.1)]"
       style={{ top: `${top}px`, left: `${left}px` }}
       role="menu"
       aria-label="Advanced filters"

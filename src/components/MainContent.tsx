@@ -535,6 +535,82 @@ export function MainContent() {
     );
   }, []);
 
+  const snapshotForRow = (r: AssortmentRow) =>
+    r.lastCommittedSnapshot ?? {
+      assortment: { assortedCount: r.assortment.assortedCount, totalCount: r.assortment.totalCount },
+      sumIa: r.sumIa,
+      avgIa: r.avgIa,
+    };
+
+  const onAssortedSkuLocsAll = useCallback((row: AssortmentRow) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== row.id) return r;
+        const { totalCount } = r.assortment;
+        const assorted = `${totalCount}/${totalCount} Assorted`;
+        const skuTotal = r.assortedSkuLocs.now.total;
+        return {
+          ...r,
+          assortment: { ...r.assortment, assortedCount: totalCount, assorted },
+          assortedSkuLocs: {
+            ...r.assortedSkuLocs,
+            now: { count: skuTotal, total: skuTotal },
+          },
+          hasPendingChanges: true,
+          lastCommittedSnapshot: snapshotForRow(r),
+        };
+      })
+    );
+  }, []);
+
+  const onAssortedSkuLocsNone = useCallback((row: AssortmentRow) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== row.id) return r;
+        const { totalCount } = r.assortment;
+        const assorted = `0/${totalCount} Assorted`;
+        return {
+          ...r,
+          assortment: { ...r.assortment, assortedCount: 0, assorted },
+          assortedSkuLocs: {
+            ...r.assortedSkuLocs,
+            now: { ...r.assortedSkuLocs.now, count: 0 },
+          },
+          scheduledAssortmentStart: undefined,
+          scheduledAssortmentFinish: undefined,
+          hasPendingChanges: true,
+          lastCommittedSnapshot: snapshotForRow(r),
+        };
+      })
+    );
+  }, []);
+
+  const onAssortedSkuLocsRec = useCallback((row: AssortmentRow) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== row.id) return r;
+        const { rec, now } = r.assortedSkuLocs;
+        const { totalCount } = r.assortment;
+        const targetSku = Math.max(0, Math.min(rec.count, now.total));
+        const nextAssortedCount =
+          now.total > 0
+            ? Math.max(0, Math.min(Math.round((targetSku / now.total) * totalCount), totalCount))
+            : r.assortment.assortedCount;
+        const assorted = `${nextAssortedCount}/${totalCount} Assorted`;
+        return {
+          ...r,
+          assortment: { ...r.assortment, assortedCount: nextAssortedCount, assorted },
+          assortedSkuLocs: {
+            ...r.assortedSkuLocs,
+            now: { ...now, count: targetSku },
+          },
+          hasPendingChanges: true,
+          lastCommittedSnapshot: snapshotForRow(r),
+        };
+      })
+    );
+  }, []);
+
   /** Set each of the given rows to fully assorted (used by SelectionActionBar Assort button). */
   const onAssortSelection = (rowsToAssort: AssortmentRow[]) => {
     const applyAssort = (r: AssortmentRow): AssortmentRow => {
@@ -849,7 +925,7 @@ export function MainContent() {
                     id="toolbar-metric-listbox"
                     role="listbox"
                     aria-label="Table metric"
-                    className="absolute left-0 top-[42px] z-[210] mt-0.5 flex min-w-full w-max max-w-[min(280px,calc(100vw-2rem))] max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
+                    className="absolute left-0 top-[42px] z-[210] mt-0.5 flex min-w-full w-max max-w-[min(280px,calc(100vw-2rem))] max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[6px] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
                   >
                     {TOOLBAR_METRIC_OPTIONS.map((opt) => (
                       <button
@@ -905,7 +981,7 @@ export function MainContent() {
                         key={filterId}
                         data-filter-chip
                         data-name="tokens"
-                        className="flex h-10 shrink-0 items-stretch overflow-hidden rounded-[4px] border-[0.5px] border-solid border-[#E3E8F0] bg-white"
+                        className="flex h-10 shrink-0 items-stretch overflow-hidden rounded-[6px] border-[0.5px] border-solid border-[#E3E8F0] bg-white"
                       >
                         <button
                           type="button"
@@ -1014,6 +1090,9 @@ export function MainContent() {
               onRevert={onRevert}
               onScheduledAssortmentScheduleChange={handleScheduledAssortmentScheduleChange}
               onAssortmentCountChange={handleAssortmentCountChange}
+              onAssortedSkuLocsAll={onAssortedSkuLocsAll}
+              onAssortedSkuLocsNone={onAssortedSkuLocsNone}
+              onAssortedSkuLocsRec={onAssortedSkuLocsRec}
               onEditRow={(row, openFrom) => {
                 const selected = rows.filter((r) => r.selected);
                 const rowsToEdit =

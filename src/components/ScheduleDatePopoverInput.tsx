@@ -12,7 +12,7 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /** Panel shell — matches product grouping menu + table border token. */
 const scheduleDatePopoverPanelClass =
-  'flex max-h-[min(320px,85vh)] flex-col gap-2 overflow-y-auto rounded-[4px] border-[0.5px] border-solid border-[#E3E8F0] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]';
+  'flex max-h-[min(320px,85vh)] flex-col gap-2 overflow-y-auto rounded-[6px] border-[0.5px] border-solid border-[#E3E8F0] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]';
 
 function normalizeToIso(raw: string | undefined): string {
   if (!raw?.trim()) return '';

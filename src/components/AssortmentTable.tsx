@@ -103,8 +103,11 @@ const SALES_COLUMN_MIN_WIDTH_PX = 148;
 
 /** Merged Start + End assortment schedule column (single date-range control). */
 const SCHEDULE_RANGE_COLUMN_MIN_WIDTH_PX = 280;
-/** Assorted SKU Locs (grip column `scheduleStart`). */
-const ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX = 198;
+/** Assorted SKU Locs (grip column `scheduleStart`): pill + ALL|NONE|REC on one row. */
+const ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX = 268;
+
+/** Service level “Forecast / week” — 150px narrower than the main Assortment column (288px). */
+const SERVICE_LEVEL_FORECAST_WEEK_COLUMN_MIN_WIDTH_PX = 138;
 
 /** Design system text input (Figma Input text / stroke #e9eaeb, 40px height, 2px radius) */
 /** Narrow count field (e.g. assortment column) — smaller min-width than default table numeric input. */
@@ -287,7 +290,11 @@ const SKU_LOCS_PILL_FILL = 'bg-[#2EB8C2]';
 const skuLocsMetricTypography = "font-['Inter',sans-serif] text-[14px] font-normal tabular-nums leading-none";
 const recommendationMetricTextClass = `${skuLocsMetricTypography} ${ASSORTED_SKU_LOCS_REC_TEXT}`;
 
-function AssortedSkuLocsProgressCell({ now, managementKind = 'you' }: AssortmentRow['assortedSkuLocs']) {
+function AssortedSkuLocsProgressCell({
+  now,
+  managementKind = 'you',
+  trailing,
+}: AssortmentRow['assortedSkuLocs'] & { trailing?: ReactNode }) {
   const pct =
     now.total > 0 ? Math.min(100, Math.max(0, (now.count / now.total) * 100)) : 0;
   const fullOrNearly = pct >= 99.5 || now.total <= 0;
@@ -295,32 +302,113 @@ function AssortedSkuLocsProgressCell({ now, managementKind = 'you' }: Assortment
     managementKind === 'autone' ? 'Some managed by autone' : 'Managed by you';
   return (
     <div className="flex min-w-0 flex-col justify-center py-0.5">
-      <div
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={now.total}
-        aria-valuenow={now.count}
-        aria-label={`Assorted SKU locations ${now.count} of ${now.total}`}
-        className={`relative isolate h-[30px] w-[150px] max-w-full shrink-0 overflow-hidden rounded-[8px] ${SKU_LOCS_PILL_TRACK}`}
-      >
+      <div className="flex min-w-0 flex-nowrap items-center gap-x-3">
         <div
-          className={`absolute inset-y-0 left-0 ${SKU_LOCS_PILL_FILL}`}
-          style={{ width: fullOrNearly && now.total > 0 ? '100%' : `${pct}%` }}
-          aria-hidden
-        />
-        <div
-          className={`relative flex h-full w-full items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none ${
-            fullOrNearly && now.total > 0 ? 'text-white' : 'text-[#2EB8C2]'
-          }`}
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={now.total}
+          aria-valuenow={now.count}
+          aria-label={`Assorted SKU locations ${now.count} of ${now.total}`}
+          className={`relative isolate h-[30px] w-[150px] max-w-full shrink-0 overflow-hidden rounded-[8px] ${SKU_LOCS_PILL_TRACK}`}
         >
-          {now.count.toLocaleString()}
-          <span className="mx-1 font-normal opacity-90">/</span>
-          {now.total.toLocaleString()}
+          <div
+            className={`absolute inset-y-0 left-0 ${SKU_LOCS_PILL_FILL}`}
+            style={{ width: fullOrNearly && now.total > 0 ? '100%' : `${pct}%` }}
+            aria-hidden
+          />
+          <div
+            className={`relative flex h-full w-full items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none ${
+              fullOrNearly && now.total > 0 ? 'text-white' : 'text-[#2EB8C2]'
+            }`}
+          >
+            {now.count.toLocaleString()}
+            <span className="mx-1 font-normal opacity-90">/</span>
+            {now.total.toLocaleString()}
+          </div>
         </div>
+        {trailing}
       </div>
       <p className={`mt-1.5 ${tableCellSecondary}`}>
         {subtitle}
       </p>
+    </div>
+  );
+}
+
+const skuLocsQuickLinkMutedClass =
+  "font-['Inter',sans-serif] text-[12px] font-normal text-[#9CA3AF] transition-colors hover:text-[#6A7282]";
+
+function AssortedSkuLocsQuickLinks({
+  row,
+  onAll,
+  onNone,
+  onRec,
+}: {
+  row: AssortmentRow;
+  onAll: (r: AssortmentRow) => void;
+  onNone: (r: AssortmentRow) => void;
+  onRec: (r: AssortmentRow) => void;
+}) {
+  const pipe = <span className="select-none px-0.5 text-[#E3E8F0]">|</span>;
+  return (
+    <div className="flex min-w-0 shrink-0 flex-nowrap items-center">
+      <div className="group/all relative inline-flex">
+        <button type="button" className={skuLocsQuickLinkMutedClass} onClick={() => onAll(row)}>
+          ALL
+        </button>
+        <div
+          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max max-w-[min(280px,calc(100vw-2rem))] -translate-x-1/2 rounded-lg bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/all:block"
+          role="tooltip"
+        >
+          <p className="font-['Inter',sans-serif] text-xs font-medium leading-snug text-white">
+            Infinitely assort all sku-locs starting from today
+          </p>
+          <span
+            className="absolute -bottom-1 left-1/2 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-[#212121]"
+            aria-hidden
+          />
+        </div>
+      </div>
+      {pipe}
+      <div className="group/none relative inline-flex">
+        <button type="button" className={skuLocsQuickLinkMutedClass} onClick={() => onNone(row)}>
+          NONE
+        </button>
+        <div
+          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max max-w-[min(280px,calc(100vw-2rem))] -translate-x-1/2 rounded-lg bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/none:block"
+          role="tooltip"
+        >
+          <p className="font-['Inter',sans-serif] text-xs font-medium leading-snug text-white">
+            For all currently assorted sku-locs set end date to today
+          </p>
+          <span
+            className="absolute -bottom-1 left-1/2 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-[#212121]"
+            aria-hidden
+          />
+        </div>
+      </div>
+      {pipe}
+      <div className="group/rec relative inline-flex">
+        <button
+          type="button"
+          className="font-['Inter',sans-serif] text-[12px] font-semibold text-[#101828] transition-opacity hover:opacity-80"
+          onClick={() => onRec(row)}
+        >
+          REC
+        </button>
+        <div
+          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max min-w-[160px] max-w-[240px] -translate-x-1/2 rounded-lg bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/rec:block"
+          role="tooltip"
+        >
+          <p className="font-['Inter',sans-serif] text-xs font-medium leading-normal text-white">
+            Apply recommended assortment
+          </p>
+          <span
+            className="absolute -bottom-1 left-1/2 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-[#212121]"
+            aria-hidden
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -529,6 +617,10 @@ interface AssortmentTableProps {
   showAssortmentScheduleColumn?: boolean;
   /** Service level focus tab: product/location grouping menus and column treatment match service-level design. */
   serviceLevelView?: boolean;
+  /** Assorted SKU Locs column — ALL / NONE / REC quick actions (sync assortment + progress in parent). */
+  onAssortedSkuLocsAll?: (row: AssortmentRow) => void;
+  onAssortedSkuLocsNone?: (row: AssortmentRow) => void;
+  onAssortedSkuLocsRec?: (row: AssortmentRow) => void;
 }
 
 export function AssortmentTable({
@@ -561,6 +653,9 @@ export function AssortmentTable({
   showAssortmentRecommendationsColumn = false,
   showAssortmentScheduleColumn = false,
   serviceLevelView = false,
+  onAssortedSkuLocsAll,
+  onAssortedSkuLocsNone,
+  onAssortedSkuLocsRec,
 }: AssortmentTableProps) {
   const allSelected = rows.length > 0 && rows.every((r) => r.selected);
   const [drillDownAnchor, setDrillDownAnchor] = useState<DOMRect | null>(null);
@@ -604,8 +699,10 @@ export function AssortmentTable({
   const removedTrailingColumnsMinWidthPx = 410;
   /** WH stock column (value + PFP). */
   const whStockWhColumnMinWidthPx = 132;
-  /** Assortment column (Assort / Unassort / count + “/N assorted” on one line), or Service level “Forecast / week”. */
-  const assortmentColumnMinWidthPx = 288;
+  /** Assortment column (Assort / Unassort / …), or Service level “Forecast / week” (narrower). */
+  const assortmentColumnMinWidthPx = serviceLevelView
+    ? SERVICE_LEVEL_FORECAST_WEEK_COLUMN_MIN_WIDTH_PX
+    : 288;
   /** Service level only — “Next scheduled event” column. */
   const serviceNextScheduledEventColumnMinWidthPx = 200;
   /** Service level only — “Stockout tolerance” column. */
@@ -621,11 +718,11 @@ export function AssortmentTable({
   const tableMinWidthPx = useMemo(() => {
     const base = productDrillDownActive
       ? showRecommendationColumns
-        ? 2840
-        : 2610
+        ? 2910
+        : 2680
       : showRecommendationColumns
-        ? 2350
-        : 2130;
+        ? 2420
+        : 2200;
     return (
       base +
       STICKY_GROUPING_COLUMNS_WIDTH_EXTRA_PX -
@@ -1104,7 +1201,8 @@ export function AssortmentTable({
           return (
             <th
               key={columnId}
-              className="h-[62px] min-h-[62px] min-w-[200px] px-4 py-[9px] text-right align-middle"
+              className="h-[62px] min-h-[62px] px-4 py-[9px] text-right align-middle"
+              style={{ minWidth: assortmentColumnMinWidthPx }}
               scope="col"
               {...d}
             >
@@ -1484,7 +1582,19 @@ export function AssortmentTable({
             className={`h-[86px] min-h-[86px] box-border bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
             style={{ minWidth: ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX }}
           >
-            <AssortedSkuLocsProgressCell {...row.assortedSkuLocs} />
+            <AssortedSkuLocsProgressCell
+              {...row.assortedSkuLocs}
+              trailing={
+                onAssortedSkuLocsAll && onAssortedSkuLocsNone && onAssortedSkuLocsRec ? (
+                  <AssortedSkuLocsQuickLinks
+                    row={row}
+                    onAll={onAssortedSkuLocsAll}
+                    onNone={onAssortedSkuLocsNone}
+                    onRec={onAssortedSkuLocsRec}
+                  />
+                ) : undefined
+              }
+            />
           </td>
         );
       case 'scheduleRange':
