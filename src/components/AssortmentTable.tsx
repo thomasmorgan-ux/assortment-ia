@@ -24,7 +24,7 @@ import {
 import { DraftStatusDot } from './DraftStatusDot';
 import { DrillDownLocationModal, LOCATION_DIMENSION_MENU } from './DrillDownLocationModal';
 import { DrillDownProductModal } from './DrillDownProductModal';
-import { ScheduleDatePopoverInput } from './ScheduleDatePopoverInput';
+import { ScheduleDateRangePopoverInput } from './ScheduleDatePopoverInput';
 import type { AssortmentRow, ModalKind } from '../types';
 import { drillDropdownMenuItemHover, rowActionsMenuPanelChromeClass } from '../lib/dropdownMenuClasses';
 
@@ -55,15 +55,21 @@ const REGION_COLUMN_NAMES = ['Europe', 'North America'] as const;
 const tableCellPrimary =
   "font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828]";
 
+/** Grip icon in column headers — same pixel height as `tableCellPrimary` (14px). */
+const GRIP_COLUMN_HEADER_ICON_SIZE_PX = 14;
+
 /** Body cell secondary / supporting text — Inter 12px regular #6A7282 */
 const tableCellSecondary =
-  "font-['Inter',sans-serif] text-[12px] font-normal leading-normal text-[#6A7282]";
+  "font-['Inter',sans-serif] text-[12px] font-normal leading-snug text-[#6A7282]";
 
 /** Row hover fill (with `group` on `<tr>`) */
 const tableRowHoverTd = 'transition-colors group-hover:bg-[#F8FAFB]';
 
-/** Indent body content to match header text after grip (`h-4 w-4`) + `gap-2`. */
-const gripAlignedBodyPl = 'pl-6';
+/** Row actions column: fixed to the right when the table scrolls horizontally. */
+const stickyRowActionsCellShadow = 'shadow-[-4px_0_12px_-6px_rgba(15,23,42,0.12)]';
+
+/** Indent body content to match header label after grip (14px) + `gap-2` (8px). */
+const gripAlignedBodyPl = 'pl-[22px]';
 
 /** Sticky Product + Location columns: +20px each vs former 200px / 170px min widths. */
 const STICKY_GROUPING_COLUMNS_WIDTH_EXTRA_PX = 40;
@@ -84,6 +90,7 @@ const groupingDropdownMenuItemBaseClass =
 
 /** IA column (sum IA + recommendation); legacy 104px is baked into `tableMinWidthPx` `base`. */
 /** Narrower min width; Current / Recco row wraps below when tight (`flex-wrap` on meta row). */
+/** Wide enough for IA input + stacked “Current” / “Recco” meta. */
 const IA_COLUMN_MIN_WIDTH_PX = 168;
 const IA_COLUMN_MIN_WIDTH_LEGACY_PX = 104;
 
@@ -94,7 +101,20 @@ const WH_STOCK_PCT_IA_COLUMN_MIN_WIDTH_PX = 176;
 /** Sales (L7D / L30D) — grip column; header + values left-aligned with `gripAlignedBodyPl`. */
 const SALES_COLUMN_MIN_WIDTH_PX = 148;
 
+/** Merged Start + End assortment schedule column (single date-range control). */
+const SCHEDULE_RANGE_COLUMN_MIN_WIDTH_PX = 280;
+/** Assorted SKU Locs (grip column `scheduleStart`). */
+const ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX = 198;
+
 /** Design system text input (Figma Input text / stroke #e9eaeb, 40px height, 2px radius) */
+/** Narrow count field (e.g. assortment column) — smaller min-width than default table numeric input. */
+const tableCellNumericInputNarrowClass =
+  "box-border h-10 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-2 py-0 " +
+  "font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] " +
+  "placeholder:font-normal placeholder:text-[#4b535c] " +
+  "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 " +
+  "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60";
+
 const tableCellNumericInputClass =
   "box-border h-10 w-full min-w-[56px] max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 " +
   "font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] " +
@@ -198,12 +218,10 @@ const LOCATION_DRILL_ID_TO_GROUPING: Record<string, string> = Object.fromEntries
 
 /** Columns with grip handles — reorderable (`scheduleStart` follows Location in header order). */
 const BASE_GRIP_COLUMN_IDS = [
-  /** Start / End dates — default position immediately after Assortment (fixed column). */
-  'scheduleEnd',
-  'forecastPerWeek',
+  /** Assortment schedule — single control for start + end (after Assortment column). */
+  'scheduleRange',
   'ia',
   'whStockPctIa',
-  'sales',
   'targetCoverage',
   'inventory',
   'whStock',
@@ -239,72 +257,70 @@ export type GripColumnId =
 const DRILL_GRIP_ID_SET = new Set<string>(DRILL_GRIP_COLUMN_IDS);
 
 /**
- * Service level tab: hide standard supply-chain grip columns (Start/End dates, Sales, Forecast/wk, etc.).
- * Min-widths match header `min-w-*` for `tableMinWidthPx` when these are omitted.
+ * Service level tab: hide standard supply-chain grip columns (Start/End dates, Forecast/wk, etc.).
+ * Sales is a fixed column after Location (hidden on this tab); its width stays in `SERVICE_LEVEL_HIDDEN_GRIP_MIN_WIDTH_PX`.
  */
 const SERVICE_LEVEL_HIDDEN_GRIP_IDS = [
-  'sales',
-  'scheduleEnd',
-  'forecastPerWeek',
+  'scheduleRange',
   'targetCoverage',
   'inventory',
   'whStock',
   'whStockWh',
 ] as const satisfies readonly GripColumnId[];
 const SERVICE_LEVEL_HIDDEN_GRIP_ID_SET = new Set<string>(SERVICE_LEVEL_HIDDEN_GRIP_IDS);
+/** Widths omitted on Service level tab (fixed Sales after Location is also hidden there). */
 const SERVICE_LEVEL_HIDDEN_GRIP_MIN_WIDTH_PX =
-  SALES_COLUMN_MIN_WIDTH_PX + 180 + 180 + 140 + 140 + 120 + 132;
+  SALES_COLUMN_MIN_WIDTH_PX +
+  SCHEDULE_RANGE_COLUMN_MIN_WIDTH_PX +
+  140 +
+  140 +
+  120 +
+  132;
 
 /** Recommendation / IA metrics accent (purple). */
 const ASSORTED_SKU_LOCS_REC_TEXT = 'text-[#6864E6]';
-/** Assorted (current) line — bar + ratio (matches Assorted SKU Locs column design). */
-const ASSORTED_SKU_LOCS_NOW = 'text-[#2EB8C2]';
-const ASSORTED_SKU_LOCS_BAR_NOW = 'bg-[#2EB8C2]';
-const ASSORTED_SKU_LOCS_BAR_REC = 'bg-[#6864E6]';
+/** Assorted SKU Locs pill — light track + blue fill (design). */
+const SKU_LOCS_PILL_TRACK = 'bg-[#F3F4F6]';
+const SKU_LOCS_PILL_FILL = 'bg-[#2EB8C2]';
 
 /** Inter 14 / regular / tabular / tight — IA / assortment recommendation metrics. */
 const skuLocsMetricTypography = "font-['Inter',sans-serif] text-[14px] font-normal tabular-nums leading-none";
 const recommendationMetricTextClass = `${skuLocsMetricTypography} ${ASSORTED_SKU_LOCS_REC_TEXT}`;
 
-function AssortedSkuLocsProgressCell({ now, rec }: AssortmentRow['assortedSkuLocs']) {
-  const pct = (count: number, total: number) =>
-    total > 0 ? Math.min(100, (count / total) * 100) : 0;
+function AssortedSkuLocsProgressCell({ now, managementKind = 'you' }: AssortmentRow['assortedSkuLocs']) {
+  const pct =
+    now.total > 0 ? Math.min(100, Math.max(0, (now.count / now.total) * 100)) : 0;
+  const fullOrNearly = pct >= 99.5 || now.total <= 0;
+  const subtitle =
+    managementKind === 'autone' ? 'Some managed by autone' : 'Managed by you';
   return (
-    <div className="flex min-w-0 flex-col justify-center gap-2 py-0.5">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={`w-14 shrink-0 font-['Inter',sans-serif] text-[12px] font-normal leading-normal text-[#6A7282]`}>
-          Assorted
-        </span>
-        <div className="min-h-0 min-w-0 flex-1">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[#EEF2F6]">
-            <div
-              className={`h-full rounded-full ${ASSORTED_SKU_LOCS_BAR_NOW}`}
-              style={{ width: `${pct(now.count, now.total)}%` }}
-            />
-          </div>
-        </div>
-        <span
-          className={`shrink-0 tabular-nums font-['Inter',sans-serif] text-[14px] font-normal leading-none ${ASSORTED_SKU_LOCS_NOW}`}
+    <div className="flex min-w-0 flex-col justify-center py-0.5">
+      <div
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={now.total}
+        aria-valuenow={now.count}
+        aria-label={`Assorted SKU locations ${now.count} of ${now.total}`}
+        className={`relative isolate h-[30px] w-[150px] max-w-full shrink-0 overflow-hidden rounded-[8px] ${SKU_LOCS_PILL_TRACK}`}
+      >
+        <div
+          className={`absolute inset-y-0 left-0 ${SKU_LOCS_PILL_FILL}`}
+          style={{ width: fullOrNearly && now.total > 0 ? '100%' : `${pct}%` }}
+          aria-hidden
+        />
+        <div
+          className={`relative flex h-full w-full items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none ${
+            fullOrNearly && now.total > 0 ? 'text-white' : 'text-[#2EB8C2]'
+          }`}
         >
-          {now.count}/{now.total}
-        </span>
-      </div>
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={`w-14 shrink-0 font-['Inter',sans-serif] text-[12px] font-normal leading-normal text-[#6A7282]`}>
-          Total
-        </span>
-        <div className="min-h-0 min-w-0 flex-1">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[#EEF2F6]">
-            <div
-              className={`h-full rounded-full ${ASSORTED_SKU_LOCS_BAR_REC}`}
-              style={{ width: `${pct(rec.count, rec.total)}%` }}
-            />
-          </div>
+          {now.count.toLocaleString()}
+          <span className="mx-1 font-normal opacity-90">/</span>
+          {now.total.toLocaleString()}
         </div>
-        <span className={`shrink-0 tabular-nums ${recommendationMetricTextClass}`}>
-          {rec.count}/{rec.total}
-        </span>
       </div>
+      <p className={`mt-1.5 ${tableCellSecondary}`}>
+        {subtitle}
+      </p>
     </div>
   );
 }
@@ -588,8 +604,8 @@ export function AssortmentTable({
   const removedTrailingColumnsMinWidthPx = 410;
   /** WH stock column (value + PFP). */
   const whStockWhColumnMinWidthPx = 132;
-  /** Assortment column, or Service level “Forecast / week” column (wider). */
-  const assortmentColumnMinWidthPx = 200;
+  /** Assortment column (Assort / Unassort / count + “/N assorted” on one line), or Service level “Forecast / week”. */
+  const assortmentColumnMinWidthPx = 288;
   /** Service level only — “Next scheduled event” column. */
   const serviceNextScheduledEventColumnMinWidthPx = 200;
   /** Service level only — “Stockout tolerance” column. */
@@ -605,11 +621,11 @@ export function AssortmentTable({
   const tableMinWidthPx = useMemo(() => {
     const base = productDrillDownActive
       ? showRecommendationColumns
-        ? 2890
-        : 2660
+        ? 2840
+        : 2610
       : showRecommendationColumns
-        ? 2400
-        : 2180;
+        ? 2350
+        : 2130;
     return (
       base +
       STICKY_GROUPING_COLUMNS_WIDTH_EXTRA_PX -
@@ -851,7 +867,11 @@ export function AssortmentTable({
       }}
       className="inline-flex cursor-grab touch-none active:cursor-grabbing"
     >
-      <GripVertical className="h-4 w-4 shrink-0 text-[#6A7282]" aria-hidden />
+      <GripVertical
+        size={GRIP_COLUMN_HEADER_ICON_SIZE_PX}
+        className="shrink-0 text-[#6A7282]"
+        aria-hidden
+      />
     </span>
   );
 
@@ -997,7 +1017,8 @@ export function AssortmentTable({
         return (
           <th
             key={columnId}
-            className="h-[62px] min-h-[62px] min-w-[248px] box-border bg-white px-4 py-[9px] text-left align-middle"
+            className="h-[62px] min-h-[62px] box-border px-4 py-[9px] text-left align-middle"
+            style={{ minWidth: ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX }}
             scope="col"
             {...d}
           >
@@ -1010,50 +1031,21 @@ export function AssortmentTable({
           </th>
         );
       }
-      case 'sales': {
-        const salesHeader = 'Sales';
+      case 'scheduleRange': {
+        const scheduleRangeHeader = 'Assortment schedule dates';
         return (
           <th
             key={columnId}
-            scope="col"
-            aria-sort="descending"
             className="h-[62px] min-h-[62px] px-4 py-[9px] text-left align-middle"
-            style={{ minWidth: SALES_COLUMN_MIN_WIDTH_PX }}
+            style={{ minWidth: SCHEDULE_RANGE_COLUMN_MIN_WIDTH_PX }}
+            scope="col"
             {...d}
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
-              {gripDragHandle(columnId, salesHeader)}
-              <span className="shrink-0">{salesHeader}</span>
-            </div>
-          </th>
-        );
-      }
-      case 'scheduleEnd': {
-        const scheduleStartHeader = 'Start';
-        return (
-          <th
-            key={columnId}
-            className="h-[62px] min-h-[62px] min-w-[180px] px-4 py-[9px] text-left align-middle"
-            {...d}
-          >
-            <div className="flex w-full items-center justify-start gap-2">
-              {gripDragHandle(columnId, scheduleStartHeader)}
-              <span className="whitespace-normal leading-tight">{scheduleStartHeader}</span>
-            </div>
-          </th>
-        );
-      }
-      case 'forecastPerWeek': {
-        const scheduleEndHeader = 'End';
-        return (
-          <th
-            key={columnId}
-            className="h-[62px] min-h-[62px] min-w-[180px] px-4 py-[9px] text-left align-middle"
-            {...d}
-          >
-            <div className="flex w-full items-center justify-start gap-2">
-              {gripDragHandle(columnId, scheduleEndHeader)}
-              <span className="whitespace-normal leading-tight">{scheduleEndHeader}</span>
+              {gripDragHandle(columnId, scheduleRangeHeader)}
+              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>
+                {scheduleRangeHeader}
+              </span>
             </div>
           </th>
         );
@@ -1282,7 +1274,7 @@ export function AssortmentTable({
               )}
             <div
               className={[
-                'flex w-full min-w-0 flex-col items-end gap-1.5',
+                'w-full min-w-0',
                 row.hasPendingChanges &&
                 row.lastCommittedSnapshot &&
                 row.lastCommittedSnapshot.sumIa !== (row.sumIaRecommendation ?? row.sumIa)
@@ -1325,7 +1317,7 @@ export function AssortmentTable({
                   <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>
                     {ev.deadlineLabel}
                   </span>
-                  <span className={`whitespace-normal leading-tight ${tableCellSecondary}`}>
+                  <span className={`whitespace-normal ${tableCellSecondary}`}>
                     {ev.scheduleName}
                   </span>
                 </div>
@@ -1489,48 +1481,33 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[248px] box-border bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] box-border bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+            style={{ minWidth: ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX }}
           >
             <AssortedSkuLocsProgressCell {...row.assortedSkuLocs} />
           </td>
         );
-      case 'sales':
+      case 'scheduleRange':
         return (
           <td
             key={columnId}
             className={`h-[86px] min-h-[86px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
-            style={{ minWidth: SALES_COLUMN_MIN_WIDTH_PX }}
+            style={{ minWidth: SCHEDULE_RANGE_COLUMN_MIN_WIDTH_PX }}
           >
-            <div className={`min-w-0 ${gripAlignedBodyPl}`}>
-              <SalesCell {...row.sales} />
-            </div>
-          </td>
-        );
-      case 'scheduleEnd':
-        return (
-          <td
-            key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[180px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
-          >
-            <ScheduleDatePopoverInput
-              value={row.scheduledAssortmentStart}
-              onCommit={(next) => onScheduledAssortmentScheduleChange?.(row.id, 'start', next)}
+            <ScheduleDateRangePopoverInput
+              start={row.scheduledAssortmentStart}
+              end={row.scheduledAssortmentFinish}
+              onCommitStart={(next) => onScheduledAssortmentScheduleChange?.(row.id, 'start', next)}
+              onCommitEnd={(next) => onScheduledAssortmentScheduleChange?.(row.id, 'finish', next)}
               className="min-w-0"
-              ariaLabel={`Assortment start date for ${row.productGroup.name}`}
-            />
-          </td>
-        );
-      case 'forecastPerWeek':
-        return (
-          <td
-            key={columnId}
-            className={`h-[86px] min-h-[86px] min-w-[180px] py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
-          >
-            <ScheduleDatePopoverInput
-              value={row.scheduledAssortmentFinish}
-              onCommit={(next) => onScheduledAssortmentScheduleChange?.(row.id, 'finish', next)}
-              className="min-w-0"
-              ariaLabel={`Assortment end date for ${row.productGroup.name}`}
+              ariaLabel={`Assortment start and end dates for ${row.productGroup.name}`}
+              popoverHeader={{
+                contextLine: `${row.productGroup.name} — ${row.locationCluster.name}`,
+                statsLine: `${row.productGroup.productCount} products · ${
+                  row.productDrillMetrics?.skuLocations ??
+                  row.productGroup.productCount * row.locationCluster.locationCount
+                } SKU-locations`,
+              }}
             />
           </td>
         );
@@ -1629,7 +1606,7 @@ export function AssortmentTable({
                   {row.lastCommittedSnapshot.assortment.assortedCount} → {assortedCount}/{totalCount}
                 </div>
               ) : null}
-              <div className="flex flex-wrap gap-1">
+              <div className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => {
@@ -1637,7 +1614,7 @@ export function AssortmentTable({
                     else onAssort(row);
                   }}
                   disabled={assortedCount >= totalCount}
-                  className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Assort
                 </button>
@@ -1645,23 +1622,24 @@ export function AssortmentTable({
                   type="button"
                   onClick={() => (onUnassortToZero ? onUnassortToZero(row) : onUnassort(row))}
                   disabled={assortedCount <= 0}
-                  className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Unassort
                 </button>
-              </div>
-              <div className="flex min-w-0 max-w-full flex-nowrap items-baseline justify-start gap-x-1">
-                <div className="w-[4.5rem] min-w-0 shrink-0">
-                  <TableCellNumericInput
-                    value={assortedCount}
-                    onCommit={(n) => onAssortmentCountChange?.(row.id, n)}
-                    ariaLabel={`Assorted SKU count for ${row.productGroup.name}`}
-                    disabled={assortedCount <= 0}
-                  />
+                <div className="flex min-w-0 max-w-full flex-nowrap items-center justify-start gap-x-1">
+                  <div className="w-11 min-w-0 shrink-0">
+                    <TableCellNumericInput
+                      value={assortedCount}
+                      onCommit={(n) => onAssortmentCountChange?.(row.id, n)}
+                      ariaLabel={`Assorted SKU count for ${row.productGroup.name}`}
+                      disabled={assortedCount <= 0}
+                      className={tableCellNumericInputNarrowClass}
+                    />
+                  </div>
+                  <span className={`shrink-0 whitespace-nowrap tabular-nums ${tableCellPrimary}`}>
+                    /{totalCount} assorted
+                  </span>
                 </div>
-                <span className={`shrink-0 whitespace-nowrap tabular-nums ${tableCellPrimary}`}>
-                  /{totalCount} assorted
-                </span>
               </div>
             </div>
           </td>
@@ -1726,63 +1704,62 @@ export function AssortmentTable({
   const iaMetaRecoTypography =
     "font-['Inter',sans-serif] text-[12px] font-normal tabular-nums leading-none text-[#6864E6]";
 
-  /** Sum IA input + Current / Recco metadata (matches allocation cell design). */
+  /** Sum IA input + Current / Recco (stacked on two lines, allocation cell). */
   const renderIaColumnBody = (row: AssortmentRow) => {
     const recoVal = row.sumIaRecommendation;
     const hasReco = recoVal != null && recoVal > 0;
-    return [
-      <div key="sum-ia" className="min-w-0 w-full">
-        <TableCellNumericInput
-          value={row.sumIa}
-          ariaLabel={`Initial allocation sum IA for ${row.productGroup.name}`}
-          onCommit={(next) => _onSumIaChange(row.id, next)}
-          className={`${tableCellNumericInputClass} text-right`}
-        />
-      </div>,
-      <div
-        key="ia-current-reco"
-        className="flex w-full min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-0.5"
-      >
-        <span className={`shrink-0 ${tableCellSecondary}`}>
-          Current: {row.sumIa.toLocaleString()}
-        </span>
-        {hasReco ? (
-          <div className="group/reason relative inline-flex w-max max-w-none shrink-0 items-center gap-x-1">
-            <span className={iaMetaRecoTypography}>Recco:</span>
-            <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
-            <span className={iaMetaRecoTypography}>{recoVal.toLocaleString()}</span>
-            <div
-              className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[200px] -translate-y-1/2 rounded-lg bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
-              role="tooltip"
-            >
-              <p className="mb-2 text-xs font-medium leading-normal">Recommendation Reasons</p>
-              <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
-                <div className="flex items-center justify-between gap-2">
-                  <span>High past sales for similar products</span>
-                  <span>X35</span>
+    return (
+      <div className="flex w-full min-w-0 flex-row flex-nowrap items-center justify-start gap-2 text-left">
+        <div className="w-[4rem] min-w-0 shrink-0">
+          <TableCellNumericInput
+            value={row.sumIa}
+            ariaLabel={`Initial allocation sum IA for ${row.productGroup.name}`}
+            onCommit={(next) => _onSumIaChange(row.id, next)}
+            className={tableCellNumericInputNarrowClass}
+          />
+        </div>
+        <div className="flex min-w-0 shrink-0 flex-col items-start gap-0.5 text-left">
+          <span className={`shrink-0 whitespace-nowrap ${tableCellSecondary}`}>
+            Current: {row.sumIa.toLocaleString()}
+          </span>
+          {hasReco ? (
+            <div className="group/reason relative inline-flex w-max max-w-none shrink-0 items-center gap-x-1">
+              <span className={iaMetaRecoTypography}>Recco:</span>
+              <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
+              <span className={iaMetaRecoTypography}>{recoVal.toLocaleString()}</span>
+              <div
+                className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[200px] -translate-y-1/2 rounded-lg bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
+                role="tooltip"
+              >
+                <p className="mb-2 text-xs font-medium leading-normal">Recommendation Reasons</p>
+                <div className="flex flex-col gap-1.5 text-[10px] font-normal leading-normal">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>High past sales for similar products</span>
+                    <span>X35</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Low past sales for similar products</span>
+                    <span>X18</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span>Low past sales for similar products</span>
-                  <span>X18</span>
-                </div>
+                <span
+                  className="absolute -left-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-r-[#212121]"
+                  aria-hidden
+                />
               </div>
-              <span
-                className="absolute -left-1.5 top-1/2 h-0 w-0 -translate-y-1/2 border-[6px] border-transparent border-r-[#212121]"
-                aria-hidden
-              />
             </div>
-          </div>
-        ) : (
-          <span className={`shrink-0 ${tableCellSecondary}`}>Recco: —</span>
-        )}
-      </div>,
-    ];
+          ) : (
+            <span className={`shrink-0 whitespace-nowrap ${tableCellSecondary}`}>Recco: —</span>
+          )}
+        </div>
+      </div>
+    );
   };
 
   const renderRowActionBodyCell = (row: AssortmentRow) => (
     <td
       key="row-action"
-      className={`h-[86px] min-h-[86px] min-w-[80px] w-[80px] px-3 py-3 text-center align-middle ${tableRowHoverTd}`}
+      className={`sticky right-0 z-[25] h-[86px] min-h-[86px] min-w-[80px] w-[80px] box-border bg-white px-3 py-3 text-center align-middle ${stickyRowActionsCellShadow} ${tableRowHoverTd}`}
     >
       <div className="flex items-center justify-center">
         <button
@@ -1961,6 +1938,23 @@ export function AssortmentTable({
                     ))}
                 </div>
               </th>
+              {!designOnly && !serviceLevelView && (
+                <th
+                  key="sales-after-location"
+                  scope="col"
+                  className="h-[62px] min-h-[62px] px-4 py-[9px] text-left align-middle"
+                  style={{ minWidth: SALES_COLUMN_MIN_WIDTH_PX }}
+                >
+                  <div className="flex w-full min-w-0 items-center justify-start gap-2">
+                    <GripVertical
+                      size={GRIP_COLUMN_HEADER_ICON_SIZE_PX}
+                      className="shrink-0 text-[#6A7282]"
+                      aria-hidden
+                    />
+                    <span className={`shrink-0 ${tableCellPrimary}`}>Sales</span>
+                  </div>
+                </th>
+              )}
               {!designOnly && renderGripColumnHeader('scheduleStart')}
               {!designOnly && renderGripColumnHeader('assortment')}
               {!designOnly &&
@@ -1980,7 +1974,7 @@ export function AssortmentTable({
               )}
               {!designOnly && (
                 <th
-                  className="h-[62px] min-h-[62px] min-w-[80px] w-[80px] px-3 py-[9px] text-center align-middle"
+                  className={`sticky right-0 z-[25] h-[62px] min-h-[62px] min-w-[80px] w-[80px] box-border bg-white px-3 py-[9px] text-center align-middle ${stickyRowActionsCellShadow}`}
                   scope="col"
                   aria-label="Row actions"
                 />
@@ -2079,6 +2073,17 @@ export function AssortmentTable({
                     )}
                   </div>
                 </td>
+                {!designOnly && !serviceLevelView && (
+                  <td
+                    key={`${row.id}-sales-after-location`}
+                    className={`h-[86px] min-h-[86px] box-border bg-white py-3 px-4 text-left align-middle ${tableRowHoverTd}`}
+                    style={{ minWidth: SALES_COLUMN_MIN_WIDTH_PX }}
+                  >
+                    <div className={`min-w-0 ${gripAlignedBodyPl}`}>
+                      <SalesCell {...row.sales} />
+                    </div>
+                  </td>
+                )}
                 {!designOnly && renderGripColumnBodyCell('scheduleStart', row, rowIndex, drillM)}
                 {!designOnly && renderGripColumnBodyCell('assortment', row, rowIndex, drillM)}
                 {!designOnly &&

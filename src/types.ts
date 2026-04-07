@@ -6,10 +6,12 @@ export interface AssortmentRow {
   storeOh: number;
   /** Last 7 days / last 30 days sales counts (table shows with L7D / L30D labels). */
   sales: { l7d: number; l30d: number };
-  /** Assorted SKU × location pairs: current vs recommended (dual progress in table). */
+  /** Assorted SKU × location pairs: `now` drives the progress pill; `rec` retained for data/API parity. */
   assortedSkuLocs: {
     now: { count: number; total: number };
     rec: { count: number; total: number };
+    /** Subtext under the pill (“Managed by you” vs “Some managed by autone”). */
+    managementKind?: 'you' | 'autone';
   };
   sellThru: { percent: number };
   forecast: { value: number; sub: string };
