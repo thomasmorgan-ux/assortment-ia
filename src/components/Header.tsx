@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink, Upload } from 'lucide-react';
+import { ArrowLeft, Download, Upload } from 'lucide-react';
 
 export function Header() {
   return (
@@ -32,20 +32,36 @@ export function Header() {
           </div>
         </div>
       </div>
-      <div className="flex flex-1 gap-1.5 items-center justify-end shrink-0">
+      <div className="flex flex-1 flex-wrap items-center justify-end gap-1.5 shrink-0">
         <button
           type="button"
-          className="flex items-center justify-center gap-2 h-12 px-4 py-3 rounded bg-[#212b36] text-[#a6aaaf] hover:bg-[#2d3844] hover:text-white transition-colors"
-          aria-label="External link"
+          className="group flex h-12 shrink-0 items-center justify-center gap-2 rounded-[4px] bg-[#212b36] px-4 font-['Inter',sans-serif] text-sm font-medium leading-normal text-white transition-colors hover:bg-[#2d3844]"
         >
-          <ExternalLink size={20} />
+          <Download
+            size={20}
+            className="shrink-0 text-white transition-colors group-hover:text-[#0267FF]"
+            strokeWidth={2}
+            aria-hidden
+          />
+          Download template
         </button>
         <button
           type="button"
-          className="flex items-center justify-center gap-2 h-12 px-4 py-3 rounded bg-[#212b36] text-[#a6aaaf] hover:bg-[#2d3844] hover:text-white transition-colors"
-          aria-label="Upload"
+          className="group flex h-12 shrink-0 items-center justify-center gap-2 rounded-[4px] bg-[#212b36] px-4 font-['Inter',sans-serif] text-sm font-medium leading-normal text-white transition-colors hover:bg-[#2d3844]"
         >
-          <Upload size={20} />
+          <Upload
+            size={20}
+            className="shrink-0 text-white transition-colors group-hover:text-[#0267FF]"
+            strokeWidth={2}
+            aria-hidden
+          />
+          Upload template
+        </button>
+        <button
+          type="button"
+          className="flex h-12 shrink-0 items-center justify-center rounded-[4px] bg-[#0267FF] px-4 font-['Inter',sans-serif] text-sm font-semibold leading-normal text-white transition-colors hover:bg-[#0256e6]"
+        >
+          Re-generate IA recs
         </button>
       </div>
     </header>

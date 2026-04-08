@@ -171,7 +171,7 @@ export function AdvancedFiltersPopover({
     return (
       <div
         ref={popoverRef}
-        className="fixed z-[80] flex max-h-[min(480px,85vh)] w-[min(420px,calc(100vw-24px))] min-w-[min(360px,calc(100vw-24px))] flex-col overflow-hidden rounded-[6px] border border-solid border-[#E3E8F0] bg-white shadow-[0px_8px_25px_0px_rgba(0,0,0,0.1)]"
+        className="fixed z-[80] flex max-h-[min(480px,85vh)] w-[min(420px,calc(100vw-24px))] min-w-[min(360px,calc(100vw-24px))] flex-col overflow-hidden rounded-[4px] border border-solid border-[#E3E8F0] bg-white shadow-[0px_8px_25px_0px_rgba(0,0,0,0.1)]"
         style={{ top: `${top}px`, left: `${left}px` }}
         role="dialog"
         aria-label={`Filter by ${dimensionLabel}`}
@@ -209,7 +209,7 @@ export function AdvancedFiltersPopover({
                   role="option"
                   aria-selected={selected}
                   onClick={() => onToggleValue(row.id)}
-                  className={`flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors ${dropdownMenuItemHover} ${
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-[4px] px-3 py-2.5 text-left transition-colors ${dropdownMenuItemHover} ${
                     selected ? 'bg-blue-50' : 'bg-white'
                   }`}
                 >
@@ -237,7 +237,7 @@ export function AdvancedFiltersPopover({
           <button
             type="button"
             onClick={() => onSelectAllFilteredValues(filteredValueRows.map((r) => r.id))}
-            className="rounded-md bg-slate-100 px-4 py-2 font-['Inter',sans-serif] text-sm font-medium text-[#101828] transition-colors hover:bg-slate-200"
+            className="rounded-[4px] bg-slate-100 px-4 py-2 font-['Inter',sans-serif] text-sm font-medium text-[#101828] transition-colors hover:bg-slate-200"
           >
             Select all
           </button>
@@ -249,7 +249,7 @@ export function AdvancedFiltersPopover({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-[80] w-max min-w-[200px] rounded-[6px] border border-[#e9eaeb] bg-[#FFFFFF] px-3 py-4 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.1)]"
+      className="fixed z-[80] w-max min-w-[200px] rounded-[4px] border border-[#e9eaeb] bg-[#FFFFFF] px-3 py-4 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.1)]"
       style={{ top: `${top}px`, left: `${left}px` }}
       role="menu"
       aria-label="Advanced filters"
@@ -282,7 +282,7 @@ export function AdvancedFiltersPopover({
                 role="menuitemcheckbox"
                 aria-checked={selected}
                 onClick={() => onToggle(id)}
-                className={`flex w-full cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs font-medium leading-normal transition-colors ${dropdownMenuItemHover}`}
+                className={`flex w-full cursor-pointer items-center gap-2 rounded-[4px] border-0 bg-transparent px-2 py-1.5 text-left text-xs font-medium leading-normal transition-colors ${dropdownMenuItemHover}`}
               >
                 <span
                   className={`flex size-4 shrink-0 items-center justify-center rounded-sm border ${
@@ -309,7 +309,7 @@ export function AdvancedFiltersPopover({
           onClick={() => {
             onClearAll();
           }}
-          className="rounded-md bg-[#f0f0f0] px-3 py-2 text-xs font-bold text-[#00050a] transition-colors hover:bg-[#e5e5e5]"
+          className="rounded-[4px] bg-[#f0f0f0] px-3 py-2 text-xs font-bold text-[#00050a] transition-colors hover:bg-[#e5e5e5]"
         >
           Clear
         </button>

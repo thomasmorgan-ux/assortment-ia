@@ -12,7 +12,7 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /** Panel shell — matches product grouping menu + table border token. */
 const scheduleDatePopoverPanelClass =
-  'flex max-h-[min(320px,85vh)] flex-col gap-2 overflow-y-auto rounded-[6px] border-[0.5px] border-solid border-[#E3E8F0] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]';
+  'flex max-h-[min(320px,85vh)] flex-col gap-2 overflow-y-auto rounded-[4px] border-[0.5px] border-solid border-[#E3E8F0] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]';
 
 function normalizeToIso(raw: string | undefined): string {
   if (!raw?.trim()) return '';
@@ -170,7 +170,7 @@ export function ScheduleDatePopoverInput({
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => !disabled && setOpen((o) => !o)}
-        className={`flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] transition-colors focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+        className={`flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] transition-colors focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       >
         <span className="min-w-0 truncate">{iso ? formatDdMmYyyy(iso) : '—'}</span>
         <Calendar size={16} className="shrink-0 text-[#6A7282]" aria-hidden />
@@ -418,10 +418,19 @@ export function ScheduleDateRangePopoverInput({
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => !disabled && setOpen((o) => !o)}
-        className={`flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] transition-colors focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+        className={`flex h-[24px] w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-normal tabular-nums leading-none text-[#101828] transition-colors focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       >
         <span className="min-w-0 truncate">{rangeLabel}</span>
-        <Calendar size={16} className="shrink-0 text-[#6A7282]" aria-hidden />
+        <span
+          className={
+            disabled
+              ? 'inline-flex shrink-0 text-[#6A7282]'
+              : 'inline-flex shrink-0 text-[#6A7282] transition-colors hover:text-[#0267FF]'
+          }
+          aria-hidden
+        >
+          <Calendar size={14} className="shrink-0" aria-hidden />
+        </span>
       </button>
       {open &&
         createPortal(
@@ -450,7 +459,7 @@ export function ScheduleDateRangePopoverInput({
                   </p>
                 </div>
               ) : null}
-              <div className="mb-1 flex gap-0.5 rounded-md bg-slate-100 p-0.5">
+              <div className="mb-1 flex gap-0.5 rounded-[4px] bg-slate-100 p-0.5">
                 <button type="button" className={tabClass('start')} onClick={() => setActive('start')}>
                   Start
                 </button>

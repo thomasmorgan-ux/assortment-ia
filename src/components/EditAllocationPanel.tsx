@@ -119,7 +119,7 @@ const topLocationsMock: { metric: string; committed: number | string; current: s
 const TOTAL_MIN_QUANTITY = 3;
 
 const EDIT_PANEL_ASSORT_COUNT_INPUT_CLASS =
-  'box-border h-9 w-14 min-w-[3.5rem] max-w-[5rem] rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-2 py-0 ' +
+  'box-border h-9 w-14 min-w-[3.5rem] max-w-[5rem] rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-2 py-0 text-right ' +
   "font-['Inter',sans-serif] text-sm font-semibold tabular-nums leading-normal text-[#101828] " +
   'focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25';
 
@@ -333,7 +333,7 @@ export function EditAllocationPanel({
                       <button
                         type="button"
                         onClick={() => setHeaderAccordionExpanded((e) => !e)}
-                        className={`group/row flex w-full items-center gap-2 rounded-md py-0.5 text-left text-sm text-[#00050a] transition-colors ${dropdownMenuItemHover}`}
+                        className={`group/row flex w-full items-center gap-2 rounded-[4px] py-0.5 text-left text-sm text-[#00050a] transition-colors ${dropdownMenuItemHover}`}
                         aria-expanded={headerAccordionExpanded}
                       >
                         <span className="flex shrink-0 items-center justify-center text-slate-500 transition-transform group-hover/row:text-[rgb(59_130_246)]">
@@ -500,7 +500,7 @@ export function EditAllocationPanel({
                                     else onAssort?.(r);
                                   }}
                                   disabled={r.assortment.assortedCount >= r.assortment.totalCount}
-                                  className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="rounded-[4px] bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   Assort
                                 </button>
@@ -510,7 +510,7 @@ export function EditAllocationPanel({
                                     onUnassortToZero ? onUnassortToZero(r) : onUnassort?.(r)
                                   }
                                   disabled={r.assortment.assortedCount <= 0}
-                                  className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="rounded-[4px] border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   Unassort
                                 </button>
@@ -531,7 +531,7 @@ export function EditAllocationPanel({
                                       onScheduledAssortmentScheduleChange?.(r.id, 'start', e.target.value)
                                     }
                                     disabled={r.assortment.assortedCount === 0}
-                                    className="h-9 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                                    className="h-9 w-full min-w-0 max-w-full rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
                                     aria-describedby={`${dateId}-hint`}
                                   />
                                 </div>
@@ -547,7 +547,7 @@ export function EditAllocationPanel({
                                       onScheduledAssortmentScheduleChange?.(r.id, 'finish', e.target.value)
                                     }
                                     disabled={r.assortment.assortedCount === 0}
-                                    className="h-9 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                                    className="h-9 w-full min-w-0 max-w-full rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
                                     aria-describedby={`${dateId}-hint`}
                                   />
                                 </div>
@@ -643,7 +643,7 @@ export function EditAllocationPanel({
                             else onAssort?.(singleRow);
                           }}
                           disabled={singleRow.assortment.assortedCount >= singleRow.assortment.totalCount}
-                          className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-[4px] bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Assort
                         </button>
@@ -653,7 +653,7 @@ export function EditAllocationPanel({
                             onUnassortToZero ? onUnassortToZero(singleRow) : onUnassort?.(singleRow)
                           }
                           disabled={singleRow.assortment.assortedCount <= 0}
-                          className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-[4px] border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Unassort
                         </button>
@@ -677,7 +677,7 @@ export function EditAllocationPanel({
                               onScheduledAssortmentScheduleChange?.(singleRow.id, 'start', e.target.value)
                             }
                             disabled={singleRow.assortment.assortedCount === 0}
-                            className="h-9 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                            className="h-9 w-full min-w-0 max-w-full rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
                             aria-describedby="assortment-schedule-hint"
                           />
                         </div>
@@ -696,7 +696,7 @@ export function EditAllocationPanel({
                               onScheduledAssortmentScheduleChange?.(singleRow.id, 'finish', e.target.value)
                             }
                             disabled={singleRow.assortment.assortedCount === 0}
-                            className="h-9 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
+                            className="h-9 w-full min-w-0 max-w-full rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60"
                             aria-describedby="assortment-schedule-hint"
                           />
                         </div>
@@ -848,7 +848,7 @@ export function EditAllocationPanel({
                             type="number"
                             value={state.totalIaInput}
                             onChange={(e) => updateRowState(r.id, { totalIaInput: e.target.value.replace(/[^0-9]/g, '') })}
-                            className={`h-10 w-24 rounded-[2px] border-[0.5px] border-solid px-3 text-sm text-[#000000] ${
+                            className={`h-10 w-24 rounded-[4px] border-[0.5px] border-solid px-3 text-sm text-[#000000] ${
                               isAboveMax
                                 ? 'border-red-500 bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500'
                                 : isBelowMin

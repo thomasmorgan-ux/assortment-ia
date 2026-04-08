@@ -68,7 +68,7 @@ const TOOLBAR_METRIC_OPTIONS: readonly { id: ToolbarMetricOptionId; label: strin
   { id: 'wh-pfp', label: 'WH PFP' },
   { id: 'ia', label: 'IA' },
   { id: 'recommended-ia', label: 'Recommended IA' },
-  { id: 'wh-stock-pct-ia', label: '% WH stock for IA' },
+  { id: 'wh-stock-pct-ia', label: '%WH stock for IA' },
 ];
 
 function toolbarMetricLabel(id: ToolbarMetricOptionId): string {
@@ -771,12 +771,12 @@ export function MainContent() {
         <div className="flex w-full min-w-0 flex-col gap-3">
           {focusView !== 'service-level' && !newRecsAvailableBannerDismissed && (
             <div
-              className="flex w-full min-w-0 flex-wrap items-start gap-3 rounded-[6px] border-[0.5px] border-solid border-[#00050a]/[0.12] bg-[#f8f8f8] p-4 sm:items-center sm:gap-4"
+              className="flex w-full min-w-0 flex-wrap items-start gap-3 rounded-[6px] border-[0.5px] border-solid border-[#6864E6] bg-[#6864E6]/10 p-4 sm:items-center sm:gap-4"
               role="region"
               aria-label="New recommendations available"
             >
               <Info
-                className="mt-0.5 h-6 w-6 shrink-0 text-[#00050a] sm:mt-0"
+                className="mt-0.5 h-6 w-6 shrink-0 text-[#6864E6] sm:mt-0"
                 strokeWidth={2}
                 aria-hidden
               />
@@ -796,7 +796,7 @@ export function MainContent() {
                       setNewRecsAvailableBannerDismissed(true);
                       setGenerateRecModalOpen(true);
                     }}
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded border-[0.5px] border-solid border-[#e9eaeb] bg-white px-4 py-2 font-['Inter',sans-serif] text-base font-medium leading-normal text-[#00050a] transition-colors hover:bg-slate-50"
+                    className="inline-flex h-[34px] min-h-[34px] max-h-[34px] shrink-0 items-center justify-center gap-2 rounded border-[0.5px] border-solid border-[#e9eaeb] bg-white px-4 py-0 font-['Inter',sans-serif] text-[14px] font-medium leading-normal text-[#00050a] transition-colors hover:bg-slate-50 hover:text-[#0267FF]"
                   >
                     Accept
                   </button>
@@ -899,7 +899,7 @@ export function MainContent() {
             >
               <div
                 ref={toolbarMetricDropdownRef}
-                className="relative flex h-10 shrink-0 overflow-visible rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white"
+                className="relative flex h-[34px] min-h-[34px] max-h-[34px] shrink-0 overflow-visible rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white"
               >
                 <button
                   type="button"
@@ -925,7 +925,7 @@ export function MainContent() {
                     id="toolbar-metric-listbox"
                     role="listbox"
                     aria-label="Table metric"
-                    className="absolute left-0 top-[42px] z-[210] mt-0.5 flex min-w-full w-max max-w-[min(280px,calc(100vw-2rem))] max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[6px] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
+                    className="absolute left-0 top-full z-[210] mt-0.5 flex min-w-full w-max max-w-[min(280px,calc(100vw-2rem))] max-h-[min(320px,85vh)] flex-col gap-1 overflow-y-auto rounded-[4px] bg-white p-2 shadow-[0px_8px_25px_0px_rgba(0,0,0,0.12)]"
                   >
                     {TOOLBAR_METRIC_OPTIONS.map((opt) => (
                       <button
@@ -937,7 +937,7 @@ export function MainContent() {
                           setToolbarMetric(opt.id);
                           setToolbarMetricOpen(false);
                         }}
-                        className={`flex h-9 w-full shrink-0 cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
+                        className={`flex h-9 w-full shrink-0 cursor-pointer items-center justify-between gap-2 whitespace-nowrap rounded-[4px] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover} ${
                           toolbarMetric === opt.id ? 'bg-slate-100' : ''
                         }`}
                       >
@@ -963,7 +963,7 @@ export function MainContent() {
                 }}
                 aria-expanded={Boolean(advancedFiltersAnchor?.source === 'button')}
                 aria-haspopup="menu"
-                className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors hover:border-[#d1d5db]"
+                className="flex h-[34px] min-h-[34px] max-h-[34px] shrink-0 items-center justify-center gap-2 rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-4 whitespace-nowrap text-[#101828] transition-colors hover:border-[#d1d5db]"
                 aria-label="Filters"
               >
                 <Filter size={16} className="shrink-0" strokeWidth={2} aria-hidden />
@@ -981,7 +981,7 @@ export function MainContent() {
                         key={filterId}
                         data-filter-chip
                         data-name="tokens"
-                        className="flex h-10 shrink-0 items-stretch overflow-hidden rounded-[6px] border-[0.5px] border-solid border-[#E3E8F0] bg-white"
+                        className="flex h-10 shrink-0 items-stretch overflow-hidden rounded-[4px] border-[0.5px] border-solid border-[#E3E8F0] bg-white"
                       >
                         <button
                           type="button"

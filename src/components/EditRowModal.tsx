@@ -164,7 +164,7 @@ function RowCard({
                   type="number"
                   value={localSumIa}
                   onChange={(e) => onLocalSumIa(Number(e.target.value) || 0)}
-                  className="h-10 w-[100px] rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
+                  className="h-10 w-[100px] rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ function RowCard({
                   type="number"
                   value={localAvgIa}
                   onChange={(e) => onLocalAvgIa(Number(e.target.value) || 0)}
-                  className="h-10 w-[100px] rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
+                  className="h-10 w-[100px] rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 text-sm text-[#000000]"
                 />
               </div>
             </div>
@@ -387,7 +387,7 @@ export function EditRowModal({
             data-node-id="201:20149"
           >
             <div
-              className="flex flex-col gap-3 rounded-md bg-[#edcaff] p-4"
+              className="flex flex-col gap-3 rounded-[4px] bg-[#edcaff] p-4"
               data-node-id="201:20150"
             >
               <div className="flex items-start gap-3">

@@ -1,15 +1,8 @@
 import { useId, useState, type ComponentType } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import autoneLogoMarkUrl from '../assets/autone-logo-mark.png';
+import autoneLogoUrl from '../assets/autone-logo.png';
 import { SCRATCHPAD_852_24160_TOGGLE_PATH } from '../assets/sidebarEdgeToggle85224160';
-
-/** Autone logo mark — Monotone / Icon 24px (Figma 12210:36296 → 12207:7487) */
-const AUTONE_LOGO_MARK =
-  'https://www.figma.com/api/mcp/asset/ff47c49a-32d3-41ef-a4af-b982250d71dc';
-/** Full wordmark pieces (Figma 12212:42693 AutoneLogo 12207:7492) */
-const AUTONE_LOGO_MARK_EXPANDED =
-  'https://www.figma.com/api/mcp/asset/9d650bdc-ecde-415f-bea2-d2cc21816d2e';
-const AUTONE_LOGO_WORDMARK =
-  'https://www.figma.com/api/mcp/asset/8aef8dab-0f24-41a5-ad3c-1b0b8fbe7f1e';
 
 /** Content width ~240px + horizontal padding (px-4 × 2) so nav labels are not clipped. */
 const SIDEBAR_EXPANDED_WIDTH = 272;
@@ -20,21 +13,8 @@ const EDGE_TOGGLE_PX = 40;
 const EDGE_TOGGLE_LEFT_COLLAPSED = 56;
 const USER_AVATAR_SRC =
   'https://www.figma.com/api/mcp/asset/3c4254ce-40aa-4ed2-af75-f53137e845d4';
-const UK_FLAG_SRC =
-  'https://www.figma.com/api/mcp/asset/43899dcc-1578-4ed4-becc-ee0a3c834ab5';
-/** Chat — Sidebar element (Figma 12350:172509, Icon=chat 12350:172283) */
-const SIDEBAR_CHAT_ICON_SRC =
-  'https://www.figma.com/api/mcp/asset/dd77240e-5765-49a2-a5af-94eafc295af6';
-/** Currency — Icon=circle-dollar (Figma 12718:7365 → 4605:27967) */
-const SIDEBAR_CURRENCY_ICON_VECTOR =
-  'https://www.figma.com/api/mcp/asset/6f7604c6-8bad-46e4-a81d-2903fe0890cd';
-const SIDEBAR_CURRENCY_ICON_ELLIPSE =
-  'https://www.figma.com/api/mcp/asset/bfcc53c8-3349-47f2-984c-eb2ad1d268ac';
 
 const SIDEBAR_INACTIVE_ICON = 'text-[#9AA4B2]';
-/** Chat/Currency imgs: default white glyph; `group-hover` → ~#0267FF like `text-inherit` nav icons. */
-const SIDEBAR_RASTER_ICON_HOVER =
-  'brightness-0 invert transition-[filter] duration-200 ease-out group-hover:[filter:brightness(0)_saturate(100%)_invert(27%)_sepia(100%)_saturate(7499%)_hue-rotate(208deg)_brightness(101%)_contrast(101%)]';
 
 type NavIconProps = { size?: number; strokeWidth?: number; className?: string };
 type LucideLike = ComponentType<NavIconProps>;
@@ -551,45 +531,6 @@ function SidebarHistoryClockIcon({ className }: Pick<NavIconProps, 'className'>)
   );
 }
 
-function SidebarChatIcon() {
-  return (
-    <div className="relative shrink-0 size-6" aria-hidden>
-      <div className="absolute inset-[4.58%]">
-        <img
-          src={SIDEBAR_CHAT_ICON_SRC}
-          alt=""
-          className={`absolute block size-full max-w-none object-contain ${SIDEBAR_RASTER_ICON_HOVER}`}
-        />
-      </div>
-    </div>
-  );
-}
-
-function SidebarCurrencyIcon() {
-  return (
-    <div className="relative size-6 shrink-0" aria-hidden>
-      <div className="absolute inset-[8.33%]">
-        <div className="absolute -inset-[4.5%]">
-          <img
-            src={SIDEBAR_CURRENCY_ICON_VECTOR}
-            alt=""
-            className={`block size-full max-w-none object-contain ${SIDEBAR_RASTER_ICON_HOVER}`}
-          />
-        </div>
-      </div>
-      <div className="absolute inset-[8.33%]">
-        <div className="absolute -inset-[4.5%]">
-          <img
-            src={SIDEBAR_CURRENCY_ICON_ELLIPSE}
-            alt=""
-            className={`block size-full max-w-none object-contain ${SIDEBAR_RASTER_ICON_HOVER}`}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const MAIN_NAV: {
   id: string;
   label: string;
@@ -648,7 +589,7 @@ function navRowClasses(active: boolean, expanded: boolean, alignExpanded: boolea
     'flex min-h-10 w-full shrink-0 gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF]';
   const layout = expanded && alignExpanded ? 'items-center justify-start text-left' : 'items-center justify-center';
   if (active) {
-    return `${base} ${layout} bg-[#0D7580] text-white`;
+    return `${base} ${layout} bg-[#2EB8C2] text-white`;
   }
   return `${base} ${layout} text-white`;
 }
@@ -686,36 +627,24 @@ export function Sidebar({ className = '' }: SidebarProps) {
           data-node-id="12203:5564"
         >
           {expanded ? (
-            <div className="flex h-6 items-center gap-[5.924px]" data-node-id="12207:7492">
-              <div className="relative size-6 shrink-0">
-                <img
-                  src={AUTONE_LOGO_MARK_EXPANDED}
-                  alt=""
-                  className="absolute inset-0 size-full max-w-none object-contain brightness-0 invert"
-                  width={24}
-                  height={24}
-                />
-              </div>
-              <div className="relative h-[23.971px] w-[112px] max-w-full shrink-0">
-                <img
-                  src={AUTONE_LOGO_WORDMARK}
-                  alt="Autone"
-                  className="absolute inset-0 size-full max-w-none object-contain object-left brightness-0 invert"
-                  width={112}
-                  height={24}
-                />
-              </div>
-            </div>
+            <img
+              src={autoneLogoUrl}
+              alt="Autone"
+              className="h-8 w-auto max-w-full object-contain object-left [aspect-ratio:258/54]"
+              draggable={false}
+              data-node-id="12207:7492"
+            />
           ) : (
-            <div className="relative size-6 shrink-0" data-name="Vector" data-node-id="12207:7487">
-              <img
-                src={AUTONE_LOGO_MARK}
-                alt="Autone"
-                className="absolute inset-0 size-full max-w-none object-contain brightness-0 invert"
-                width={24}
-                height={24}
-              />
-            </div>
+            <img
+              src={autoneLogoMarkUrl}
+              alt="Autone"
+              className="size-7 shrink-0 object-contain"
+              width={28}
+              height={28}
+              draggable={false}
+              data-name="Autone logo mark"
+              data-node-id="12207:7487"
+            />
           )}
         </div>
 
@@ -763,8 +692,6 @@ export function Sidebar({ className = '' }: SidebarProps) {
               </button>
             );
           })}
-
-          <div className="my-2 h-px w-full shrink-0 bg-[#22272F]" data-name="divider" aria-hidden />
 
           {SECOND_NAV.map((item) => {
             const Icon = item.icon;
@@ -829,69 +756,6 @@ export function Sidebar({ className = '' }: SidebarProps) {
         )}
 
         {!expanded && <div className="h-px w-full shrink-0 bg-[#22272F]" data-name="divider" aria-hidden />}
-
-        <button
-          type="button"
-          className={`group flex min-h-10 w-full shrink-0 items-center gap-3 rounded-[4px] px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF] ${SIDEBAR_INACTIVE_ICON} ${
-            expanded ? 'justify-start text-left' : 'justify-center'
-          }`}
-          aria-label="Chat"
-          data-name="Sidebar element"
-          data-node-id="12350:172509"
-        >
-          <SidebarChatIcon />
-          {expanded && (
-            <span className="min-w-0 flex-1 text-left font-normal leading-snug break-words text-white group-hover:text-[#0267FF]">
-              Chat with us
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          className={`group flex min-h-10 w-full shrink-0 items-center gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF] ${SIDEBAR_INACTIVE_ICON} ${
-            expanded ? 'justify-start text-left' : 'justify-center'
-          }`}
-          aria-label="Currency"
-          data-node-id="12718:7365"
-        >
-          <SidebarCurrencyIcon />
-          {expanded && (
-            <span className="min-w-0 flex-1 text-left font-normal leading-snug break-words text-white group-hover:text-[#0267FF]">
-              Currency
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          className={`group flex min-h-10 w-full shrink-0 items-center gap-3 rounded px-4 py-2 text-sm transition-colors hover:bg-white/[0.08] hover:text-[#0267FF] ${SIDEBAR_INACTIVE_ICON} ${
-            expanded ? 'justify-start text-left' : 'justify-center'
-          }`}
-          aria-label="Language (UK)"
-          data-name="Sidebar element"
-          data-node-id="12350:172510"
-        >
-          <div className="relative size-6 shrink-0 overflow-hidden">
-            <div
-              className="absolute inset-[20.83%_4.17%_16.67%_4.17%] flex flex-col items-center justify-center overflow-hidden rounded-[0.676px] bg-[#1a47b8] shadow-[0px_0px_0.055px_0px_rgba(66,71,76,0.32),0px_0.442px_0.662px_0px_rgba(66,71,76,0.08)]"
-              data-name="uk"
-            >
-              <div className="relative h-[15px] w-full shrink-0">
-                <img
-                  src={UK_FLAG_SRC}
-                  alt=""
-                  className="absolute inset-0 size-full max-w-none object-cover"
-                />
-              </div>
-            </div>
-          </div>
-          {expanded && (
-            <span className="min-w-0 flex-1 text-left font-normal leading-snug break-words text-white group-hover:text-[#0267FF]">
-              English
-            </span>
-          )}
-        </button>
 
         {expanded ? (
           <button

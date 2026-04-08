@@ -23,7 +23,7 @@ export interface AssortmentRow {
   inventoryCount: number;
   /** WH stock: primary total + PFP sub-line. */
   whStock: { value: number; pfp: number };
-  /** % WH stock for IA (one decimal in UI). */
+  /** %WH stock for IA (one decimal in UI). */
   whStockPctForIa: number;
   assortment: { assorted: string; assortedCount: number; totalCount: number };
   sumIa: number;

@@ -75,26 +75,26 @@ const gripAlignedBodyPl = 'pl-[22px]';
 const STICKY_GROUPING_COLUMNS_WIDTH_EXTRA_PX = 40;
 
 /** Grouping `<th>` triggers — ~30px wider than compact “Product” / “Location” labels (~96px / ~101px). */
-const groupingHeaderProductTriggerClass = 'min-w-[126px]';
-const groupingHeaderLocationTriggerClass = 'min-w-[131px]';
+const groupingHeaderProductTriggerClass = 'group min-w-[126px]';
+const groupingHeaderLocationTriggerClass = 'group min-w-[131px]';
 
-/** Product / location header grouping lists — same chrome as row actions, under triggers (`top-[43px]`). */
-const groupingDropdownPanelClass = `absolute left-0 top-[43px] z-[210] mt-0.5 min-w-full ${rowActionsMenuPanelChromeClass}`;
+/** Product / location header grouping lists — same chrome as row actions, directly under triggers. */
+const groupingDropdownPanelClass = `absolute left-0 top-full z-[210] mt-0.5 min-w-full ${rowActionsMenuPanelChromeClass}`;
 
 /** Service-level tolerance listboxes — at least trigger width (`min-w-full`), wider when labels need it (`w-max`). */
 const tableAnchorListboxPanelClass = `absolute left-0 top-full z-[210] mt-0.5 min-w-full w-max max-w-[min(100vw-1.5rem,24rem)] ${rowActionsMenuPanelChromeClass}`;
 
 /** Header grouping options + service-level tolerance listbox rows — matches row actions `menuitem` type. */
 const groupingDropdownMenuItemBaseClass =
-  `group/opt flex h-9 w-full shrink-0 items-center justify-between gap-2 rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`;
+  `group/opt flex h-9 w-full shrink-0 items-center justify-between gap-2 rounded-[4px] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`;
 
 /** IA column (sum IA + recommendation); legacy 104px is baked into `tableMinWidthPx` `base`. */
-/** Narrower min width; Current / Recco row wraps below when tight (`flex-wrap` on meta row). */
-/** Wide enough for IA input + stacked “Current” / “Recco” meta. */
+/** Narrower min width; Current / Reco row wraps below when tight (`flex-wrap` on meta row). */
+/** Wide enough for IA input + stacked “Current” / “Reco” meta. */
 const IA_COLUMN_MIN_WIDTH_PX = 168;
 const IA_COLUMN_MIN_WIDTH_LEGACY_PX = 104;
 
-/** Dedicated "% WH stock for IA" grip column (percentage only; title in header); follows IA. */
+/** Dedicated "%WH stock for IA" grip column (percentage only; title in header); follows IA. */
 /** Narrow min width; header label wraps (`whitespace-normal`) so grip + title stay readable. */
 const WH_STOCK_PCT_IA_COLUMN_MIN_WIDTH_PX = 176;
 
@@ -106,23 +106,24 @@ const SCHEDULE_RANGE_COLUMN_MIN_WIDTH_PX = 280;
 /** Assorted SKU Locs (grip column `scheduleStart`): pill + ALL|NONE|REC on one row. */
 const ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX = 268;
 /** Recommended assorted SKU locs — before “Assorted SKU Locs”; purple pill, no quick actions. */
-const REC_ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX = 172;
+/** Wide enough for “Rec Assorted SKU Locs” on one line with grip. */
+const REC_ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX = 228;
 const REC_ASSORTED_SKU_LOCS_COLUMN_SURFACE_CLASS = 'bg-white';
 
 /** Service level “Forecast / week” — 150px narrower than the main Assortment column (288px). */
 const SERVICE_LEVEL_FORECAST_WEEK_COLUMN_MIN_WIDTH_PX = 138;
 
-/** Design system text input (Figma Input text / stroke #e9eaeb, 40px height, 2px radius) */
-/** Narrow count field (e.g. assortment column) — smaller min-width than default table numeric input. */
-const tableCellNumericInputNarrowClass =
-  "box-border h-10 w-full min-w-0 max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-2 py-0 " +
-  "font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] " +
+/** Design system text input (Figma Input text / stroke #e9eaeb, 40px height, 4px radius) */
+/** IA sum + assortment count — 24px tall, 12px semibold (matches compact row controls). */
+const tableCellNumericInputCompactClass =
+  "box-border h-[24px] w-full min-w-0 max-w-full rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-2 py-0 text-right " +
+  "font-['Inter',sans-serif] text-[12px] font-semibold tabular-nums leading-none text-[#101828] " +
   "placeholder:font-normal placeholder:text-[#4b535c] " +
   "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 " +
   "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60";
 
 const tableCellNumericInputClass =
-  "box-border h-10 w-full min-w-[56px] max-w-full rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 " +
+  "box-border h-10 w-full min-w-[56px] max-w-full rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 text-right " +
   "font-['Inter',sans-serif] text-[14px] font-semibold tabular-nums leading-normal text-[#101828] " +
   "placeholder:font-normal placeholder:text-[#4b535c] " +
   "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25 " +
@@ -130,7 +131,7 @@ const tableCellNumericInputClass =
 
 /** Matches `ScheduleDatePopoverInput` trigger sizing; label uses `leading-tight` like next-event deadline. */
 const serviceLevelToleranceTriggerClass =
-  "flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap transition-colors focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25";
+  "flex h-10 w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap transition-colors focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/25";
 
 export function TableCellNumericInput({
   value,
@@ -287,13 +288,16 @@ const SERVICE_LEVEL_HIDDEN_GRIP_MIN_WIDTH_PX =
 
 /** Recommendation / IA metrics accent (purple). */
 const ASSORTED_SKU_LOCS_REC_TEXT = 'text-[#6864E6]';
-/** Assorted SKU Locs pill — light track + teal fill (design). */
-const SKU_LOCS_PILL_TRACK = 'bg-[#F3F4F6]';
-const SKU_LOCS_PILL_FILL = 'bg-[#2EB8C2]';
+/** Assorted SKU Locs pill — track at 10% #2EB8C2 + teal fill. */
+const SKU_LOCS_PILL_TRACK = 'bg-[#2EB8C2]/10';
+/** Teal fill at 40% of #2EB8C2 over the track. */
+const SKU_LOCS_PILL_FILL = 'bg-[#2EB8C2]/40';
+/** Pill label — full #2EB8C2. */
+const SKU_LOCS_PILL_LABEL_CLASS = "font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none text-[#2EB8C2]";
 
-/** Rec assorted SKU Locs pill — light track + medium gray fill (design reference). */
-const REC_SKU_LOCS_PILL_TRACK = 'bg-[#F3F4F6]';
-const REC_SKU_LOCS_PILL_FILL = 'bg-[#6864E6]';
+/** Rec assorted SKU Locs pill — track at 10% #6864E6 + purple fill. */
+const REC_SKU_LOCS_PILL_TRACK = 'bg-[#6864E6]/10';
+const REC_SKU_LOCS_PILL_FILL = 'bg-[#6864E6]/50';
 
 /** Inter 14 / regular / tabular / tight — IA / assortment recommendation metrics. */
 const skuLocsMetricTypography = "font-['Inter',sans-serif] text-[14px] font-normal tabular-nums leading-none";
@@ -307,11 +311,11 @@ function AssortedSkuLocsProgressCell({
   const pct =
     now.total > 0 ? Math.min(100, Math.max(0, (now.count / now.total) * 100)) : 0;
   const fullOrNearly = pct >= 99.5 || now.total <= 0;
-  /** Teal on grey track + white on fill — avoids teal-on-teal when the bar covers the label. */
+  /** Full #2EB8C2 label on track and over fill (fill is 40% tint). */
   const dualToneLabel = (
     <>
       {now.count.toLocaleString()}
-      <span className="mx-1 font-normal opacity-90">/</span>
+      <span className="mx-1 font-normal">/</span>
       {now.total.toLocaleString()}
     </>
   );
@@ -330,7 +334,7 @@ function AssortedSkuLocsProgressCell({
           aria-valuemax={now.total}
           aria-valuenow={now.count}
           aria-label={`Assorted SKU locations ${now.count} of ${now.total}`}
-          className={`relative isolate h-[30px] w-[150px] max-w-full shrink-0 overflow-hidden rounded-[8px] ${SKU_LOCS_PILL_TRACK}`}
+          className={`relative isolate h-[24px] w-[150px] max-w-full shrink-0 overflow-hidden rounded-[4px] ${SKU_LOCS_PILL_TRACK}`}
         >
           <div
             className={`absolute inset-y-0 left-0 ${SKU_LOCS_PILL_FILL}`}
@@ -340,14 +344,14 @@ function AssortedSkuLocsProgressCell({
           {showDualToneText ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2">
               <span
-                className="absolute inset-0 flex items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none text-[#2EB8C2]"
+                className={`absolute inset-0 flex items-center justify-center px-2 ${SKU_LOCS_PILL_LABEL_CLASS}`}
                 style={{ clipPath: `inset(0 0 0 ${clipPct}%)` }}
                 aria-hidden
               >
                 {dualToneLabel}
               </span>
               <span
-                className="absolute inset-0 flex items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none text-white"
+                className={`absolute inset-0 flex items-center justify-center px-2 ${SKU_LOCS_PILL_LABEL_CLASS}`}
                 style={{ clipPath: `inset(0 ${trailClip}% 0 0)` }}
                 aria-hidden
               >
@@ -355,18 +359,14 @@ function AssortedSkuLocsProgressCell({
               </span>
             </div>
           ) : (
-            <div
-              className={`relative flex h-full w-full items-center justify-center px-2 font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none ${
-                fullOrNearly && now.total > 0 ? 'text-white' : 'text-[#2EB8C2]'
-              }`}
-            >
+            <div className={`relative flex h-full w-full items-center justify-center px-2 ${SKU_LOCS_PILL_LABEL_CLASS}`}>
               {dualToneLabel}
             </div>
           )}
         </div>
         {trailing}
       </div>
-      <p className={`mt-1.5 ${tableCellSecondary}`}>
+      <p className="mt-1.5 font-['Inter',sans-serif] text-[10px] font-normal leading-snug text-[#6A7282]">
         {subtitle}
       </p>
     </div>
@@ -380,7 +380,7 @@ function RecAssortedSkuLocsProgressCell({ rec }: { rec: AssortmentRow['assortedS
   const dualToneLabel = (
     <>
       {rec.count.toLocaleString()}
-      <span className="mx-1 font-normal opacity-90">/</span>
+      <span className="mx-1 font-normal">/</span>
       {rec.total.toLocaleString()}
     </>
   );
@@ -389,15 +389,17 @@ function RecAssortedSkuLocsProgressCell({ rec }: { rec: AssortmentRow['assortedS
   const showDualToneText = rec.total > 0 && !fullOrNearly && clipPct > 0 && clipPct < 99.5;
   const labelTypography =
     "font-['Inter',sans-serif] text-[13px] font-semibold tabular-nums leading-none";
+  const recPillLabelClass = `${labelTypography} ${ASSORTED_SKU_LOCS_REC_TEXT}`;
   return (
-    <div
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={rec.total}
-      aria-valuenow={rec.count}
-      aria-label={`Recommended assorted SKU locations ${rec.count} of ${rec.total}`}
-      className={`relative isolate mx-auto h-[30px] w-[150px] max-w-full shrink-0 overflow-hidden rounded-[8px] ${REC_SKU_LOCS_PILL_TRACK}`}
-    >
+    <div className="flex min-w-0 flex-col justify-center py-0.5">
+      <div
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={rec.total}
+        aria-valuenow={rec.count}
+        aria-label={`Recommended assorted SKU locations ${rec.count} of ${rec.total}`}
+        className={`relative isolate h-[24px] w-[150px] max-w-full shrink-0 overflow-hidden rounded-[4px] ${REC_SKU_LOCS_PILL_TRACK}`}
+      >
       <div
         className={`absolute inset-y-0 left-0 ${REC_SKU_LOCS_PILL_FILL}`}
         style={{ width: fullOrNearly && rec.total > 0 ? '100%' : `${pct}%` }}
@@ -406,14 +408,14 @@ function RecAssortedSkuLocsProgressCell({ rec }: { rec: AssortmentRow['assortedS
       {showDualToneText ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2">
           <span
-            className={`absolute inset-0 flex items-center justify-center px-2 ${labelTypography} text-[#4B5563]`}
+            className={`absolute inset-0 flex items-center justify-center px-2 ${recPillLabelClass}`}
             style={{ clipPath: `inset(0 0 0 ${clipPct}%)` }}
             aria-hidden
           >
             {dualToneLabel}
           </span>
           <span
-            className={`absolute inset-0 flex items-center justify-center px-2 ${labelTypography} text-white`}
+            className={`absolute inset-0 flex items-center justify-center px-2 ${recPillLabelClass}`}
             style={{ clipPath: `inset(0 ${trailClip}% 0 0)` }}
             aria-hidden
           >
@@ -421,20 +423,17 @@ function RecAssortedSkuLocsProgressCell({ rec }: { rec: AssortmentRow['assortedS
           </span>
         </div>
       ) : (
-        <div
-          className={`relative flex h-full w-full items-center justify-center px-2 ${labelTypography} ${
-            fullOrNearly && rec.total > 0 ? 'text-white' : 'text-[#4B5563]'
-          }`}
-        >
+        <div className={`relative flex h-full w-full items-center justify-center px-2 ${recPillLabelClass}`}>
           {dualToneLabel}
         </div>
       )}
+      </div>
     </div>
   );
 }
 
-const skuLocsQuickLinkMutedClass =
-  "font-['Inter',sans-serif] text-[12px] font-normal text-[#9CA3AF] transition-colors hover:text-[#6A7282]";
+const skuLocsQuickLinkClass =
+  "font-['Inter',sans-serif] text-[10px] font-normal leading-none text-[#687282] transition-colors hover:text-[#0267FF]";
 
 function AssortedSkuLocsQuickLinks({
   row,
@@ -447,18 +446,22 @@ function AssortedSkuLocsQuickLinks({
   onNone: (r: AssortmentRow) => void;
   onRec: (r: AssortmentRow) => void;
 }) {
-  const pipe = <span className="select-none px-0.5 text-[#E3E8F0]">|</span>;
+  const divider = (
+    <span className="flex shrink-0 items-center px-2.5" aria-hidden>
+      <span className="h-[10px] w-px shrink-0 bg-[#E3E8F0]" />
+    </span>
+  );
   return (
     <div className="flex min-w-0 shrink-0 flex-nowrap items-center">
       <div className="group/all relative inline-flex">
-        <button type="button" className={skuLocsQuickLinkMutedClass} onClick={() => onAll(row)}>
+        <button type="button" className={skuLocsQuickLinkClass} onClick={() => onAll(row)}>
           ALL
         </button>
         <div
-          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max max-w-[min(280px,calc(100vw-2rem))] -translate-x-1/2 rounded-lg bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/all:block"
+          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max -translate-x-1/2 rounded-[4px] bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/all:block"
           role="tooltip"
         >
-          <p className="font-['Inter',sans-serif] text-xs font-medium leading-snug text-white">
+          <p className="whitespace-nowrap font-['Inter',sans-serif] text-xs font-medium leading-none text-white">
             Infinitely assort all sku-locs starting from today
           </p>
           <span
@@ -467,16 +470,16 @@ function AssortedSkuLocsQuickLinks({
           />
         </div>
       </div>
-      {pipe}
+      {divider}
       <div className="group/none relative inline-flex">
-        <button type="button" className={skuLocsQuickLinkMutedClass} onClick={() => onNone(row)}>
+        <button type="button" className={skuLocsQuickLinkClass} onClick={() => onNone(row)}>
           NONE
         </button>
         <div
-          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max max-w-[min(280px,calc(100vw-2rem))] -translate-x-1/2 rounded-lg bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/none:block"
+          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max -translate-x-1/2 rounded-[4px] bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/none:block"
           role="tooltip"
         >
-          <p className="font-['Inter',sans-serif] text-xs font-medium leading-snug text-white">
+          <p className="whitespace-nowrap font-['Inter',sans-serif] text-xs font-medium leading-none text-white">
             For all currently assorted sku-locs set end date to today
           </p>
           <span
@@ -485,20 +488,16 @@ function AssortedSkuLocsQuickLinks({
           />
         </div>
       </div>
-      {pipe}
+      {divider}
       <div className="group/rec relative inline-flex">
-        <button
-          type="button"
-          className="font-['Inter',sans-serif] text-[12px] font-semibold text-[#101828] transition-opacity hover:opacity-80"
-          onClick={() => onRec(row)}
-        >
+        <button type="button" className={skuLocsQuickLinkClass} onClick={() => onRec(row)}>
           REC
         </button>
         <div
-          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max min-w-[160px] max-w-[240px] -translate-x-1/2 rounded-lg bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/rec:block"
+          className="pointer-events-none absolute bottom-full left-1/2 z-[250] mb-2 hidden w-max -translate-x-1/2 rounded-[4px] bg-[#212121] px-3 py-2 text-center shadow-lg group-hover/rec:block"
           role="tooltip"
         >
-          <p className="font-['Inter',sans-serif] text-xs font-medium leading-normal text-white">
+          <p className="whitespace-nowrap font-['Inter',sans-serif] text-xs font-medium leading-none text-white">
             Apply recommended assortment
           </p>
           <span
@@ -793,7 +792,7 @@ export function AssortmentTable({
   const statusColumnMinWidthPx = 88;
   /** Legacy table min-width adjustment (former duplicate sales grip column). */
   const mergedSkuLocsColumnWidthSavePx = 128;
-  /** % WH stock for IA + Assortment + sticky row actions columns removed. */
+  /** %WH stock for IA + Assortment + sticky row actions columns removed. */
   const removedTrailingColumnsMinWidthPx = 410;
   /** WH stock column (value + PFP). */
   const whStockWhColumnMinWidthPx = 132;
@@ -1109,19 +1108,19 @@ export function AssortmentTable({
         );
       }
       case 'whStockPctIa': {
-        const title = '% WH stock for IA';
+        const title = '%WH stock for IA';
         return (
           <th
             key={columnId}
-            className="h-[62px] min-h-[62px] px-3 py-[9px] text-left align-middle"
+            className="h-[62px] min-h-[62px] px-3 py-[9px] text-right align-middle"
             style={{ minWidth: WH_STOCK_PCT_IA_COLUMN_MIN_WIDTH_PX }}
             scope="col"
             aria-label={title}
             {...d}
           >
-            <div className="flex w-full min-w-0 items-center justify-start gap-2">
+            <div className="flex w-full min-w-0 items-center justify-end gap-2">
               {gripDragHandle(columnId, title)}
-              <span className={`min-w-0 whitespace-normal leading-tight ${tableCellPrimary}`}>{title}</span>
+              <span className={`min-w-0 whitespace-normal text-right leading-tight ${tableCellPrimary}`}>{title}</span>
             </div>
           </th>
         );
@@ -1220,7 +1219,7 @@ export function AssortmentTable({
           >
             <div className="flex w-full min-w-0 items-center justify-start gap-2">
               {gripDragHandle(columnId, recHeader)}
-              <span className={`whitespace-normal leading-tight ${tableCellPrimary}`}>{recHeader}</span>
+              <span className={`whitespace-nowrap leading-tight ${tableCellPrimary}`}>{recHeader}</span>
             </div>
           </th>
         );
@@ -1470,7 +1469,7 @@ export function AssortmentTable({
               <button
                 type="button"
                 onClick={() => onEditRow?.(row, 'initial-allocation')}
-                className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-[#6A7282] opacity-0 transition-all hover:bg-slate-100 hover:text-sky-600 group-hover:opacity-100"
+                className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded p-1 text-[#6A7282] opacity-0 transition-all hover:bg-slate-100 hover:text-[#0267FF] group-hover:opacity-100"
                 aria-label="Edit allocation"
               >
                 <Pencil size={14} />
@@ -1507,14 +1506,10 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] py-3 px-3 ${tableRowHoverTd} align-middle`}
+            className={`h-[86px] min-h-[86px] py-3 px-3 text-right tabular-nums ${tableCellPrimary} ${tableRowHoverTd} align-middle`}
             style={{ minWidth: WH_STOCK_PCT_IA_COLUMN_MIN_WIDTH_PX }}
           >
-            <div className={`min-w-0 ${gripAlignedBodyPl}`}>
-              <span className={`tabular-nums ${tableCellPrimary}`}>
-                {row.whStockPctForIa.toFixed(1)}%
-              </span>
-            </div>
+            {row.whStockPctForIa.toFixed(1)}%
           </td>
         );
       case 'serviceNextScheduledEvent': {
@@ -1686,7 +1681,7 @@ export function AssortmentTable({
                     [row.id]: e.target.value,
                   }))
                 }
-                className="box-border w-full min-w-0 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] outline-none tabular-nums placeholder:font-normal placeholder:text-[#6A7282]"
+                className="box-border w-full min-w-0 rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] outline-none tabular-nums placeholder:font-normal placeholder:text-[#6A7282]"
               />
             </div>
           </td>
@@ -1695,7 +1690,7 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`h-[86px] min-h-[86px] box-border py-3 px-4 text-center align-middle ${REC_ASSORTED_SKU_LOCS_COLUMN_SURFACE_CLASS} ${tableRowHoverTd}`}
+            className={`h-[86px] min-h-[86px] box-border py-3 px-4 text-left align-middle ${REC_ASSORTED_SKU_LOCS_COLUMN_SURFACE_CLASS} ${tableRowHoverTd}`}
             style={{ minWidth: REC_ASSORTED_SKU_LOCS_COLUMN_MIN_WIDTH_PX }}
           >
             <RecAssortedSkuLocsProgressCell rec={row.assortedSkuLocs.rec} />
@@ -1807,39 +1802,38 @@ export function AssortmentTable({
         return (
           <td
             key={columnId}
-            className={`relative min-h-[86px] py-3 px-4 text-left align-top group ${tableRowHoverTd}`}
+            className={`relative h-[86px] min-h-[86px] py-3 px-4 text-left align-middle group ${tableRowHoverTd}`}
             style={{ minWidth: assortmentColumnMinWidthPx }}
           >
             {assortedCount === totalCount && (
               <button
                 type="button"
                 onClick={() => onEditRow?.(row, 'assortment')}
-                className="absolute right-2 top-3 z-10 rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 opacity-0 group-hover:opacity-100"
+                className="absolute right-2 top-3 z-10 rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-[#0267FF] opacity-0 group-hover:opacity-100"
                 aria-label="Edit assortment"
               >
                 <Pencil size={14} />
               </button>
             )}
-            {pendingAssortment && (
-              <DraftStatusDot
-                padded={false}
-                className="absolute left-2 top-4 z-10"
-                title="Assortment edited"
-                aria-hidden
-              />
-            )}
             <div
               className={[
                 'flex w-full min-w-0 flex-col items-start gap-1.5 text-left',
-                pendingAssortment ? 'pl-[18px]' : '',
                 assortedCount === totalCount ? 'pr-7' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
             >
               {pendingAssortment && row.lastCommittedSnapshot ? (
-                <div className="font-['Inter',sans-serif] text-[12px] font-semibold leading-tight text-[#4B535C]">
-                  {row.lastCommittedSnapshot.assortment.assortedCount} → {assortedCount}/{totalCount}
+                <div className="flex min-w-0 max-w-full items-center gap-1.5">
+                  <DraftStatusDot
+                    padded={false}
+                    className="shrink-0"
+                    title="Assortment edited"
+                    aria-hidden
+                  />
+                  <div className="min-w-0 font-['Inter',sans-serif] text-[12px] font-semibold leading-tight text-[#4B535C]">
+                    {row.lastCommittedSnapshot.assortment.assortedCount} → {assortedCount}/{totalCount}
+                  </div>
                 </div>
               ) : null}
               <div className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 whitespace-nowrap">
@@ -1850,7 +1844,7 @@ export function AssortmentTable({
                     else onAssort(row);
                   }}
                   disabled={assortedCount >= totalCount}
-                  className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-[4px] border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors enabled:hover:bg-slate-200 enabled:hover:text-[#0267FF] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Assort
                 </button>
@@ -1858,7 +1852,7 @@ export function AssortmentTable({
                   type="button"
                   onClick={() => (onUnassortToZero ? onUnassortToZero(row) : onUnassort(row))}
                   disabled={assortedCount <= 0}
-                  className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-[4px] border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 transition-colors enabled:hover:bg-slate-50 enabled:hover:text-[#0267FF] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Unassort
                 </button>
@@ -1869,10 +1863,10 @@ export function AssortmentTable({
                       onCommit={(n) => onAssortmentCountChange?.(row.id, n)}
                       ariaLabel={`Assorted SKU count for ${row.productGroup.name}`}
                       disabled={assortedCount <= 0}
-                      className={tableCellNumericInputNarrowClass}
+                      className={tableCellNumericInputCompactClass}
                     />
                   </div>
-                  <span className={`shrink-0 whitespace-nowrap tabular-nums ${tableCellPrimary}`}>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#101828]">
                     /{totalCount} assorted
                   </span>
                 </div>
@@ -1940,7 +1934,7 @@ export function AssortmentTable({
   const iaMetaRecoTypography =
     "font-['Inter',sans-serif] text-[12px] font-normal tabular-nums leading-none text-[#6864E6]";
 
-  /** Sum IA input + Current / Recco (stacked on two lines, allocation cell). */
+  /** Sum IA input + Current / Reco (stacked on two lines, allocation cell). */
   const renderIaColumnBody = (row: AssortmentRow) => {
     const recoVal = row.sumIaRecommendation;
     const hasReco = recoVal != null && recoVal > 0;
@@ -1951,7 +1945,7 @@ export function AssortmentTable({
             value={row.sumIa}
             ariaLabel={`Initial allocation sum IA for ${row.productGroup.name}`}
             onCommit={(next) => _onSumIaChange(row.id, next)}
-            className={tableCellNumericInputNarrowClass}
+            className={tableCellNumericInputCompactClass}
           />
         </div>
         <div className="flex min-w-0 shrink-0 flex-col items-start gap-0.5 text-left">
@@ -1960,11 +1954,11 @@ export function AssortmentTable({
           </span>
           {hasReco ? (
             <div className="group/reason relative inline-flex w-max max-w-none shrink-0 items-center gap-x-1">
-              <span className={iaMetaRecoTypography}>Recco:</span>
+              <span className={iaMetaRecoTypography}>Reco:</span>
               <Sparkles size={10} className={`shrink-0 ${ASSORTED_SKU_LOCS_REC_TEXT}`} aria-hidden />
               <span className={iaMetaRecoTypography}>{recoVal.toLocaleString()}</span>
               <div
-                className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[200px] -translate-y-1/2 rounded-lg bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
+                className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[200px] -translate-y-1/2 rounded-[4px] bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
                 role="tooltip"
               >
                 <p className="mb-2 text-xs font-medium leading-normal">Recommendation Reasons</p>
@@ -1985,7 +1979,7 @@ export function AssortmentTable({
               </div>
             </div>
           ) : (
-            <span className={`shrink-0 whitespace-nowrap ${tableCellSecondary}`}>Recco: —</span>
+            <span className={`shrink-0 whitespace-nowrap ${tableCellSecondary}`}>Reco: —</span>
           )}
         </div>
       </div>
@@ -2008,7 +2002,7 @@ export function AssortmentTable({
             const rect = e.currentTarget.getBoundingClientRect();
             setActionRowMenu((prev) => (prev?.rowId === row.id ? null : { rowId: row.id, rect }));
           }}
-          className="inline-flex h-8 w-8 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
+          className="inline-flex h-8 w-8 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-[#0267FF]"
         >
           <MoreVertical size={20} strokeWidth={2} aria-hidden />
         </button>
@@ -2051,12 +2045,15 @@ export function AssortmentTable({
                   <button
                     type="button"
                     onClick={() => setProductGroupDropdownOpen((o) => !o)}
-                    className={`inline-flex flex-nowrap items-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap ${groupingHeaderProductTriggerClass}`}
+                    className={`inline-flex h-[34px] min-h-[34px] max-h-[34px] flex-nowrap items-center gap-2 rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap ${groupingHeaderProductTriggerClass}`}
                   >
                     <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
                       {productGrouping}
                     </span>
-                    <ChevronDown size={14} className="shrink-0 text-[#6A7282]" />
+                    <ChevronDown
+                      size={14}
+                      className="shrink-0 text-[#6A7282] transition-colors group-hover:text-[#0267FF]"
+                    />
                   </button>
                   {productGroupDropdownOpen &&
                     (serviceLevelView ? (
@@ -2117,12 +2114,15 @@ export function AssortmentTable({
                     aria-expanded={locationGroupDropdownOpen}
                     aria-haspopup="listbox"
                     onClick={() => setLocationGroupDropdownOpen((o) => !o)}
-                    className={`inline-flex flex-nowrap items-center gap-2 rounded-[2px] border-[0.5px] border-solid border-[#e9eaeb] bg-white p-2.5 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap ${groupingHeaderLocationTriggerClass}`}
+                    className={`inline-flex h-[34px] min-h-[34px] max-h-[34px] flex-nowrap items-center gap-2 rounded-[4px] border-[0.5px] border-solid border-[#e9eaeb] bg-white px-3 py-0 font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-[#101828] whitespace-nowrap ${groupingHeaderLocationTriggerClass}`}
                   >
                     <span className="shrink-0 text-[14px] font-semibold leading-normal text-[#101828]">
                       {locationGrouping}
                     </span>
-                    <ChevronDown size={14} className="shrink-0 text-[#6A7282]" />
+                    <ChevronDown
+                      size={14}
+                      className="shrink-0 text-[#6A7282] transition-colors group-hover:text-[#0267FF]"
+                    />
                   </button>
                   {locationGroupDropdownOpen &&
                     (serviceLevelView ? (
@@ -2261,7 +2261,7 @@ export function AssortmentTable({
                           setProductDrillSourceRow(row);
                           setDrillDownAnchor(e.currentTarget.getBoundingClientRect());
                         }}
-                        className="inline-flex shrink-0 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600"
+                        className="inline-flex shrink-0 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-[#0267FF]"
                         aria-label="Drill down product dimension"
                       >
                         <ChevronsDown size={14} strokeWidth={2} aria-hidden />
@@ -2300,7 +2300,7 @@ export function AssortmentTable({
                           setLocationDrillSource({ rowId: row.id, rowIndex });
                           setLocationDrillDownAnchor(e.currentTarget.getBoundingClientRect());
                         }}
-                        className={`inline-flex shrink-0 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-sky-600 ${
+                        className={`inline-flex shrink-0 items-center justify-center rounded p-1 text-[#6A7282] transition-all hover:bg-slate-100 hover:text-[#0267FF] ${
                           serviceLevelView ? '' : 'self-center'
                         }`}
                         aria-label="Drill down location dimension"
@@ -2336,12 +2336,15 @@ export function AssortmentTable({
                     {scheduleLabel ? (
                       <div className="flex items-start gap-1.5">
                         <Calendar size={12} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
-                        <span className={`min-w-0 leading-snug ${tableCellPrimary}`} title={scheduleLabel}>
+                        <span
+                          className="min-w-0 font-['Inter',sans-serif] text-[12px] font-medium leading-snug text-[#101828]"
+                          title={scheduleLabel}
+                        >
                           {scheduleLabel}
                         </span>
                       </div>
                     ) : (
-                      <span className="font-['Inter',sans-serif] text-[14px] font-semibold leading-normal text-slate-400">
+                      <span className="font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-slate-400">
                         —
                       </span>
                     )}
@@ -2357,7 +2360,7 @@ export function AssortmentTable({
                         return (
                           <div className="group/reason relative inline-flex w-fit max-w-full">
                             <div
-                              className="inline-flex w-fit max-w-full items-start gap-1.5 rounded-[5px] px-2 py-1.5"
+                              className="inline-flex w-fit max-w-full items-start gap-1.5 rounded-[4px] px-2 py-1.5"
                             >
                               <Sparkles
                                 size={12}
@@ -2372,7 +2375,7 @@ export function AssortmentTable({
                               </div>
                             </div>
                             <div
-                              className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[220px] max-w-[min(280px,85vw)] -translate-y-1/2 rounded-lg bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
+                              className="pointer-events-none absolute left-full top-1/2 z-[250] ml-2 hidden min-w-[220px] max-w-[min(280px,85vw)] -translate-y-1/2 rounded-[4px] bg-[#212121] p-4 text-white shadow-lg group-hover/reason:block"
                               role="tooltip"
                             >
                               <p className="mb-2 text-xs font-medium leading-normal">
@@ -2461,7 +2464,7 @@ export function AssortmentTable({
             <button
               type="button"
               role="menuitem"
-              className={`flex h-9 w-full shrink-0 items-center gap-2 rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`}
+              className={`flex h-9 w-full shrink-0 items-center gap-2 rounded-[4px] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`}
               onClick={() => {
                 const r = rows.find((x) => x.id === actionRowMenu.rowId);
                 if (r) onEditRow?.(r, 'assortment');
@@ -2473,7 +2476,7 @@ export function AssortmentTable({
             <button
               type="button"
               role="menuitem"
-              className={`flex h-9 w-full shrink-0 items-center gap-2 rounded-md bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`}
+              className={`flex h-9 w-full shrink-0 items-center gap-2 rounded-[4px] bg-white px-3 py-0 text-left font-['Inter',sans-serif] text-[12px] font-medium leading-normal text-[#00050a] transition-colors ${drillDropdownMenuItemHover}`}
               onClick={() => {
                 const r = rows.find((x) => x.id === actionRowMenu.rowId);
                 if (r) onEditRow?.(r, 'initial-allocation');

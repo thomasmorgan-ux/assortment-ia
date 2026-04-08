@@ -261,7 +261,7 @@ export function ConfirmCommitRevertModal({
 
         <div className={isSlideout ? 'flex min-h-0 flex-1 flex-col overflow-auto px-5 pt-3 pb-4' : 'px-5 pt-3 pb-4'}>
           <p className="mb-4 text-sm text-[#00050a]">{bodyCopy}</p>
-          <div className="overflow-hidden rounded-[2px] border border-[#e9eaeb]">
+          <div className="overflow-hidden rounded-[4px] border border-[#e9eaeb]">
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-[#e9eaeb] bg-[#f8f8f8]">
